@@ -1,0 +1,50 @@
+<!doctype html>
+<html>
+
+{% include 'head.html' %}
+
+<head>
+<script>
+
+  $(document).ready(function() {
+      var config = {
+          pageLength: 100,
+          select: 'single',
+          fixedHeader: true,
+          colReorder: true,
+      };
+      var table_txns = $('#chain_transactions').DataTable(config);
+      config.bFilter = false;
+      var table_summary = $('#chain_summary').DataTable(config);
+      InstallDataTableFocus(table_txns);
+
+      // Emphasize some columns of the table.
+      $(table_summary.column(':contains(chain_pnl)').nodes()).addClass('emph-column');
+      $(table_summary.column(':contains(tgtinit%)').nodes()).addClass('emph-column');
+  });
+
+</script>
+</head>
+
+<body>
+{% include 'navigation.html' %}
+<h1>Chain Detail: {{ chain_id }}</h1>
+
+<div id="_chain_summary">
+{{ chain|safe }}
+</div>
+
+<div id="_chain_transactions">
+{{ transactions|safe }}
+</div>
+
+<div id="_chain_history">
+{{ history|safe }}
+</div>
+
+<div id="chain_graph">
+<img src="{{ graph }}"/>
+</div>
+
+<body>
+</html>

@@ -1,0 +1,50 @@
+// -*- mode: protobuf -*-
+// Configuration for Johnny.
+//
+// This schema is designed for input to the application that contains account
+// configuration setups and manual clusterings for trades (it is not always
+// possible to split logical trades correctly automatically in the same
+// account).
+//
+//   Copyright (C) 2021  Martin Blais
+//   License: GNU GPLv2
+
+syntax = "proto2";
+
+package johnny;
+
+// Configuration for returns script.
+message Config {
+  // The list of accounts and their nicknames. Only the nicknames are used in
+  // the outputs, for privacy, in case you're sharing with others.
+  repeated Account accounts = 1;
+
+  // A list of manually disambiguated trades and their annotations.
+  repeated Chain chain = 2;
+}
+
+// The declaration of an account.
+// Only declared accounts are ingested.
+message Account {
+  // Account number.
+  optional string number = 1;
+
+  // A short and unique nickname or alias for the account. This should be
+  // something you don't mind sharing publicly.
+  optional string nickname = 2;
+}
+
+// A trade chain.
+message Chain {
+  // The chain id of a trade. This is a unique string computed in the front end.
+  optional string chain_id = 1;
+
+  // User-associated trade type.
+  optional string trade_type = 2;
+
+  // If this is present, a list of transaction ids that are part of the trade.
+  // All the rows matching these transactions will be automatically removed from
+  // the table and extracted as a unique chain. Make sure that matches without
+  // these trades can resolve.
+  repeated string transactions_ids = 3;
+}

@@ -1,0 +1,28 @@
+<!doctype html>
+<html>
+
+{% include 'head.html' %}
+
+<head>
+<script>
+
+  $(document).ready(function() {
+      var config = {
+          pageLength: 200,
+          fixedHeader: true,
+          colReorder: true,
+      };
+      var table = $('#transactions').DataTable(config);
+      InstallDataTableFocus(table);
+  });
+
+</script>
+</head>
+
+<body>
+{% include 'navigation.html' %}
+<h1>Transactions</h1>
+{{ table|safe }}
+<body>
+
+</html>

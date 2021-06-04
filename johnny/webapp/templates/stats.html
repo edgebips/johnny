@@ -1,0 +1,32 @@
+<!doctype html>
+<html>
+
+{% include 'head.html' %}
+
+<head>
+<style>
+
+  table#stats {
+      border-collapse: collapse;
+  }
+  table#stats td {
+      border: thin solid black;
+      padding-left: 0.7em;
+      padding-right: 0.7em;
+  }
+
+</style>
+</head>
+
+<body>
+{% include 'navigation.html' %}
+<h1>Statistics</h1>
+
+{{ stats_table|safe }}
+
+<img src="{{ pnlhist }}"></img>
+<img src="{{ pnlpctinit }}"></img>
+<img src="{{ pnlinit }}"></img>
+<body>
+
+</html>

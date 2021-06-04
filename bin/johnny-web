@@ -1,0 +1,8 @@
+#!/bin/bash
+# Web app launcher.
+#
+#   Copyright (C) 2021  Martin Blais
+#   License: GNU GPLv2
+
+# Export JOHNNY_ROOT to set the source directory.
+FLASK_ENV=development FLASK_APP=johnny.webapp.app flask run

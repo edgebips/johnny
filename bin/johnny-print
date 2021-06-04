@@ -1,0 +1,83 @@
+#!/usr/bin/env python3
+"""Command-line input file converter and printer for Johnny.
+
+This tool
+- Auto-detects all input sources and their types, from filenames and directories
+  of files.
+- Parses them, and normalizes them.
+- Validates them.
+- Prints out their contents on the command-line (or to a file).
+
+This tool is also able to join transactions and positions and print out
+aggregates at the chain (trade) level.
+
+The purpose of this tool is to
+- Make it straightforward to debug input file parsing and conversion,
+- Work from the command-line.
+
+"""
+__copyright__ = "Copyright (C) 2021  Martin Blais"
+__license__ = "GNU GPLv2"
+
+import logging
+from typing import List, Optional
+
+import click
+
+from johnny.base import discovery
+from johnny.base import consolidate
+from johnny.base import instrument
+from johnny.base.etl import Table
+
+
+@click.group()
+@click.option('--expand', '-e', is_flag=True,
+              help="Expand instrument symbol before output")
+@click.pass_context
+def cli(ctx: click.Context, expand: bool):
+    "General purpose command-line printer tool."
+    logging.basicConfig(level=logging.INFO, format='%(levelname)-8s: %(message)s')
+    ctx.obj['expand'] = expand
+
+
+@cli.command()
+@click.argument('filesordirs', nargs=-1)
+@click.pass_context
+def transactions(ctx: click.Context, filesordirs: str):
+    "Find, process and print transactions."
+    transactions_, filenames = discovery.GetTransactions(filesordirs)
+    print_table(transactions_, filenames, ctx.obj['expand'])
+
+
+@cli.command()
+@click.argument('filesordirs', nargs=-1)
+@click.pass_context
+def positions(ctx: click.Context, filesordirs: str):
+    "Find, process and print positions."
+    positions_, filenames = discovery.GetPositions(filesordirs)
+    print_table(positions_, filenames, ctx.obj['expand'])
+
+
+def print_table(table: Table, filenames: List[str], expand: bool):
+    """Print the table, given the options."""
+    for filename in filenames:
+        logging.info("Processing file '%s'", filename)
+    if expand:
+        table = instrument.Expand(table, 'symbol')
+    print(table.lookallstr())
+
+
+@cli.command()
+@click.argument('filesordirs', nargs=-1)
+@click.option('--ledger', '-l', type=click.Path(exists=False),
+              help="Remove transactions from Ledger. Requires order ids.")
+def chains(filesordirs: str, ledger: Optional[str]):
+    "Find, process and print positions."
+
+    # Read in and consolidate all the data.
+    _, __, chains = consolidate.ConsolidateChains(filesordirs, ledger)
+    print(chains.lookallstr())
+
+
+if __name__ == '__main__':
+    cli(obj={})

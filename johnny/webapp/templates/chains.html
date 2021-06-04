@@ -1,0 +1,61 @@
+<!doctype html>
+<html>
+
+{% include 'head.html' %}
+
+<head>
+<script>
+
+  $(document).ready(function() {
+      var config = {
+          pageLength: 200,
+          select: 'multi+shift',
+          fixedHeader: true,
+          colReorder: true,
+          columnDefs: [{
+              // TODO(blais): Set this by name (doesn't seem to work).
+              targets: [7,8,9,10,11,12,13,14,15,16,17,18,19,20,21],
+              className: 'dt-body-right'
+          }]
+      };
+      var table = $('#chains').DataTable(config);
+      InstallDataTableFocus(table);
+
+      // Emphasize some columns of the table.
+      $(table.column(':contains(chain_pnl)').nodes()).addClass('emph-column');
+      $(table.column(':contains(tgtinit%)').nodes()).addClass('emph-column');
+
+      // TODO(blais): Remove, this was replaced with a link.
+      // When the Clear button is pressed, clear the selection.
+      $('button#clear').click( function () {
+          table.rows('.selected').deselect();
+      } );
+
+      // Redirect with a list of the selected chains.
+      $('button#share').click( function () {
+          var ids = table.rows('.selected').ids().join(",");
+          window.open(`/share?chain_ids=${ids}`, '_blank');
+      } );
+
+      // Redirect with a list of the selected chains.
+      $('button#stats').click( function () {
+          var ids = table.rows('.selected').ids().join(",");
+          window.open(`/stats?chain_ids=${ids}`, '_blank');
+      } );
+
+
+  });
+
+</script>
+</head>
+
+<body>
+{% include 'navigation.html' %}
+<button id="clear">Clear</button>
+<button id="stats">Stats</button>
+<button id="share">Share</button>
+
+{{ table|safe }}
+<body>
+
+</html>

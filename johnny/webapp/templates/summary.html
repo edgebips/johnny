@@ -1,0 +1,34 @@
+<!doctype html>
+<html>
+
+{% include 'head.html' %}
+
+<head>
+<script>
+
+  $(document).ready(function() {
+      var config = {
+          pageLength: 2000,
+          fixedHeader: true,
+          colReorder: true,
+      };
+      var table = $('#summary').DataTable(config);
+      InstallDataTableFocus(tabe);
+  });
+
+</script>
+<style>
+  table#summary {
+      width: 50%;
+  }
+</style>
+
+</head>
+
+<body>
+{% include 'navigation.html' %}
+<h1>Summary</h1>
+{{ table|safe }}
+<body>
+
+</html>
