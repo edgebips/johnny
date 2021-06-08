@@ -28,6 +28,9 @@
 - Add custom mapping of underlying to whatever custom field (e.g. "base", for
   copper from /HG and FCX).
 
+- Include the first 20 minutes of trading in initial credits
+
+
 # Personal
 
 - Complete categorizing all trades
@@ -55,6 +58,9 @@
 
 - Implement storing already imported data and partial import — So you don't have
   to scroll endlessly like an idiot in TW.
+
+- Fetch prices at open, make options at zero, should work fine.
+  Fetch IVs.
 
 
 # Ameritrade

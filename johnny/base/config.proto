@@ -46,5 +46,20 @@ message Chain {
   // All the rows matching these transactions will be automatically removed from
   // the table and extracted as a unique chain. Make sure that matches without
   // these trades can resolve.
-  repeated string transactions_ids = 3;
+  repeated string transactions_ids = 4;
+}
+
+// Declaration of asset vs. asset-class mapping.
+message Asset {
+  // Normalized instrument name.
+  optional string instrument = 1;
+
+  // Corresponding asset class, e.g. "EquityIndex", "Metals", "Rates", "Ags",
+  // "Currencies", "Energy".
+  optional string class = 2;
+
+  // Factor. This is typically a sub-category of asset class. For example, asset
+  // class would be "Metals", and factor might be "Copper" for FCX, COPX and
+  // /HG.
+  optional string factor = 3;
 }

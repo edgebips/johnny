@@ -44,7 +44,10 @@ def GetSequence(prv: Record, cur: Record, nxt: Record) -> int:
 def GetTransactionId(rec: Record) -> int:
     if rec.order_id is None:
         h = hashlib.blake2s(digest_size=6)
+        # Note: For FutureOption we need the symbol name because they don't
+        # insert the underlying's description in there.
         h.update(rec['Date'].encode('ascii'))
+        h.update(rec['Symbol'].encode('ascii'))
         h.update(rec['Description'].encode('ascii'))
         return "^{}".format(h.hexdigest())
     else:

@@ -16,6 +16,7 @@ from pprint import pprint
 import collections
 import itertools
 import hashlib
+import logging
 from decimal import Decimal
 from typing import Any, Dict, Tuple, Mapping, NamedTuple, Optional
 
@@ -56,9 +57,10 @@ def Match(transactions: Table) -> Dict[str, str]:
             quantity = expire_map.get(r.transaction_id, None)
             if quantity is not None:
                 if r.quantity and r.quantity != abs(quantity):
-                    raise ValueError(
-                        "Invalid expiration quantity for row: record={} != matches={} from {}"
-                        .format(r.quantity, abs(quantity), r))
+                    message = ("Invalid expiration quantity for row: "
+                               "record={} != matches={} from {}".format(
+                                   r.quantity, abs(quantity), r))
+                    raise ValueError(message)
                 quantity = abs(quantity)
         else:
             quantity = r.quantity
@@ -125,8 +127,8 @@ def _CreateClosingTransactions(invs: Mapping[str, Any], match_map: Dict[str, str
         'commissions', 'fees'
     )]
     mark_ids = iter(itertools.count(start=1))
-    expire_ids = iter(itertools.count(start=1))
     dt_mark = datetime.datetime.now().replace(microsecond=0)
+
     # Allow for some margin in receiving the expiration message.
     dt_today = dt_mark.date() - datetime.timedelta(days=2)
     for key, (quantity, basis, match_id) in invs.items():
