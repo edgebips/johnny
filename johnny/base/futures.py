@@ -46,6 +46,7 @@ MULTIPLIERS = {
     '/6J'     : 12_500_000,
     '/6A'     : 100_000,
     '/6C'     : 100_000,
+    '/6B'     : 62_500,
 
     # Energy
     '/CL'     : 1000,
@@ -59,7 +60,7 @@ MULTIPLIERS = {
     '/HG'     : 25000,
     #'/QC'    : 12500,
     '/PA'     : 100,
-    '/PL'     : 100,
+    '/PL'     : 50,
 
     # Rates
     '/ZQ'     : 4167,
@@ -113,6 +114,9 @@ _TEMPORARY_MAPPING = {
     ('/QNE', 'G'): ('/NQ', 'H'),
     ('/LO', 'N'): ('/CL', 'N'),
     ('/LNE', 'N'): ('/NG', 'N'),
+    ('/GBU', 'N'): ('/6B', 'U'),
+    ('/CAU', 'N'): ('/6C', 'U'),
+    ('/JPY', 'N'): ('/6J', 'U'),
 }
 
 def GetUnderlyingMonth(optcontract: str, optmonth: str) -> Tuple[str, str]:

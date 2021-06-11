@@ -1,5 +1,8 @@
 # General
 
+- 'maxdate' on an Active position should be set to today. Somehow it isn't.
+  Urgent.
+
 - Convert all enums to have the same capitalized style.
 - Convert 'P' and 'C' to 'PUT' and 'CALL'
 
@@ -30,6 +33,7 @@
 
 - Include the first 20 minutes of trading in initial credits
 
+- Fix "days" to round up.
 
 # Personal
 
