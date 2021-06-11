@@ -70,7 +70,9 @@ def InitialCredits(pairs: Iterator[Tuple[str, Decimal]]) -> Decimal:
 
 
 def OptSum(numbers: Iterable[Optional[Decimal]]) -> Decimal:
-    return sum((number if isinstance(number, Decimal) else  ZERO) for number in numbers)
+    """Sum while handling missing values as zeros."""
+    return sum((number if isinstance(number, Decimal) else ZERO)
+               for number in numbers)
 
 
 def TransactionsToChains(transactions: Table) -> Table:
@@ -116,13 +118,18 @@ def TransactionsToChains(transactions: Table) -> Table:
                    .cutout('ismark', 'pnl_day', 'net_liq')
                    .rename('cost', 'accr'))
     clean_mark = (mark
-                  .cut('chain_id', 'cost', 'net_liq', 'pnl_day')
+                  .rename('maxdate', 'markdate')
+                  .cut('chain_id', 'cost', 'net_liq', 'pnl_day', 'markdate')
                   .addfield('status', 'ACTIVE'))
     chains = petl.leftjoin(clean_histo, clean_mark, key='chain_id')
 
     # Finalize the table, filling in missing values and adding per-chain fields.
     chains = (
         chains
+
+        # Include the maximum date across marked and unmarked positions.
+        .convert('maxdate', lambda _, r: r.markdate or r.maxdate, pass_row=True)
+
         # Fill in missing net liqs.
         .convert('net_liq', lambda v: ZERO if v is None else v)
 

@@ -65,11 +65,17 @@ This is not done yet, but will be integrate with Flex reports.
 Ingests input files and prints out a normalized table of either positions,
 transactions, or chains (trades).
 
-    johnny-print positions <directory>
-    johnny-print transactions <directory>
-    johnny-print chains <directory>
+    johnny-print positions <directory-or-files>
+    johnny-print transactions <directory-or-files>
+    johnny-print chains <directory-or-files>
 
 This can be used to test the ingestion and normalization of input data.
+
+If you want to select a subset of files, you can, e.g., to view only files from
+thinkorswim:
+
+    johnny-print chains *Statement.csv
+
 
 ### johnny-web
 
