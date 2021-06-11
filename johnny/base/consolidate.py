@@ -129,7 +129,7 @@ def TransactionsToChains(transactions: Table) -> Table:
         .replace('cost', None, ZERO)
         .convert('cost', lambda v: (-v).quantize(Q))
         .replace('status', None, 'DONE')
-        .addfield('days', lambda r: (r.maxdate - r.mindate).days)
+        .addfield('days', lambda r: (r.maxdate.date() - r.mindate.date()).days)
         .convert('mindate', lambda v: v.date())
         .convert('maxdate', lambda v: v.date())
         .sort(['underlying', 'maxdate']))
