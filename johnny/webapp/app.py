@@ -56,7 +56,8 @@ class State(NamedTuple):
 def Initialize():
     directory = os.getenv("JOHNNY_ROOT")
     if not directory:
-        raise ValueError("Error: No root directory set.")
+        directory = os.getcwd()
+        logging.warning("Error: No root directory set; using '%s'", directory)
 
     ledger: str = os.getenv("JOHNNY_LEDGER")
 
@@ -372,6 +373,11 @@ def GetNotional(rec: Record) -> Decimal:
 def stats():
     # Compute stats on winners and losers.
     chains = FilterChains(STATE.chains)
+
+    def PctCr(rec: Record):
+        return 0 if rec.init == 0 else rec.chain_pnl / rec.init
+
+    chains = chains.addfield('pct_cr', PctCr)
     win, los = chains.biselect(lambda r: r.chain_pnl > 0)
     pnl = np.array(chains.values('chain_pnl'))
     pnl_win = np.array(win.values('chain_pnl'))
@@ -379,12 +385,13 @@ def stats():
     init_cr = np.array(chains.values('init'))
     accr_cr = np.array(chains.values('accr'))
 
-    pct_cr_win = pnl_win / np.array(win.values('init'))
-    pct_cr_los = pnl_los / np.array(los.values('init'))
-    pct_cr = pnl / np.array(chains.values('init'))
+    pct_cr = np.array(chains.values('pct_cr'))
+    pct_cr_win = np.array(win.values('pct_cr'))
+    pct_cr_los = np.array(los.values('pct_cr'))
 
     def Quantize(value):
         return Decimal(value).quantize(Decimal('0'))
+
     rows = [
         ['Description', 'Stat', 'Stat%', 'Description'],
         [
