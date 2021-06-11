@@ -51,6 +51,7 @@ MULTIPLIERS = {
     # Energy
     '/CL'     : 1000,
     '/NG'     : 10_000,
+    '/SMO'    : 100,
 
     # Metals
     '/GC'     : 100,
