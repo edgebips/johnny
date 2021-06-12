@@ -308,120 +308,6 @@ def GetPositions(filename: str) -> Table:
     return table
 
 
-def ConsolidatePositionStatement(
-        table,
-        reference: Optional[Decimal] = None,
-        debug_tables: bool = False) -> Tuple[Table, Table]:
-    """Consolidate all the subtables in the position statement.
-
-    The `reference` value is used to compute a reference-adjusted notional value
-    based on deltas.
-    """
-
-    # Aggregator. Note: You need to have these columns shown in the UI, for all
-    # groups.
-    sums = {name: (name, sum) for name in FIELDS}
-
-    # Prepare tables for aggregation, inserting groups and stripping subtables
-    # (no reason to treat Equities and Futures distinctly).
-    groups = SplitGroups(table)
-    tables = []
-    for name, subname, gtable in groups:
-        counter = iter(itertools.count())
-        def OnPosition(x):
-            for row in x:
-                print("XXX", row)
-            print()
-        xtable = (gtable
-                  .addfield('PosNo',
-                            lambda r: next(counter) if bool(r['BP Effect']) else None)
-                  .filldown('PosNo')
-                  .aggregate('PosNo', OnPosition))
-        if debug_tables:
-            print(xtable.lookallstr())
-
-        ftable = (gtable
-                  # Remove redundant detail.
-                  .select(lambda r: bool(r['BP Effect']))
-                  # Convert numbers to numbers.
-                  .convert(FIELDS, ParseNumber)
-                  # Select just the additive numerical fields.
-                  .cut(['Instrument'] + FIELDS)
-                  # Add group to the resulting table.
-                  .addfield('Group', name, index=0)
-                  .addfield('Type', subname, index=1)
-                  )
-        tables.append(ftable)
-
-        if debug_tables:
-            print(ftable.lookallstr())
-            print(ftable.aggregate(key=None, aggregation=sums))
-            print()
-
-    if debug_tables:
-        raise SystemExit
-
-    # Consolidate the table.
-    atable = petl.cat(*tables)
-
-    # Add delta-equivalent notional value.
-    if reference:
-        atable = (atable
-                  .addfield('Notional', lambda r: (r.Delta * reference).quantize(Q)))
-        sums['Notional'] = ('Notional', sum)
-
-    # Aggregate the entire table to a single row.
-    totals = (atable
-              .aggregate(key=None, aggregation=sums))
-
-    return atable, totals
-
-
-def Report(atable: Table, totals: Table,
-           top_k: int = 5):
-    """Print all the desired aggregations and filters."""
-
-    print("# Position Statement\n")
-    fields = list(FIELDS)
-    if 'Notional' in atable.header():
-        fields.append('Notional')
-
-    # Concatenate totals to consolidated table.
-    empty_row = petl.wrap([['Group', 'Type', 'Instrument'] + fields,
-                           ['---'] * (len(fields) + 3)])
-    consolidated = petl.cat(atable.convert(fields, float),
-                            empty_row,
-                            (totals
-                             .convert(fields, float)
-                             .addfield('Group', 'Totals', index=0)
-                             .addfield('Type', '*', index=1)
-                             .addfield('Instrument', '*', index=2)))
-
-    # Print table detail.
-    print("## Consolidated Position Detail\n")
-    print(consolidated.lookallstr())
-
-    # Print top-K largest positive and negative greeks risk.
-    top_tables = []
-    sep = '-/-'
-    print("## Largest Values\n")
-    for field in fields:
-        stable = (atable
-                  .sort(field, reverse=True)
-                  .convert(field, lambda v: float(v))
-                  .cut('Instrument', field)
-                  .rename('Instrument', ''))
-        head_table = stable.head(top_k)
-        empty_table = petl.wrap([stable.header(), ['', '...', '...']])
-        tail_table = stable.tail(top_k)
-        sstable = (petl.cat(head_table, empty_table, tail_table)
-                   .addfield(sep, ''))
-        top_tables.append(sstable)
-        #print(sstable.lookallstr())
-    top_table = petl.annex(*top_tables)
-    print(top_table.lookallstr())
-
-
 def MatchFile(filename: str) -> Optional[Tuple[str, str, callable]]:
     """Return true if this file is a matching transactions file."""
     _FILENAME_RE = r"(\d{4}-\d{2}-\d{2})-PositionStatement.csv"
@@ -432,47 +318,11 @@ def MatchFile(filename: str) -> Optional[Tuple[str, str, callable]]:
     return 'thinkorswim', date, poslib.MakeParser(GetPositions)
 
 
-
 @click.command()
-@click.argument('positions_csv', type=click.Path(resolve_path=True, exists=True))
-@click.option('--reference', '-r', type=Decimal, default=None,
-              help="Price of the beta-weighted reference applied to the downloaded file.")
-@click.option('--notional', '-x', is_flag=True,
-              help="Estimate notional exposure for each position.")
-def main(positions_csv: str, reference: Decimal, notional: bool):
-    """Main program."""
-
-    # If the reference isn't given, attempt to get tit from
-    if reference is None:
-        try:
-            from beanprice.sources import yahoo
-        except ImportError:
-            pass
-        else:
-            source = yahoo.Source()
-            sprice = source.get_latest_price("SPY")
-            reference = sprice.price
-
-    # Read positions statement and consolidate it.
-    #print(table.lookallstr())
-    table = petl.fromcsv(filename)
-    atable, totals = ConsolidatePositionStatement(filename, reference, debug_tables=notional)
-
-    if not notional:
-        Report(atable, totals, 10)
-    else:
-        print(atable.header())
-        raise NotImplementedError("Missing parsing for positions.")
-        # for row in atable.records():
-        #     print(row)
-
-    # TODO(blais): Compute beta-weighted adjusted values yourself (for better betas).
-    # TODO(blais): Add % BP per trade, should be 3-5%.
-    # TODO(blais): Render total % BP used and available, should be 35%.
-    # TODO(blais): Compute notional equivalent exposure.
-    # TODO(blais): Add correlation matrix between the major asset classes (oil, bonds, stocks, etc.).
-    # TODO: Create a metric of delta, strategy and duration diversification.
-    # TODO: Create a distribution of BPR size over Net Liq, should be 1-2%
+@click.argument('filename', type=click.Path(resolve_path=True, exists=True))
+def main(filename: str):
+    """Simple local runner for this translator."""
+    print(GetPositions(filename).lookallstr())
 
 
 if __name__ == '__main__':

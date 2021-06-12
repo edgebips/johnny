@@ -365,10 +365,9 @@ def MatchFile(filename: str) -> Optional[Tuple[str, str, callable]]:
 @click.command()
 @click.argument('filename', type=click.Path(resolve_path=True, exists=True))
 def main(filename: str):
-    """Main program."""
+    """Simple local runner for this translator."""
     trades_table, _ = GetTransactions(filename)
     print(trades_table.lookallstr())
-    return
 
 
 if __name__ == '__main__':

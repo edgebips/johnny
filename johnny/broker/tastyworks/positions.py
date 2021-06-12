@@ -130,13 +130,8 @@ def MatchFile(filename: str) -> Optional[Tuple[str, str, callable]]:
 @click.command()
 @click.argument('filename', type=click.Path(resolve_path=True, exists=True))
 def main(filename: str):
-    """Main program."""
-    table = GetPositions(filename)
-    print(table.lookallstr())
-
-
-# TODO(blais): Render % of targets
-# TODO(blais): Create breakdowns by expiration cycle.
+    """Simple local runner for this translator."""
+    print(GetPositions(filename).lookallstr())
 
 
 if __name__ == '__main__':

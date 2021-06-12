@@ -151,16 +151,98 @@ def _BreakDownTradeDescription(description: str) -> Dict[str, Any]:
     raise ValueError(message)
 
 
+def ConsolidatePositionStatement(
+        table,
+        reference: Optional[Decimal] = None,
+        debug_tables: bool = False) -> Tuple[Table, Table]:
+    """Consolidate all the subtables in the position statement.
 
+    The `reference` value is used to compute a reference-adjusted notional value
+    based on deltas.
+    """
 
+    # Aggregator. Note: You need to have these columns shown in the UI, for all
+    # groups.
+    sums = {name: (name, sum) for name in FIELDS}
 
+    # Prepare tables for aggregation, inserting groups and stripping subtables
+    # (no reason to treat Equities and Futures distinctly).
+    groups = SplitGroups(table)
+    tables = []
+    for name, subname, gtable in groups:
+        counter = iter(itertools.count())
+        def OnPosition(x):
+            for row in x:
+                print("XXX", row)
+            print()
+        xtable = (gtable
+                  .addfield('PosNo',
+                            lambda r: next(counter) if bool(r['BP Effect']) else None)
+                  .filldown('PosNo')
+                  .aggregate('PosNo', OnPosition))
+        if debug_tables:
+            print(xtable.lookallstr())
 
+        ftable = (gtable
+                  # Remove redundant detail.
+                  .select(lambda r: bool(r['BP Effect']))
+                  # Convert numbers to numbers.
+                  .convert(FIELDS, ParseNumber)
+                  # Select just the additive numerical fields.
+                  .cut(['Instrument'] + FIELDS)
+                  # Add group to the resulting table.
+                  .addfield('Group', name, index=0)
+                  .addfield('Type', subname, index=1)
+                  )
+        tables.append(ftable)
 
+        if debug_tables:
+            print(ftable.lookallstr())
+            print(ftable.aggregate(key=None, aggregation=sums))
+            print()
 
+    if debug_tables:
+        raise SystemExit
 
-def Risk():
-    pass
-    #          # TODO(blais): Move this to a risk report.
-    #          .addfield('size', lambda r: r.multiplier * r.price * r.quantity))
-    #          #.select('size', lambda v: v > 10000))
-    # print(table.head(10).lookallstr())
+    # Consolidate the table.
+    atable = petl.cat(*tables)
+
+    # Add delta-equivalent notional value.
+    if reference:
+        atable = (atable
+                  .addfield('Notional', lambda r: (r.Delta * reference).quantize(Q)))
+        sums['Notional'] = ('Notional', sum)
+
+    # Aggregate the entire table to a single row.
+    totals = (atable
+              .aggregate(key=None, aggregation=sums))
+
+    return atable, totals
+
+#-------------------------------------------------------------------------------
+
+@click.command()
+@click.argument('positions_csv', type=click.Path(resolve_path=True, exists=True))
+@click.option('--reference', '-r', type=Decimal, default=None,
+              help="Price of the beta-weighted reference applied to the downloaded file.")
+@click.option('--notional', '-x', is_flag=True,
+              help="Estimate notional exposure for each position.")
+def main(positions_csv: str, reference: Decimal, notional: bool):
+    """Simple local runner for this translator."""
+
+    # If the reference isn't given, attempt to get tit from
+    if reference is None:
+        try:
+            from beanprice.sources import yahoo
+        except ImportError:
+            pass
+        else:
+            source = yahoo.Source()
+            sprice = source.get_latest_price("SPY")
+            reference = sprice.price
+
+    # Read positions statement and consolidate it.
+    print(table.lookallstr())
+    table = petl.fromcsv(filename)
+    atable, totals = ConsolidatePositionStatement(filename, reference, debug_tables=notional)
+    print(atable.lookallstr())

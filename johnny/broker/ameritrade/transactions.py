@@ -362,15 +362,6 @@ def SplitGroupsToTransactions(groups: List[Group],
 
         # Process each of the subgroups.
         for cash_rows, trade_rows in subgroups:
-            if 0:
-                # Debug print.
-                for crow in cash_rows:
-                    print('C', crow)
-                for trow in trade_rows:
-                    print('T', trow)
-                print()
-
-
             # Pick up all the fees from the cash transactions.
             description = cash_rows[0].description
             commissions = sum(crow.commissions_fees for crow in cash_rows)
@@ -413,7 +404,6 @@ def SplitGroupsToTransactions(groups: List[Group],
                        fees,
                        row_desc)
                 rows.append(txn)
-                #print(trow)
 
                 # Reset the commnissions so that they are only included on the
                 # first leg where relevant.
@@ -1025,16 +1015,12 @@ def MatchFile(filename: str) -> Optional[Tuple[str, str, callable]]:
 
 @click.command()
 @click.argument('filename', type=click.Path(resolve_path=True, exists=True))
-@click.option('--cash', is_flag=True,
-              help="Print out cash transactions.")
+@click.option('--cash', is_flag=True, help="Print out cash transactions.")
 def main(filename: str, cash):
-    """Main program."""
-
+    """Simple local runner for this translator."""
     trades_table, other_table = GetTransactions(filename)
-    if not cash:
-        print(trades_table.lookallstr())
-    else:
-        print(other_table.lookallstr())
+    table = trades_table if not cash else other_table
+    print(table.lookallstr())
 
 
 if __name__ == '__main__':

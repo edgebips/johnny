@@ -118,6 +118,8 @@ _TEMPORARY_MAPPING = {
     ('/GBU', 'N'): ('/6B', 'U'),
     ('/CAU', 'N'): ('/6C', 'U'),
     ('/JPY', 'N'): ('/6J', 'U'),
+    ('/EW3', 'N'): ('/ES', 'U'),
+    ('/QNE', 'N'): ('/NQ', 'U'),
 }
 
 def GetUnderlyingMonth(optcontract: str, optmonth: str) -> Tuple[str, str]:

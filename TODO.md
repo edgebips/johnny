@@ -35,6 +35,16 @@
 
 - Fix "days" to round up.
 
+
+- Compute beta-weighted adjusted values yourself (for better betas).
+- Add % BP per trade, should be 3-5%.
+- Render total % BP used and available, should be 35%.
+- Compute notional equivalent exposure.
+- Add correlation matrix between the major asset classes (oil, bonds, stocks, etc.).
+- Create a metric of delta, strategy and duration diversification.
+- Create a distribution of BPR size over Net Liq, should be 1-2%
+
+
 # Personal
 
 - Complete categorizing all trades
