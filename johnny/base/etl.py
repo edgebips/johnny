@@ -50,3 +50,11 @@ def AssertColumns(table: Table,
         exptypes = {t.__name__ for t in exptypes}
         realtypes = table.typeset(name)
         assert realtypes.issubset(exptypes), (name, realtypes, exptypes)
+
+
+def applyfn(table: Table, function, *args, **kwargs) -> Table:
+    """Apply the given function to the table and return the result."""
+    return function(table, *args, **kwargs)
+
+
+petl.Table.applyfn = applyfn
