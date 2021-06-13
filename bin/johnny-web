@@ -4,5 +4,9 @@
 #   Copyright (C) 2021  Martin Blais
 #   License: GNU GPLv2
 
-# Export JOHNNY_ROOT to set the source directory.
+# Export JOHNNY_ROOT to set the source directory, or call with $1.
+if [ -n "$1" ]; then
+    export JOHNNY_ROOT="$1"
+fi
+
 FLASK_ENV=development FLASK_APP=johnny.webapp.app flask run
