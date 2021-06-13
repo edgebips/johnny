@@ -225,19 +225,23 @@ def FixExpirationSigns(table: Table) -> Table:
             .convert('instruction', FixExpirationInstruction, pass_row=True))
 
 
+def GetFuturesCost(rec: Record) -> Decimal:
+    """Override the cost if the field is a Future instrument."""
+    if rec.instype == 'Future':
+        sign = -1 if rec.instruction == 'BUY' else 1
+        return sign * rec.quantity * rec.multiplier * rec.price
+    else:
+        return rec.Value
+
+
 def NormalizeTrades(table: petl.Table, account: str) -> petl.Table:
     """Prepare the table for processing."""
-
-    # WARNING: Don't use 'Average Price' for anything serious, it is a
-    # rounded value.
-
-    # TODO(blais): The sign of the expirations isn't set properly. You'll have
-    # to infer it from the full log.
-
     table = (table
-
              # Convert fields to Decimal values.
              .convert(['Value',
+                       # Warning: Don't use 'Average Price' for anything
+                       # serious, it is a value rounded to dollar, not a precise
+                       # value to the instrument's actual precision.
                        'Average Price',
                        'Quantity',
                        'Multiplier',
@@ -300,13 +304,17 @@ def NormalizeTrades(table: petl.Table, account: str) -> petl.Table:
              .rename('Description', 'description')
              .rename('Call or Put', 'putcall')
              .rename('Quantity', 'quantity')
-             .rename('Value', 'cost')
              .rename('Commissions', 'commissions')
              .rename('Fees', 'fees')
 
              # Split 'Action' field.
              .addfield('instruction', GetInstruction)
              .addfield('effect', GetPosEffect)
+
+             # Set cost field to notional value for futures (for easy running
+             # P/L calculations).
+             .addfield('cost', GetFuturesCost)
+             .cutout('Value')
 
              # Remove instrument we parsed early on.
              .cutout('instrument')
@@ -321,6 +329,8 @@ def NormalizeTrades(table: petl.Table, account: str) -> petl.Table:
              .cut(txnlib.FIELDS)
              )
 
+    # Note: The sign of the expirations isn't provided by the input file. It
+    # gets inferred here.
     return FixExpirationSigns(table
                               .sort(['datetime', 'order_id']))
 

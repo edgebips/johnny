@@ -924,8 +924,6 @@ def GetTransactions(filename: str) -> Tuple[Table, Table]:
 
     # Add a cost column, calculated from the data.
     def Cost(r: Record) -> Decimal:
-        if r.instype == 'Future':
-            return ZERO
         sign = -1 if r.instruction == 'BUY' else 1
         return sign * r.quantity * r.multiplier * r.price
 
