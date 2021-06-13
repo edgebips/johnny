@@ -20,7 +20,7 @@ import logging
 from decimal import Decimal
 from typing import Any, Dict, Tuple, Mapping, NamedTuple, Optional
 
-from johnny.base.etl import petl, Table, Record
+from johnny.base.etl import petl, AssertColumns, Table, Record
 from johnny.base import instrument
 
 
@@ -33,23 +33,35 @@ class InstKey(NamedTuple):
     expiration: Optional[datetime.date]
 
 
-def Match(transactions: Table) -> Dict[str, str]:
+def Match(transactions: Table, closing_time: Optional[datetime.datetime]=None) -> Dict[str, str]:
     """Compute a mapping of transaction ids to matches.
 
     This code will run through a normalized transaction log (see
     `transactions.md`) and match trades that reduce other ones. It will produce
     a mapping of (transaction-id, match-id). Each `match-id` will be a stable
     unique identifier across runs.
+
+    It will also verify the 'effect' if set, or set it based on the matched
+    positions if unset. This is where outright futures contracts are matched up.
     """
+    AssertColumns(transactions,
+                  ('account', str),
+                  ('symbol', str),
+                  ('rowtype', str),
+                  ('instruction', str),
+                  ('effect', str),
+                  ('price', Decimal),
+                  ('quantity', Decimal),
+                  ('transaction_id', str))
 
     # TODO(blais): Parse the instrument, add in the multiplier and expiration
     # for necessary processing here.
 
     # Create a mapping of transaction ids to matches.
-    invs, match_map, expire_map = _CreateMatchMappings(transactions)
+    invs, match_map, expire_map, effect_map = _CreateMatchMappings(transactions)
 
     # Insert Mark rows to close out the positions virtually.
-    closing_transactions = _CreateClosingTransactions(invs, match_map)
+    closing_transactions = _CreateClosingTransactions(invs, match_map, closing_time)
 
     def ExpiredQuantity(_, r: Record) -> Decimal:
         "Set quantity by expired quantity."
@@ -74,6 +86,14 @@ def Match(transactions: Table) -> Dict[str, str]:
                 return 'SELL' if quantity < ZERO else 'BUY'
         return r.instruction
 
+    def ValidateOrSetEffect(effect: str, r: Record) -> Decimal:
+        "Set quantity by expired quantity."
+        if effect == '?':
+            return effect_map[r.transaction_id]
+        elif r.rowtype == 'Trade':
+            assert effect == effect_map[r.transaction_id]
+            return effect
+
     # Apply the mapping to the table.
     matched_transactions = (
         petl.cat(transactions,
@@ -82,6 +102,7 @@ def Match(transactions: Table) -> Dict[str, str]:
                  instrument.Expand(closing_transactions, 'symbol'))
         .convert('quantity', ExpiredQuantity, pass_row=True)
         .convert('instruction', ExpiredInstruction, pass_row=True)
+        .convert('effect', ValidateOrSetEffect, pass_row=True)
         .addfield('match_id', lambda r: match_map[r.transaction_id]))
 
     return matched_transactions
@@ -90,8 +111,16 @@ def Match(transactions: Table) -> Dict[str, str]:
 def _CreateMatchMappings(transactions: Table):
     """Create a mapping of transaction ids to matches."""
     invs = collections.defaultdict(FifoInventory)
-    match_map = {}
-    expire_map = {}
+
+    # A mapping of transaction-id to match-id.
+    match_map: Mapping[str, str] = {}
+
+    # A mapping of transaction-id to expiration quantity.
+    expire_map: Mapping[str, Decimal] = {}
+
+    # A mapping of transaction-id to effect.
+    effect_map: Mapping[str, str] = {}
+
     for rec in transactions.records():
         instrument_key = InstKey(rec.account, rec.symbol, rec.expiration)
         inv = invs[instrument_key]
@@ -101,13 +130,20 @@ def _CreateMatchMappings(transactions: Table):
             # TODO(blais): Figure out how to compute a reasonable basis here.
             basis = ZERO
             _, __, match_id = inv.match(sign * rec.quantity, basis, rec.transaction_id)
+
         elif rec.rowtype == 'Trade':
             sign = (1 if rec.instruction == 'BUY' else -1)
             basis = rec.multiplier * rec.price
-            _, __, match_id = inv.match(sign * rec.quantity, basis, rec.transaction_id)
+            matched, __, match_id = inv.match(sign * rec.quantity, basis, rec.transaction_id)
+            if matched and matched != rec.quantity:
+                logging.warning("Partial matches across a flat position ideally "
+                                "should split row: %s", rec)
+            effect_map[rec.transaction_id] = 'CLOSING' if matched else 'OPENING'
+
         elif rec.rowtype == 'Expire':
             quantity, _, match_id = inv.expire(rec.transaction_id)
             expire_map[rec.transaction_id] = -quantity
+
         else:
             raise ValueError("Unknown row type: '{}'".format(rec.rowtype))
 
@@ -115,19 +151,22 @@ def _CreateMatchMappings(transactions: Table):
             match_map[rec.transaction_id] = match_id
 
     inventories = {key: inv.position() for key, inv in invs.items()}
-    return inventories, match_map, expire_map
+    return inventories, match_map, expire_map, effect_map
 
 
-def _CreateClosingTransactions(invs: Mapping[str, Any], match_map: Dict[str, str]) -> Table:
+def _CreateClosingTransactions(invs: Mapping[str, Any],
+                               match_map: Dict[str, str],
+                               closing_time: Optional[datetime.datetime]=None) -> Table:
     """Create synthetic expiration and mark transactions to close matches."""
     closing_transactions = [(
-        'account', 'transaction_id', 'rowtype', 'datetime', 'order_id',
+        'account', 'transaction_id', 'rowtype', 'datetime',
         'symbol',
         'effect', 'instruction', 'quantity', 'price', 'cost', 'description',
         'commissions', 'fees'
     )]
     mark_ids = iter(itertools.count(start=1))
-    dt_mark = datetime.datetime.now().replace(microsecond=0)
+    dt_mark = datetime.datetime.now() if closing_time is None else closing_time
+    dt_mark = dt_mark.replace(microsecond=0)
 
     # Allow for some margin in receiving the expiration message.
     dt_today = dt_mark.date() - datetime.timedelta(days=2)
@@ -144,7 +183,7 @@ def _CreateClosingTransactions(invs: Mapping[str, Any], match_map: Dict[str, str
         instruction = 'BUY' if quantity < ZERO else 'SELL'
         sign = -1 if quantity < ZERO else 1
         closing_transactions.append(
-            (key.account, transaction_id, rowtype, dt_mark, None,
+            (key.account, transaction_id, rowtype, dt_mark,
              key.symbol,
              'CLOSING', instruction, abs(quantity), ZERO, sign * basis, description,
              ZERO, ZERO))
@@ -296,7 +335,9 @@ class FifoInventory:
         # The current match id being assigned.
         self.match_id: str = None
 
-    def match(self, quantity: Decimal, cost: Decimal,
+    def match(self,
+              quantity: Decimal,
+              cost: Decimal,
               transaction_id: str) -> Tuple[Decimal, Decimal, Optional[str]]:
         """Match the given change against the inventory state.
         Return the absolute matched size, absolute basis, and match id to apply.
