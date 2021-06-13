@@ -34,6 +34,14 @@ def PrintGroups(table: Table, column: str):
     str(agg.lookallstr())
 
 
+def PrintToPython(table: Table):
+    print('table = petl.wrap([')
+    print("  {},".format(table.header()))
+    for rec in table.records():
+        print("  {},".format(repr(rec)))
+    print('])')
+
+
 def AssertColumns(table: Table,
                   *columns: List[Tuple[str, Set[Any]]]):
     """Assert the presence of a particular subset of columns."""
