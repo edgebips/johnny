@@ -20,7 +20,7 @@ message Config {
   repeated Account accounts = 1;
 
   // A list of manually disambiguated trades and their annotations.
-  repeated Chain chain = 2;
+  repeated Chain chains = 2;
 }
 
 // The declaration of an account.
@@ -42,11 +42,11 @@ message Chain {
   // User-associated trade type.
   optional string trade_type = 2;
 
-  // If this is present, a list of transaction ids that are part of the trade.
-  // All the rows matching these transactions will be automatically removed from
-  // the table and extracted as a unique chain. Make sure that matches without
-  // these trades can resolve.
-  repeated string transactions_ids = 4;
+  // If this is present, an explicit list of transaction ids that are part of
+  // the trade. All the rows matching these transactions will be automatically
+  // removed from the table and extracted as a unique chain. Make sure that
+  // matches without these trades can resolve.
+  repeated string transaction_ids = 4;
 }
 
 // Declaration of asset vs. asset-class mapping.

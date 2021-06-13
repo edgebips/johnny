@@ -19,7 +19,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   syntax='proto2',
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_pb=b'\n\x0c\x63onfig.proto\x12\x06johnny\"I\n\x06\x43onfig\x12!\n\x08\x61\x63\x63ounts\x18\x01 \x03(\x0b\x32\x0f.johnny.Account\x12\x1c\n\x05\x63hain\x18\x02 \x03(\x0b\x32\r.johnny.Chain\"+\n\x07\x41\x63\x63ount\x12\x0e\n\x06number\x18\x01 \x01(\t\x12\x10\n\x08nickname\x18\x02 \x01(\t\"G\n\x05\x43hain\x12\x10\n\x08\x63hain_id\x18\x01 \x01(\t\x12\x12\n\ntrade_type\x18\x02 \x01(\t\x12\x18\n\x10transactions_ids\x18\x04 \x03(\t\":\n\x05\x41sset\x12\x12\n\ninstrument\x18\x01 \x01(\t\x12\r\n\x05\x63lass\x18\x02 \x01(\t\x12\x0e\n\x06\x66\x61\x63tor\x18\x03 \x01(\t'
+  serialized_pb=b'\n\x0c\x63onfig.proto\x12\x06johnny\"J\n\x06\x43onfig\x12!\n\x08\x61\x63\x63ounts\x18\x01 \x03(\x0b\x32\x0f.johnny.Account\x12\x1d\n\x06\x63hains\x18\x02 \x03(\x0b\x32\r.johnny.Chain\"+\n\x07\x41\x63\x63ount\x12\x0e\n\x06number\x18\x01 \x01(\t\x12\x10\n\x08nickname\x18\x02 \x01(\t\"F\n\x05\x43hain\x12\x10\n\x08\x63hain_id\x18\x01 \x01(\t\x12\x12\n\ntrade_type\x18\x02 \x01(\t\x12\x17\n\x0ftransaction_ids\x18\x04 \x03(\t\":\n\x05\x41sset\x12\x12\n\ninstrument\x18\x01 \x01(\t\x12\r\n\x05\x63lass\x18\x02 \x01(\t\x12\x0e\n\x06\x66\x61\x63tor\x18\x03 \x01(\t'
 )
 
 
@@ -41,7 +41,7 @@ _CONFIG = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
-      name='chain', full_name='johnny.Config.chain', index=1,
+      name='chains', full_name='johnny.Config.chains', index=1,
       number=2, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
@@ -60,7 +60,7 @@ _CONFIG = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=24,
-  serialized_end=97,
+  serialized_end=98,
 )
 
 
@@ -98,8 +98,8 @@ _ACCOUNT = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=99,
-  serialized_end=142,
+  serialized_start=100,
+  serialized_end=143,
 )
 
 
@@ -126,7 +126,7 @@ _CHAIN = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
-      name='transactions_ids', full_name='johnny.Chain.transactions_ids', index=2,
+      name='transaction_ids', full_name='johnny.Chain.transaction_ids', index=2,
       number=4, type=9, cpp_type=9, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
@@ -144,7 +144,7 @@ _CHAIN = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=144,
+  serialized_start=145,
   serialized_end=215,
 )
 
@@ -195,7 +195,7 @@ _ASSET = _descriptor.Descriptor(
 )
 
 _CONFIG.fields_by_name['accounts'].message_type = _ACCOUNT
-_CONFIG.fields_by_name['chain'].message_type = _CHAIN
+_CONFIG.fields_by_name['chains'].message_type = _CHAIN
 DESCRIPTOR.message_types_by_name['Config'] = _CONFIG
 DESCRIPTOR.message_types_by_name['Account'] = _ACCOUNT
 DESCRIPTOR.message_types_by_name['Chain'] = _CHAIN
