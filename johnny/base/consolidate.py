@@ -52,7 +52,6 @@ P50 = Decimal('0.80')
 
 
 # The name of the annotations file
-ANNOTATIONS_FILENAME = 'johnny_annotations.csv'
 CONFIG_FILENAME = 'johnny.pbtxt'
 
 
@@ -352,8 +351,20 @@ def FindNamedFile(fileordirs: str, target: str) -> Optional[str]:
     return found[0] if found else None
 
 
-def ConsolidateChains(fileordirs: str, ledger: Optional[str]):
+def ConsolidateChains(
+        fileordirs: str,
+        ledger: Optional[str]
+) -> Tuple[Table, Table, Table, configlib.Config]:
     """Read all the data and join it and consolidate it."""
+
+    # Read the configuration file.
+    config_filename = FindNamedFile(fileordirs, CONFIG_FILENAME)
+    config = (configlib.ParseFile(config_filename)
+              if config_filename
+              else configlib.Config())
+    explicit_chains = configlib.GetExplicitChains(config)
+    transaction_links = [list(links.ids) for links in config.transaction_links]
+    order_links = [list(links.ids) for links in config.order_links]
 
     # Read the transactions files.
     transactions, filenames = discovery.GetTransactions(fileordirs)
@@ -372,7 +383,10 @@ def ConsolidateChains(fileordirs: str, ledger: Optional[str]):
     transactions = instrument.Expand(transactions, 'symbol')
     transactions = opening.Open(transactions, positions)
     transactions = match.Match(transactions)
-    transactions = chaining.Group(transactions)
+    transactions = chaining.Group(transactions,
+                                  explicit_chains=explicit_chains,
+                                  transaction_links=transaction_links,
+                                  order_links=order_links)
     transactions = instrument.Shrink(transactions)
 
     # Remove transactions from the Ledger if there are any.
@@ -439,22 +453,14 @@ def ConsolidateChains(fileordirs: str, ledger: Optional[str]):
 
         raise SystemExit
 
-
     # Convert to chains.
     chains = TransactionsToChains(transactions)
 
-    # Read the configuration file.
-    config_filename = FindNamedFile(fileordirs, CONFIG_FILENAME)
-    config = (configlib.ParseFile(config_filename)
-              if config_filename
-              else configlib.Config())
-
     # Add annotations.
-    if config.chain:
+    if config.chains:
         header = ['chain_id', 'trade_type']
         rows = [header]
-        rows.extend((rec.chain_id, rec.trade_type)
-                    for rec in config.chain)
+        rows.extend((rec.chain_id, rec.trade_type) for rec in config.chains)
         annotations = petl.wrap(rows)
 
         # Warn on duplicate rows.
@@ -485,7 +491,7 @@ def ConsolidateChains(fileordirs: str, ledger: Optional[str]):
         with open("/home/blais/johnny.pbtxt", 'w') as outfile:
             print(config, file=outfile)
 
-    return transactions, positions, chains
+    return transactions, positions, chains, config
 
 
 if __name__ == '__main__':

@@ -8,7 +8,8 @@ __license__ = "GNU GPLv2"
 from decimal import Decimal
 from functools import partial
 from os import path
-from typing import Any, Callable, Dict, List, Optional, Tuple, Iterator, Iterable, Set, NamedTuple
+from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple, Iterator, Iterable
+from typing import Set, NamedTuple
 import io
 import functools
 import itertools
@@ -29,6 +30,7 @@ import click
 import flask
 
 from johnny.base import consolidate
+from johnny.base import config as configlib
 from johnny.base import chains as chainslib
 from johnny.base import instrument
 from johnny.base.etl import petl, Table, Record, WrapRecords
@@ -51,6 +53,7 @@ class State(NamedTuple):
     transactions: Table
     positions: Table
     chains: Table
+    chains_map: Mapping[str, configlib.Chain]
 
 
 def Initialize():
@@ -65,9 +68,10 @@ def Initialize():
     with _STATE_LOCK:
         if STATE is None:
             app.logger.info("Initializing application state from '%s'...", directory)
-            transactions, positions, chains = consolidate.ConsolidateChains(
+            transactions, positions, chains, config = consolidate.ConsolidateChains(
                 directory, ledger)
-            STATE = State(transactions, positions, chains)
+            chains_map = {c.chain_id: c for c in config.chains}
+            STATE = State(transactions, positions, chains, chains_map)
             app.logger.info("Done.")
     return STATE
 
@@ -135,7 +139,8 @@ def RenderHistogram(data: np.array, title: str) -> bytes:
 
 
 #-------------------------------------------------------------------------------
-# Handlers.
+# Resource handlers. The various available web pages are defined here.
+
 
 @app.route('/')
 def home():
@@ -160,6 +165,9 @@ def chains():
 
 @app.route('/chain/<chain_id>')
 def chain(chain_id: str):
+    # Get the chain object from the configuration.
+    chain_obj = STATE.chains_map.get(chain_id)
+
     # Isolate the chain summary data.
     chain = (STATE.chains
             .selecteq('chain_id', chain_id))
@@ -179,6 +187,7 @@ def chain(chain_id: str):
     return flask.render_template(
         'chain.html',
         chain_id=chain_id,
+        comment=chain_obj.comment if chain_obj else '',
         chain=ToHtmlString(chain, 'chain_summary'),
         transactions=ToHtmlString(txns, 'chain_transactions'),
         history=history_html,

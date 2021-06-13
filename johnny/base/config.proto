@@ -21,6 +21,16 @@ message Config {
 
   // A list of manually disambiguated trades and their annotations.
   repeated Chain chains = 2;
+
+  // Explicitly linked transactions or orders. These lists can be used to join
+  // together pairs that would otherwise be resolved to independent chains.
+  repeated Link transaction_links = 3;
+  repeated Link order_links = 4;
+}
+
+// An explicit linkage between multiple transactions.
+message Link {
+  repeated string ids = 1;
 }
 
 // The declaration of an account.
@@ -41,6 +51,10 @@ message Chain {
 
   // User-associated trade type.
   optional string trade_type = 2;
+
+  // User-provided description. Free-form, may span multiple lines (include
+  // newlines).
+  optional string comment = 3;
 
   // If this is present, an explicit list of transaction ids that are part of
   // the trade. All the rows matching these transactions will be automatically

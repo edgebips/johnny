@@ -19,7 +19,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   syntax='proto2',
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_pb=b'\n\x0c\x63onfig.proto\x12\x06johnny\"J\n\x06\x43onfig\x12!\n\x08\x61\x63\x63ounts\x18\x01 \x03(\x0b\x32\x0f.johnny.Account\x12\x1d\n\x06\x63hains\x18\x02 \x03(\x0b\x32\r.johnny.Chain\"+\n\x07\x41\x63\x63ount\x12\x0e\n\x06number\x18\x01 \x01(\t\x12\x10\n\x08nickname\x18\x02 \x01(\t\"F\n\x05\x43hain\x12\x10\n\x08\x63hain_id\x18\x01 \x01(\t\x12\x12\n\ntrade_type\x18\x02 \x01(\t\x12\x17\n\x0ftransaction_ids\x18\x04 \x03(\t\":\n\x05\x41sset\x12\x12\n\ninstrument\x18\x01 \x01(\t\x12\r\n\x05\x63lass\x18\x02 \x01(\t\x12\x0e\n\x06\x66\x61\x63tor\x18\x03 \x01(\t'
+  serialized_pb=b'\n\x0c\x63onfig.proto\x12\x06johnny\"\x96\x01\n\x06\x43onfig\x12!\n\x08\x61\x63\x63ounts\x18\x01 \x03(\x0b\x32\x0f.johnny.Account\x12\x1d\n\x06\x63hains\x18\x02 \x03(\x0b\x32\r.johnny.Chain\x12\'\n\x11transaction_links\x18\x03 \x03(\x0b\x32\x0c.johnny.Link\x12!\n\x0border_links\x18\x04 \x03(\x0b\x32\x0c.johnny.Link\"\x13\n\x04Link\x12\x0b\n\x03ids\x18\x01 \x03(\t\"+\n\x07\x41\x63\x63ount\x12\x0e\n\x06number\x18\x01 \x01(\t\x12\x10\n\x08nickname\x18\x02 \x01(\t\"W\n\x05\x43hain\x12\x10\n\x08\x63hain_id\x18\x01 \x01(\t\x12\x12\n\ntrade_type\x18\x02 \x01(\t\x12\x0f\n\x07\x63omment\x18\x03 \x01(\t\x12\x17\n\x0ftransaction_ids\x18\x04 \x03(\t\":\n\x05\x41sset\x12\x12\n\ninstrument\x18\x01 \x01(\t\x12\r\n\x05\x63lass\x18\x02 \x01(\t\x12\x0e\n\x06\x66\x61\x63tor\x18\x03 \x01(\t'
 )
 
 
@@ -47,6 +47,20 @@ _CONFIG = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='transaction_links', full_name='johnny.Config.transaction_links', index=2,
+      number=3, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='order_links', full_name='johnny.Config.order_links', index=3,
+      number=4, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
   ],
   extensions=[
   ],
@@ -59,8 +73,40 @@ _CONFIG = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=24,
-  serialized_end=98,
+  serialized_start=25,
+  serialized_end=175,
+)
+
+
+_LINK = _descriptor.Descriptor(
+  name='Link',
+  full_name='johnny.Link',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  create_key=_descriptor._internal_create_key,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='ids', full_name='johnny.Link.ids', index=0,
+      number=1, type=9, cpp_type=9, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto2',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=177,
+  serialized_end=196,
 )
 
 
@@ -98,8 +144,8 @@ _ACCOUNT = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=100,
-  serialized_end=143,
+  serialized_start=198,
+  serialized_end=241,
 )
 
 
@@ -126,7 +172,14 @@ _CHAIN = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
-      name='transaction_ids', full_name='johnny.Chain.transaction_ids', index=2,
+      name='comment', full_name='johnny.Chain.comment', index=2,
+      number=3, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='transaction_ids', full_name='johnny.Chain.transaction_ids', index=3,
       number=4, type=9, cpp_type=9, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
@@ -144,8 +197,8 @@ _CHAIN = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=145,
-  serialized_end=215,
+  serialized_start=243,
+  serialized_end=330,
 )
 
 
@@ -190,13 +243,16 @@ _ASSET = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=217,
-  serialized_end=275,
+  serialized_start=332,
+  serialized_end=390,
 )
 
 _CONFIG.fields_by_name['accounts'].message_type = _ACCOUNT
 _CONFIG.fields_by_name['chains'].message_type = _CHAIN
+_CONFIG.fields_by_name['transaction_links'].message_type = _LINK
+_CONFIG.fields_by_name['order_links'].message_type = _LINK
 DESCRIPTOR.message_types_by_name['Config'] = _CONFIG
+DESCRIPTOR.message_types_by_name['Link'] = _LINK
 DESCRIPTOR.message_types_by_name['Account'] = _ACCOUNT
 DESCRIPTOR.message_types_by_name['Chain'] = _CHAIN
 DESCRIPTOR.message_types_by_name['Asset'] = _ASSET
@@ -208,6 +264,13 @@ Config = _reflection.GeneratedProtocolMessageType('Config', (_message.Message,),
   # @@protoc_insertion_point(class_scope:johnny.Config)
   })
 _sym_db.RegisterMessage(Config)
+
+Link = _reflection.GeneratedProtocolMessageType('Link', (_message.Message,), {
+  'DESCRIPTOR' : _LINK,
+  '__module__' : 'config_pb2'
+  # @@protoc_insertion_point(class_scope:johnny.Link)
+  })
+_sym_db.RegisterMessage(Link)
 
 Account = _reflection.GeneratedProtocolMessageType('Account', (_message.Message,), {
   'DESCRIPTOR' : _ACCOUNT,

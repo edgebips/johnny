@@ -44,6 +44,8 @@
 - Create a metric of delta, strategy and duration diversification.
 - Create a distribution of BPR size over Net Liq, should be 1-2%
 
+- Factor out ZERO in petl
+
 
 # Personal
 
