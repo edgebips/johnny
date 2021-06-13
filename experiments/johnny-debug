@@ -1,0 +1,101 @@
+#!/usr/bin/env python3
+"""Command-line input file converter and printer for Johnny.
+
+This tool
+- Auto-detects all input sources and their types, from filenames and directories
+  of files.
+- Parses them, and normalizes them.
+- Validates them.
+- Prints out their contents on the command-line (or to a file).
+
+This tool is also able to join transactions and positions and print out
+aggregates at the chain (trade) level.
+
+The purpose of this tool is to
+- Make it straightforward to debug input file parsing and conversion,
+- Work from the command-line.
+
+"""
+__copyright__ = "Copyright (C) 2021  Martin Blais"
+__license__ = "GNU GPLv2"
+
+import functools
+import logging
+from typing import List, Optional
+
+import click
+
+from johnny.base import discovery
+from johnny.base import consolidate
+from johnny.base import instrument
+from johnny.base import opening
+from johnny.base import match
+from johnny.base.etl import Table, WrapRecords
+
+
+@click.command()
+@click.argument('filesordirs', nargs=-1)
+def debug(filesordirs: str):
+    "Find, process and print transactions."
+    transactions, filenames = discovery.GetTransactions(filesordirs)
+    positions, filenames = discovery.GetPositions(filesordirs)
+
+    def Filter(table: Table) -> Table:
+        return (table
+                .selectin('instype', {'Future'})
+                #.selectin('account', {'x1887'})
+                #.selectin('account', {'x9627'})
+                )
+
+    positions = (positions
+                 .applyfn(instrument.Expand, 'symbol')
+                 .applyfn(Filter)
+                 .applyfn(instrument.Shrink)
+                 )
+
+    table = (transactions
+             .applyfn(instrument.Expand, 'symbol')
+             .applyfn(Filter)
+             .applyfn(opening.Open, positions)
+             .applyfn(match.Match)
+             .applyfn(instrument.Shrink)
+             )
+
+    if 1:
+        print(table.lookallstr())
+
+    if 0:
+        # Check whether the timestamp itself is a sufficient heuristic to create
+        # pairs linkage.
+        def SameTime(grouper):
+            mtable = WrapRecords(list(grouper))
+            order_ids = set(mtable.values('order_id'))
+            print(mtable.lookallstr())
+            if len(order_ids) > 1:
+                print(mtable.lookallstr())
+                return order_ids
+        table = table.aggregate('datetime', SameTime)
+        print(table.lookallstr())
+
+    if 0:
+        print(table.header())
+        for r in table.records():
+            print(r)
+
+    # def PairId(state, prv, cur, nxt):
+    #     if prv and ((int(cur.order_id) - int(prv.order_id)) not in {0, 1}):
+    #         return prv.pair
+    #     return cur.order_id
+
+    # table = (table
+    #     .sort('order_id')
+    #     .addfieldusingcontext('pair', functools.partial(PairId, [None]), index=5)
+    # )
+
+    #table = table.aggregate('symbol', {'cost': ('cost', sum)})
+
+    #print(table.lookallstr())
+
+
+if __name__ == '__main__':
+    debug()
