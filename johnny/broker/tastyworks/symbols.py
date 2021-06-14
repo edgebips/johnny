@@ -65,12 +65,12 @@ def _ParseStrikeAmount(string: str) -> Decimal:
     return Decimal(value)
 
 
-_FUTSYM = "([A-Z0-9]+)([FGHJKMNQUVXZ])([0-9])"
+_FUTSYM = "([A-Z0-9]+)([FGHJKMNQUVXZ])2?([0-9])"
 _DECADE = datetime.date.today().year % 100 // 10
 
 
 def _ParseFuturesSymbol(symbol: str) -> instrument.Instrument:
-    match = re.match(f"/{_FUTSYM}", symbol)
+    match = re.fullmatch(f"/{_FUTSYM}", symbol)
     assert match, "Invalid futures options symbol: {}".format(symbol)
     root, fmonth, fyear = match.groups()
     underlying = f"/{root}{fmonth}{_DECADE}{fyear}"
