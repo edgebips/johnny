@@ -58,10 +58,10 @@ def Match(transactions: Table, closing_time: Optional[datetime.datetime]=None) -
     # for necessary processing here.
 
     # Create a mapping of transaction ids to matches.
-    invs, match_map, expire_map, effect_map = _CreateMatchMappings(transactions)
+    inventories, match_map, expire_map, effect_map = _CreateMatchMappings(transactions)
 
     # Insert Mark rows to close out the positions virtually.
-    closing_transactions = _CreateClosingTransactions(invs, match_map, closing_time)
+    closing_transactions = _CreateClosingTransactions(inventories, match_map, closing_time)
 
     def ExpiredQuantity(_, r: Record) -> Decimal:
         "Set quantity by expired quantity."
@@ -92,7 +92,7 @@ def Match(transactions: Table, closing_time: Optional[datetime.datetime]=None) -
             return effect_map[r.transaction_id]
         elif r.rowtype == 'Trade':
             assert effect == effect_map[r.transaction_id]
-            return effect
+        return effect
 
     # Apply the mapping to the table.
     matched_transactions = (
@@ -154,7 +154,7 @@ def _CreateMatchMappings(transactions: Table):
     return inventories, match_map, expire_map, effect_map
 
 
-def _CreateClosingTransactions(invs: Mapping[str, Any],
+def _CreateClosingTransactions(inventories: Mapping[str, Any],
                                match_map: Dict[str, str],
                                closing_time: Optional[datetime.datetime]=None) -> Table:
     """Create synthetic expiration and mark transactions to close matches."""
@@ -170,7 +170,7 @@ def _CreateClosingTransactions(invs: Mapping[str, Any],
 
     # Allow for some margin in receiving the expiration message.
     dt_today = dt_mark.date() - datetime.timedelta(days=2)
-    for key, (quantity, basis, match_id) in invs.items():
+    for key, (quantity, basis, match_id) in inventories.items():
         if quantity == ZERO:
             continue
         (account, symbol, expiration) = key
@@ -182,10 +182,11 @@ def _CreateClosingTransactions(invs: Mapping[str, Any],
         description = f"Mark-to-market: {quantity} {symbol}"
         instruction = 'BUY' if quantity < ZERO else 'SELL'
         sign = -1 if quantity < ZERO else 1
+        price = ZERO ## basis / quantity  TODO(blais): Get the multiplier.
         closing_transactions.append(
             (key.account, transaction_id, rowtype, dt_mark,
              key.symbol,
-             'CLOSING', instruction, abs(quantity), ZERO, sign * basis, description,
+             'CLOSING', instruction, abs(quantity), price, sign * basis, description,
              ZERO, ZERO))
         match_map[transaction_id] = match_id
 

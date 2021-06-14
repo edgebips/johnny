@@ -7,6 +7,7 @@ from typing import Mapping
 
 from johnny.base.config_pb2 import Config
 from johnny.base.config_pb2 import Chain
+from johnny.base.config_pb2 import Price
 from johnny.base import config_pb2
 from johnny.base.etl import petl, Table
 

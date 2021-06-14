@@ -26,6 +26,14 @@ message Config {
   // together pairs that would otherwise be resolved to independent chains.
   repeated Link transaction_links = 3;
   repeated Link order_links = 4;
+
+  // Available prices for opening positions. Positions having to be inserted
+  // synthetically to fill in the opening balances will require being priecd.
+  // Fetching these prices is done automatically via the TD API, but it's
+  // convenient to store these in the configuration (they will never change if
+  // you restart from the same specific date) or to enter them manually, if you
+  // don't have access to the TD API.
+  repeated Price prices = 5;
 }
 
 // An explicit linkage between multiple transactions.
@@ -77,4 +85,24 @@ message Asset {
   // class would be "Metals", and factor might be "Copper" for FCX, COPX and
   // /HG.
   optional string factor = 3;
+}
+
+// Price database information. This is consulted to fill in costs for positions
+// being opened synthetically at the start of the timespan of an import.
+message Price {
+  // Symbol being priced.
+  optional string symbol = 1;
+
+  // Date for the price point.
+  optional Date date = 2;
+
+  // A decimal rendering of the price to a string.
+  optional string price = 3;
+}
+
+// A date.
+message Date {
+  optional int32 year = 2;
+  optional int32 month = 3;
+  optional int32 day = 4;
 }

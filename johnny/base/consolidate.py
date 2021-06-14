@@ -369,7 +369,7 @@ def ConsolidateChains(
 ) -> Tuple[Table, Table, Table, configlib.Config]:
     """Read all the data and join it and consolidate it."""
 
-    # Read the configuration file.
+    # Read the configuration file and prepare some data structures from it.
     config_filename = FindNamedFile(fileordirs, CONFIG_FILENAME)
     config = (configlib.ParseFile(config_filename)
               if config_filename
@@ -377,6 +377,10 @@ def ConsolidateChains(
     explicit_chains = configlib.GetExplicitChains(config)
     transaction_links = [list(links.ids) for links in config.transaction_links]
     order_links = [list(links.ids) for links in config.order_links]
+    price_db = {(price.symbol, datetime.date(price.date.year,
+                                             price.date.month,
+                                             price.date.day)): Decimal(price.price)
+                for price in config.prices}
 
     # Read the transactions files.
     transactions, filenames = discovery.GetTransactions(fileordirs)
@@ -392,14 +396,16 @@ def ConsolidateChains(
 
     # Synthesize opening balances. We need to temporarily expand the instrument
     # fields, as they are needed by the match and chains modules.
-    transactions = instrument.Expand(transactions, 'symbol')
-    transactions = opening.Open(transactions, positions)
-    transactions = match.Match(transactions)
-    transactions = chaining.Group(transactions,
-                                  explicit_chains=explicit_chains,
-                                  transaction_links=transaction_links,
-                                  order_links=order_links)
-    transactions = instrument.Shrink(transactions)
+    transactions = (transactions
+                    .applyfn(instrument.Expand, 'symbol')
+                    .applyfn(opening.Open, positions, price_db)
+                    .applyfn(match.Match)
+                    .applyfn(chaining.Group,
+                             explicit_chains=explicit_chains,
+                             transaction_links=transaction_links,
+                             order_links=order_links)
+                    .applyfn(instrument.Shrink))
+
 
     # Remove transactions from the Ledger if there are any.
     if ledger:
@@ -414,10 +420,15 @@ def ConsolidateChains(
                      # Add column to match only mark rows to position rows.
                      .addfield('rowtype', 'Mark'))
 
+        key = ['account', 'rowtype', 'symbol']
+        duplicates = positions.duplicates(key=key)
+        if duplicates.nrows() > 0:
+            print(duplicates.lookallstr())
+            raise ValueError("Error: Positions have duplicates.")
+
         # Join positions to transactions.
         transactions = (
-            petl.outerjoin(transactions, positions,
-                           key=['account', 'rowtype', 'symbol'], rprefix='p_')
+            petl.outerjoin(transactions, positions, key=key, rprefix='p_')
 
             # Rename some of the added columns.
             .rename('p_net_liq', 'net_liq')
@@ -432,15 +443,16 @@ def ConsolidateChains(
                         .addfield('net_liq', None)
                         .addfield('pnl_day', None))
 
-    if 1:
+    if 0:
         # Fetch prices for opening transactions.
         import ameritrade as td
         config = td.config_from_dir(os.getenv("AMERITRADE_DIR"))
         api = td.open(config)
-        print(api)
 
+        price_config = configlib.Config()
         for rec in transactions.selecteq('rowtype', 'Open').records():
-            print((rec.datetime, rec.symbol))
+            if rec.cost != ZERO:
+                continue
             startDate = int(rec.datetime.timestamp() * 1000)
             hist = api.GetPriceHistory(
                 symbol=rec.symbol,
@@ -449,7 +461,16 @@ def ConsolidateChains(
                 frequencyType='daily',
                 frequency='1',
                 startDate=startDate, endDate=startDate)
-            pp(hist)
+
+            #pp(hist)
+            price = price_config.prices.add()
+            price.symbol = rec.symbol
+            price.price = str(hist['candles'][0]['close'])
+            price.date.year = rec.datetime.year
+            price.date.month = rec.datetime.month
+            price.date.day = rec.datetime.day
+
+        print(price_config)
         raise SystemExit
 
     # Convert to chains.

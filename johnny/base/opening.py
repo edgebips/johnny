@@ -23,7 +23,10 @@ from johnny.base import instrument
 ZERO = Decimal(0)
 
 
-def Open(transactions: Table, positions: Table) -> Table:
+PriceDB = Mapping[Tuple[str, datetime.date], Decimal]
+
+
+def Open(transactions: Table, positions: Table, price_db: PriceDB) -> Table:
     """Synthesize opening positions.
 
     The resulting list of rows are transactions that create synthetic initial
@@ -69,11 +72,13 @@ def Open(transactions: Table, positions: Table) -> Table:
 
         # TODO(blais): Figure out original cost of the positions removing the
         # basis from the accumulated trades.
-        cost = ZERO
+        price_key = (symbol, first_dt.date())
+        price = price_db.get(price_key, ZERO)
+        cost = quantity * price
 
         opening_rows.append(
             (account, transaction_id, first_dt, 'Open', None, symbol,
-             'OPENING', instruction, abs(quantity), cost, cost, ZERO, ZERO,
+             'OPENING', instruction, abs(quantity), price, cost, ZERO, ZERO,
              f'Opening balance for {symbol}'))
     opening = instrument.Expand(petl.wrap(opening_rows), 'symbol')
 

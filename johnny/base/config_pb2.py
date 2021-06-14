@@ -19,7 +19,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   syntax='proto2',
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_pb=b'\n\x0c\x63onfig.proto\x12\x06johnny\"\x96\x01\n\x06\x43onfig\x12!\n\x08\x61\x63\x63ounts\x18\x01 \x03(\x0b\x32\x0f.johnny.Account\x12\x1d\n\x06\x63hains\x18\x02 \x03(\x0b\x32\r.johnny.Chain\x12\'\n\x11transaction_links\x18\x03 \x03(\x0b\x32\x0c.johnny.Link\x12!\n\x0border_links\x18\x04 \x03(\x0b\x32\x0c.johnny.Link\"$\n\x04Link\x12\x0f\n\x07\x63omment\x18\x01 \x01(\t\x12\x0b\n\x03ids\x18\x02 \x03(\t\"+\n\x07\x41\x63\x63ount\x12\x0e\n\x06number\x18\x01 \x01(\t\x12\x10\n\x08nickname\x18\x02 \x01(\t\"W\n\x05\x43hain\x12\x10\n\x08\x63hain_id\x18\x01 \x01(\t\x12\x12\n\ntrade_type\x18\x02 \x01(\t\x12\x0f\n\x07\x63omment\x18\x03 \x01(\t\x12\x17\n\x0ftransaction_ids\x18\x04 \x03(\t\":\n\x05\x41sset\x12\x12\n\ninstrument\x18\x01 \x01(\t\x12\r\n\x05\x63lass\x18\x02 \x01(\t\x12\x0e\n\x06\x66\x61\x63tor\x18\x03 \x01(\t'
+  serialized_pb=b'\n\x0c\x63onfig.proto\x12\x06johnny\"\xb5\x01\n\x06\x43onfig\x12!\n\x08\x61\x63\x63ounts\x18\x01 \x03(\x0b\x32\x0f.johnny.Account\x12\x1d\n\x06\x63hains\x18\x02 \x03(\x0b\x32\r.johnny.Chain\x12\'\n\x11transaction_links\x18\x03 \x03(\x0b\x32\x0c.johnny.Link\x12!\n\x0border_links\x18\x04 \x03(\x0b\x32\x0c.johnny.Link\x12\x1d\n\x06prices\x18\x05 \x03(\x0b\x32\r.johnny.Price\"$\n\x04Link\x12\x0f\n\x07\x63omment\x18\x01 \x01(\t\x12\x0b\n\x03ids\x18\x02 \x03(\t\"+\n\x07\x41\x63\x63ount\x12\x0e\n\x06number\x18\x01 \x01(\t\x12\x10\n\x08nickname\x18\x02 \x01(\t\"W\n\x05\x43hain\x12\x10\n\x08\x63hain_id\x18\x01 \x01(\t\x12\x12\n\ntrade_type\x18\x02 \x01(\t\x12\x0f\n\x07\x63omment\x18\x03 \x01(\t\x12\x17\n\x0ftransaction_ids\x18\x04 \x03(\t\":\n\x05\x41sset\x12\x12\n\ninstrument\x18\x01 \x01(\t\x12\r\n\x05\x63lass\x18\x02 \x01(\t\x12\x0e\n\x06\x66\x61\x63tor\x18\x03 \x01(\t\"B\n\x05Price\x12\x0e\n\x06symbol\x18\x01 \x01(\t\x12\x1a\n\x04\x64\x61te\x18\x02 \x01(\x0b\x32\x0c.johnny.Date\x12\r\n\x05price\x18\x03 \x01(\t\"0\n\x04\x44\x61te\x12\x0c\n\x04year\x18\x02 \x01(\x05\x12\r\n\x05month\x18\x03 \x01(\x05\x12\x0b\n\x03\x64\x61y\x18\x04 \x01(\x05'
 )
 
 
@@ -61,6 +61,13 @@ _CONFIG = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='prices', full_name='johnny.Config.prices', index=4,
+      number=5, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
   ],
   extensions=[
   ],
@@ -74,7 +81,7 @@ _CONFIG = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=25,
-  serialized_end=175,
+  serialized_end=206,
 )
 
 
@@ -112,8 +119,8 @@ _LINK = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=177,
-  serialized_end=213,
+  serialized_start=208,
+  serialized_end=244,
 )
 
 
@@ -151,8 +158,8 @@ _ACCOUNT = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=215,
-  serialized_end=258,
+  serialized_start=246,
+  serialized_end=289,
 )
 
 
@@ -204,8 +211,8 @@ _CHAIN = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=260,
-  serialized_end=347,
+  serialized_start=291,
+  serialized_end=378,
 )
 
 
@@ -250,19 +257,115 @@ _ASSET = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=349,
-  serialized_end=407,
+  serialized_start=380,
+  serialized_end=438,
+)
+
+
+_PRICE = _descriptor.Descriptor(
+  name='Price',
+  full_name='johnny.Price',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  create_key=_descriptor._internal_create_key,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='symbol', full_name='johnny.Price.symbol', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='date', full_name='johnny.Price.date', index=1,
+      number=2, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='price', full_name='johnny.Price.price', index=2,
+      number=3, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto2',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=440,
+  serialized_end=506,
+)
+
+
+_DATE = _descriptor.Descriptor(
+  name='Date',
+  full_name='johnny.Date',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  create_key=_descriptor._internal_create_key,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='year', full_name='johnny.Date.year', index=0,
+      number=2, type=5, cpp_type=1, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='month', full_name='johnny.Date.month', index=1,
+      number=3, type=5, cpp_type=1, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='day', full_name='johnny.Date.day', index=2,
+      number=4, type=5, cpp_type=1, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto2',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=508,
+  serialized_end=556,
 )
 
 _CONFIG.fields_by_name['accounts'].message_type = _ACCOUNT
 _CONFIG.fields_by_name['chains'].message_type = _CHAIN
 _CONFIG.fields_by_name['transaction_links'].message_type = _LINK
 _CONFIG.fields_by_name['order_links'].message_type = _LINK
+_CONFIG.fields_by_name['prices'].message_type = _PRICE
+_PRICE.fields_by_name['date'].message_type = _DATE
 DESCRIPTOR.message_types_by_name['Config'] = _CONFIG
 DESCRIPTOR.message_types_by_name['Link'] = _LINK
 DESCRIPTOR.message_types_by_name['Account'] = _ACCOUNT
 DESCRIPTOR.message_types_by_name['Chain'] = _CHAIN
 DESCRIPTOR.message_types_by_name['Asset'] = _ASSET
+DESCRIPTOR.message_types_by_name['Price'] = _PRICE
+DESCRIPTOR.message_types_by_name['Date'] = _DATE
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
 Config = _reflection.GeneratedProtocolMessageType('Config', (_message.Message,), {
@@ -299,6 +402,20 @@ Asset = _reflection.GeneratedProtocolMessageType('Asset', (_message.Message,), {
   # @@protoc_insertion_point(class_scope:johnny.Asset)
   })
 _sym_db.RegisterMessage(Asset)
+
+Price = _reflection.GeneratedProtocolMessageType('Price', (_message.Message,), {
+  'DESCRIPTOR' : _PRICE,
+  '__module__' : 'config_pb2'
+  # @@protoc_insertion_point(class_scope:johnny.Price)
+  })
+_sym_db.RegisterMessage(Price)
+
+Date = _reflection.GeneratedProtocolMessageType('Date', (_message.Message,), {
+  'DESCRIPTOR' : _DATE,
+  '__module__' : 'config_pb2'
+  # @@protoc_insertion_point(class_scope:johnny.Date)
+  })
+_sym_db.RegisterMessage(Date)
 
 
 # @@protoc_insertion_point(module_scope)
