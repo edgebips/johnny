@@ -41,14 +41,13 @@ from typing import List, Tuple, Optional, NamedTuple
 
 from dateutil.parser import parse
 import click
-import petl
-petl.config.look_style = 'minimal'
 
 from johnny.broker.ameritrade import utils
 from johnny.base import positions as poslib
 from johnny.base import futures
 from johnny.base import instrument
 from johnny.base.number import ToDecimal
+from johnny.base.etl import petl, WrapRecords
 
 
 Table = petl.Table
@@ -277,7 +276,18 @@ def FoldInstrument(table: Table) -> Table:
                   'cost', 'net_liq', 'pnl_open', 'pnl_day')
              )
 
-    return table
+    return ReduceFragmentedPositions(table)
+
+
+def ReduceFragmentedPositions(table: Table) -> Table:
+    """Reduce stock and futures positions of the same underlying to one line."""
+
+    # In TOS, multiple purchases with different costs will show multiple lines.
+    # We need to reduce these to a single position with a single average cost in
+    # order to join it to the transactions.
+
+    agg = {key: (key, sum) for key in table.header()[1:]}
+    return table.aggregate('symbol', agg)
 
 
 def GetPositions(filename: str) -> Table:

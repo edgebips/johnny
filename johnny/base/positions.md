@@ -45,6 +45,12 @@ Also note that the relationship between `quantity` and the other numbers involve
 the instrument `multiplier`, which can be derived from the symbol.
 
 
+## Constraints
+
+If you have fragmented positions in stocks and futures, i.e., multiple lots,
+they must be reduced to a single row in the output.
+
+
 ## Example:
 
 Here's an example input:
