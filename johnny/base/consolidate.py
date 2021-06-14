@@ -351,6 +351,18 @@ def FindNamedFile(fileordirs: str, target: str) -> Optional[str]:
     return found[0] if found else None
 
 
+def CheckMultipleProductsInChain(transactions: Table):
+    """Check and warn over the presence of multple underlyings in a chain."""
+    mapping = transactions.lookup('chain_id')
+    for key, txnlist in mapping.items():
+        products = set(petl.wrap([transactions.header()] + txnlist)
+                       .addfield('product', lambda r: instrument.ParseProduct(
+                           instrument.ParseUnderlying(r.symbol)))
+                       .values('product'))
+        if len(products) > 1:
+            logging.error("Multiple products in chain %s: %s", key, products)
+
+
 def ConsolidateChains(
         fileordirs: str,
         ledger: Optional[str]
@@ -420,19 +432,7 @@ def ConsolidateChains(
                         .addfield('net_liq', None)
                         .addfield('pnl_day', None))
 
-    # Check for multiple products in a single chain.
-    # TODO(blais): Remove - for debugging of chains(!).
     if 1:
-        mapping = transactions.lookup('chain_id')
-        for key, txnlist in mapping.items():
-            products = set(petl.wrap([transactions.header()] + txnlist)
-                           .addfield('product', lambda r: instrument.ParseProduct(
-                               instrument.ParseUnderlying(r.symbol)))
-                           .values('product'))
-            if len(products) > 1:
-                logging.error("Multiple products in chain %s: %s", key, products)
-
-    if 0:
         # Fetch prices for opening transactions.
         import ameritrade as td
         config = td.config_from_dir(os.getenv("AMERITRADE_DIR"))
@@ -450,7 +450,6 @@ def ConsolidateChains(
                 frequency='1',
                 startDate=startDate, endDate=startDate)
             pp(hist)
-
         raise SystemExit
 
     # Convert to chains.
@@ -480,16 +479,6 @@ def ConsolidateChains(
 
     # Clean up the chains and add targets.
     chains = FormatActiveChains(chains)
-
-    if 0:
-        print(chains
-              .select(lambda r: r.days < 3)
-              .cut('chain_id', 'mindate', 'maxdate', 'days')
-              .lookallstr())
-
-    if 0:
-        with open("/home/blais/johnny.pbtxt", 'w') as outfile:
-            print(config, file=outfile)
 
     return transactions, positions, chains, config
 

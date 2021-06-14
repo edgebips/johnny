@@ -19,7 +19,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   syntax='proto2',
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_pb=b'\n\x0c\x63onfig.proto\x12\x06johnny\"\x96\x01\n\x06\x43onfig\x12!\n\x08\x61\x63\x63ounts\x18\x01 \x03(\x0b\x32\x0f.johnny.Account\x12\x1d\n\x06\x63hains\x18\x02 \x03(\x0b\x32\r.johnny.Chain\x12\'\n\x11transaction_links\x18\x03 \x03(\x0b\x32\x0c.johnny.Link\x12!\n\x0border_links\x18\x04 \x03(\x0b\x32\x0c.johnny.Link\"\x13\n\x04Link\x12\x0b\n\x03ids\x18\x01 \x03(\t\"+\n\x07\x41\x63\x63ount\x12\x0e\n\x06number\x18\x01 \x01(\t\x12\x10\n\x08nickname\x18\x02 \x01(\t\"W\n\x05\x43hain\x12\x10\n\x08\x63hain_id\x18\x01 \x01(\t\x12\x12\n\ntrade_type\x18\x02 \x01(\t\x12\x0f\n\x07\x63omment\x18\x03 \x01(\t\x12\x17\n\x0ftransaction_ids\x18\x04 \x03(\t\":\n\x05\x41sset\x12\x12\n\ninstrument\x18\x01 \x01(\t\x12\r\n\x05\x63lass\x18\x02 \x01(\t\x12\x0e\n\x06\x66\x61\x63tor\x18\x03 \x01(\t'
+  serialized_pb=b'\n\x0c\x63onfig.proto\x12\x06johnny\"\x96\x01\n\x06\x43onfig\x12!\n\x08\x61\x63\x63ounts\x18\x01 \x03(\x0b\x32\x0f.johnny.Account\x12\x1d\n\x06\x63hains\x18\x02 \x03(\x0b\x32\r.johnny.Chain\x12\'\n\x11transaction_links\x18\x03 \x03(\x0b\x32\x0c.johnny.Link\x12!\n\x0border_links\x18\x04 \x03(\x0b\x32\x0c.johnny.Link\"$\n\x04Link\x12\x0f\n\x07\x63omment\x18\x01 \x01(\t\x12\x0b\n\x03ids\x18\x02 \x03(\t\"+\n\x07\x41\x63\x63ount\x12\x0e\n\x06number\x18\x01 \x01(\t\x12\x10\n\x08nickname\x18\x02 \x01(\t\"W\n\x05\x43hain\x12\x10\n\x08\x63hain_id\x18\x01 \x01(\t\x12\x12\n\ntrade_type\x18\x02 \x01(\t\x12\x0f\n\x07\x63omment\x18\x03 \x01(\t\x12\x17\n\x0ftransaction_ids\x18\x04 \x03(\t\":\n\x05\x41sset\x12\x12\n\ninstrument\x18\x01 \x01(\t\x12\r\n\x05\x63lass\x18\x02 \x01(\t\x12\x0e\n\x06\x66\x61\x63tor\x18\x03 \x01(\t'
 )
 
 
@@ -87,8 +87,15 @@ _LINK = _descriptor.Descriptor(
   create_key=_descriptor._internal_create_key,
   fields=[
     _descriptor.FieldDescriptor(
-      name='ids', full_name='johnny.Link.ids', index=0,
-      number=1, type=9, cpp_type=9, label=3,
+      name='comment', full_name='johnny.Link.comment', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='ids', full_name='johnny.Link.ids', index=1,
+      number=2, type=9, cpp_type=9, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
@@ -106,7 +113,7 @@ _LINK = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=177,
-  serialized_end=196,
+  serialized_end=213,
 )
 
 
@@ -144,8 +151,8 @@ _ACCOUNT = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=198,
-  serialized_end=241,
+  serialized_start=215,
+  serialized_end=258,
 )
 
 
@@ -197,8 +204,8 @@ _CHAIN = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=243,
-  serialized_end=330,
+  serialized_start=260,
+  serialized_end=347,
 )
 
 
@@ -243,8 +250,8 @@ _ASSET = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=332,
-  serialized_end=390,
+  serialized_start=349,
+  serialized_end=407,
 )
 
 _CONFIG.fields_by_name['accounts'].message_type = _ACCOUNT

@@ -75,7 +75,7 @@ def chains(filesordirs: str, ledger: Optional[str]):
     "Find, process and print positions."
 
     # Read in and consolidate all the data.
-    _, __, chains = consolidate.ConsolidateChains(filesordirs, ledger)
+    _, __, chains, config = consolidate.ConsolidateChains(filesordirs, ledger)
     print(chains.lookallstr())
 
 

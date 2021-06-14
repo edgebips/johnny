@@ -30,7 +30,8 @@ message Config {
 
 // An explicit linkage between multiple transactions.
 message Link {
-  repeated string ids = 1;
+  optional string comment = 1;
+  repeated string ids = 2;
 }
 
 // The declaration of an account.
