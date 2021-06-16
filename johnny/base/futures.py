@@ -47,12 +47,12 @@ MULTIPLIERS = {
     '/6A'     : 100_000,
     '/6C'     : 100_000,
     '/6B'     : 62_500,
-    '/SFX'    : 100,
+    '/SFX'    : 1,
 
     # Energy
     '/CL'     : 1000,
     '/NG'     : 10_000,
-    '/SMO'    : 100,
+    '/SMO'    : 1,
 
     # Metals
     '/GC'     : 100,
@@ -63,7 +63,7 @@ MULTIPLIERS = {
     #'/QC'    : 12500,
     '/PA'     : 100,
     '/PL'     : 50,
-    '/SPRE'   : 100,
+    '/SPRE'   : 1,
 
     # Rates
     '/ZQ'     : 4167,
@@ -72,9 +72,9 @@ MULTIPLIERS = {
     '/ZF'     : 1000,
     '/ZN'     : 1000,
     '/ZB'     : 1000,
-    '/S2Y'    : 100,
-    '/S10Y'   : 100,
-    '/S30Y'   : 100,
+    '/S2Y'    : 1,
+    '/S10Y'   : 1,
+    '/S30Y'   : 1,
 
     # Agricultural
     '/ZC'     : 50,
@@ -86,9 +86,9 @@ MULTIPLIERS = {
     '/LE'     : 400,
 
     # Small exchange unrelated
-    '/SM75'   : 100,
-    '/STIX'   : 100,
-    '/S420'   : 100
+    '/SM75'   : 1,
+    '/STIX'   : 1,
+    '/S420'   : 1
 }
 
 
