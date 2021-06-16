@@ -47,6 +47,7 @@ MULTIPLIERS = {
     '/6A'     : 100_000,
     '/6C'     : 100_000,
     '/6B'     : 62_500,
+    '/SFX'    : 100,
 
     # Energy
     '/CL'     : 1000,
@@ -62,6 +63,7 @@ MULTIPLIERS = {
     #'/QC'    : 12500,
     '/PA'     : 100,
     '/PL'     : 50,
+    '/SPRE'   : 100,
 
     # Rates
     '/ZQ'     : 4167,
@@ -70,6 +72,9 @@ MULTIPLIERS = {
     '/ZF'     : 1000,
     '/ZN'     : 1000,
     '/ZB'     : 1000,
+    '/S2Y'    : 100,
+    '/S10Y'   : 100,
+    '/S30Y'   : 100,
 
     # Agricultural
     '/ZC'     : 50,
@@ -79,6 +84,11 @@ MULTIPLIERS = {
     # Livestock
     '/HE'     : 400,
     '/LE'     : 400,
+
+    # Small exchange unrelated
+    '/SM75'   : 100,
+    '/STIX'   : 100,
+    '/S420'   : 100
 }
 
 
