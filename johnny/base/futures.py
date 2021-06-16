@@ -73,6 +73,8 @@ MULTIPLIERS = {
     '/ZN'     : 1000,
     '/ZB'     : 1000,
     '/S2Y'    : 100,
+    '/S10Y'   : 100,
+    '/S30Y'   : 100,
 
     # Agricultural
     '/ZC'     : 50,
@@ -86,6 +88,7 @@ MULTIPLIERS = {
     # Small exchange unrelated
     '/SM75'   : 100,
     '/STIX'   : 100,
+    '/S420'   : 100
 }
 
 
