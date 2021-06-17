@@ -14,6 +14,18 @@ Heavily under development. Assume everything will be moved and broken at some
 point or other in the next couple of months.
 
 
+## Setting up Johnny in a virtual environment
+From the Johnny source directory:
+
+1. `python -m venv venv`
+2. `source venv/bin/activate`
+3. `pip install -e .`
+4. `export JOHNNY_ROOT=/path/to/johnny/data && ./bin/johnny-web`
+4. Visit the web UI at http://localhost:5000
+
+## Graphviz
+Extra steps are required to install Graphviz: https://pygraphviz.github.io/documentation/stable/install.html
+
 ## Inputs
 
 There a two tools, which feed off of CSV downloads from either of thinkorswim or
@@ -25,7 +37,9 @@ You will need both a positions file and a transactions log downloads.
 ### Tastyworks
 
 - **Positions** Go to the `Positions` tab, click on `CSV`, save file to a
-  directory.
+  directory. Make sure you have the following columns in your position tab: 
+  `price, mark, cost, net_liq, delta per quantity`.
+  
 
 - **Transactions** Go to the `History` tab, click on `CSV`, select a date range
   up to a point where you had no positions, scroll all the way to the bottom (to
