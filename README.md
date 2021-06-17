@@ -19,11 +19,11 @@ From the Johnny source directory:
 
 1. Setup the virtual environment: `python3 -m venv venv`
 2. Activate it: `source venv/bin/activate`
-3. Install the package for local development into the virtual environment: `pip install -e .`
+3. Install the package for local development into the virtual environment: `pip install --editable .`
 4. Run the web UI: `export JOHNNY_ROOT=/path/to/johnny/data && ./bin/johnny-web`
 4. Visit the web UI at http://localhost:5000
 
-## Graphviz
+## Graphviz (optional)
 Extra steps are required to install Graphviz: https://pygraphviz.github.io/documentation/stable/install.html
 
 ## Inputs
