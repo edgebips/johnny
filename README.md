@@ -17,10 +17,10 @@ point or other in the next couple of months.
 ## Setting up Johnny in a virtual environment
 From the Johnny source directory:
 
-1. `python -m venv venv`
-2. `source venv/bin/activate`
-3. `pip install -e .`
-4. `export JOHNNY_ROOT=/path/to/johnny/data && ./bin/johnny-web`
+1. Setup the virtual environment: `python3 -m venv venv`
+2. Activate it: `source venv/bin/activate`
+3. Install the package for local development into the virtual environment: `pip install -e .`
+4. Run the web UI: `export JOHNNY_ROOT=/path/to/johnny/data && ./bin/johnny-web`
 4. Visit the web UI at http://localhost:5000
 
 ## Graphviz
