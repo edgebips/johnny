@@ -3,7 +3,7 @@
 ## Opening and Closing
 
 The transactions log is not assumed to include opening transactions, nor closing
-(mark-to-market) transactions. These are synthesizes in coordinations with a
+(mark-to-market) transactions. These are synthesized in coordination with a
 positions table.
 
 
@@ -119,7 +119,7 @@ A normalized transactions table contains the following columns and data types.
   sides.)
 
 - `chain_id`: A unique random id which links together transactions grouped
-  together in a sequence of events. A "trade", or "chain" ofrelated transactions
+  together in a sequence of events. A "trade", or "chain" of related transactions
   over time. For instance, selling a strangle, then closing one side, and
   rolling the other side, and then closing, could be considered a single chain
   of events.
