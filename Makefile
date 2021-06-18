@@ -2,7 +2,10 @@
 
 DOWNLOADS=$(HOME)/trading/downloads
 
-run:
+move-files:
+	-mv -f $(HOME)/tasty* $(HOME)/*Statement.csv $(DOWNLOADS)
+
+serve: move-files
 	johnny-web $(DOWNLOADS)
 
 transactions txn:
@@ -18,7 +21,7 @@ config:
 	johnny-config $(DOWNLOADS) $(DOWNLOADS)/johnny_clean.pbtxt $(DOWNLOADS)/johnny_residual.pbtxt
 
 config-diff:
-	xxdiff -B $(DOWNLOADS)/johnny_clean.pbtxt $(DOWNLOADS)/johnny.pbtxt
+	xxdiff -B $(DOWNLOADS)/johnny.pbtxt $(DOWNLOADS)/johnny_clean.pbtxt
 
 config-clobber:
 	mv $(DOWNLOADS)/johnny_clean.pbtxt $(shell readlink $(DOWNLOADS)/johnny.pbtxt)

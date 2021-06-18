@@ -91,7 +91,8 @@ def Match(transactions: Table, closing_time: Optional[datetime.datetime]=None) -
         if effect == '?':
             return effect_map[r.transaction_id]
         elif r.rowtype == 'Trade':
-            assert effect == effect_map[r.transaction_id]
+            if effect != effect_map[r.transaction_id]:
+                logging.error("Invalid effect at: {}".format(r))
         return effect
 
     # Apply the mapping to the table.

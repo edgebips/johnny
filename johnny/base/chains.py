@@ -330,7 +330,7 @@ def ChainName(txns: List[Record], explicit_chains: Mapping[str, str]) -> str:
 
     # Note: We don't know the max date, so we stick with the front date only in
     # the readable chain name.
-    first_txn = next(iter(sorted(txns, key=lambda r: r.datetime)))
+    first_txn = next(iter(sorted(txns, key=lambda r: (r.datetime, r.underlying))))
     return ".".join([first_txn.account,
                      "{:%y%m%d_%H%M%S}".format(first_txn.datetime),
                      first_txn.underlying.lstrip('/')])
