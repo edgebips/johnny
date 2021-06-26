@@ -62,6 +62,7 @@ MULTIPLIERS = {
     #'/QC'    : 12500,
     '/PA'     : 100,
     '/PL'     : 50,
+    '/SPRE'   : 100,
 
     # Rates
     '/ZQ'     : 4167,
@@ -70,6 +71,9 @@ MULTIPLIERS = {
     '/ZF'     : 1000,
     '/ZN'     : 1000,
     '/ZB'     : 1000,
+    '/S2Y'    : 100,
+    '/S10Y'   : 100,
+    '/S30Y'   : 100,
 
     # Agricultural
     '/ZC'     : 50,
