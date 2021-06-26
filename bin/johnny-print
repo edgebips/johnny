@@ -68,7 +68,7 @@ def print_table(table: Table, filenames: List[str], expand: bool):
 
 
 @cli.command()
-@click.argument('filesordirs', nargs=-1)
+@click.argument('filesordirs', nargs=-1, type=click.Path(exists=True))
 @click.option('--ledger', '-l', type=click.Path(exists=False),
               help="Remove transactions from Ledger. Requires order ids.")
 def chains(filesordirs: str, ledger: Optional[str]):
