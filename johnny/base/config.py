@@ -3,7 +3,7 @@
 __copyright__ = "Copyright (C) 2021  Martin Blais"
 __license__ = "GNU GPLv2"
 
-from typing import Mapping
+from typing import Mapping, Tuple
 
 from johnny.base.config_pb2 import Config
 from johnny.base.config_pb2 import Chain
@@ -27,8 +27,12 @@ def MapAccount(config: config_pb2.Config, table: Table, field: str) -> Table:
     return petl.convert(table, field, accounts_map)
 
 
-def GetExplicitChains(config: Config) -> Mapping[str, str]:
+def GetExplicitChains(config: Config) -> Tuple[Mapping[str, str], Mapping[str, str]]:
     """Extract a mapping of transaction-id to some unique chain-id."""
-    return {tid: chain.chain_id
-            for chain in config.chains
-            for tid in chain.transaction_ids}
+    transactions_map = {tid: chain.chain_id
+                        for chain in config.chains
+                        for tid in chain.transaction_ids}
+    orders_map = {oid: chain.chain_id
+                  for chain in config.chains
+                  for oid in chain.order_ids}
+    return (transactions_map, orders_map)

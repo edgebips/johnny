@@ -374,7 +374,7 @@ def ConsolidateChains(
     config = (configlib.ParseFile(config_filename)
               if config_filename
               else configlib.Config())
-    explicit_chains = configlib.GetExplicitChains(config)
+    transactions_chain_map, orders_chain_map = configlib.GetExplicitChains(config)
     transaction_links = [list(links.ids) for links in config.transaction_links]
     order_links = [list(links.ids) for links in config.order_links]
     price_db = {(price.symbol, datetime.date(price.date.year,
@@ -401,11 +401,11 @@ def ConsolidateChains(
                     .applyfn(opening.Open, positions, price_db)
                     .applyfn(match.Match)
                     .applyfn(chaining.Group,
-                             explicit_chains=explicit_chains,
+                             explicit_transactions_chain_map=transactions_chain_map,
+                             explicit_orders_chain_map=orders_chain_map,
                              transaction_links=transaction_links,
                              order_links=order_links)
                     .applyfn(instrument.Shrink))
-
 
     # Remove transactions from the Ledger if there are any.
     if ledger:

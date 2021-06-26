@@ -19,7 +19,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   syntax='proto2',
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_pb=b'\n\x0c\x63onfig.proto\x12\x06johnny\"\xb5\x01\n\x06\x43onfig\x12!\n\x08\x61\x63\x63ounts\x18\x01 \x03(\x0b\x32\x0f.johnny.Account\x12\x1d\n\x06\x63hains\x18\x02 \x03(\x0b\x32\r.johnny.Chain\x12\'\n\x11transaction_links\x18\x03 \x03(\x0b\x32\x0c.johnny.Link\x12!\n\x0border_links\x18\x04 \x03(\x0b\x32\x0c.johnny.Link\x12\x1d\n\x06prices\x18\x05 \x03(\x0b\x32\r.johnny.Price\"$\n\x04Link\x12\x0f\n\x07\x63omment\x18\x01 \x01(\t\x12\x0b\n\x03ids\x18\x02 \x03(\t\"+\n\x07\x41\x63\x63ount\x12\x0e\n\x06number\x18\x01 \x01(\t\x12\x10\n\x08nickname\x18\x02 \x01(\t\"W\n\x05\x43hain\x12\x10\n\x08\x63hain_id\x18\x01 \x01(\t\x12\x12\n\ntrade_type\x18\x02 \x01(\t\x12\x0f\n\x07\x63omment\x18\x03 \x01(\t\x12\x17\n\x0ftransaction_ids\x18\x04 \x03(\t\":\n\x05\x41sset\x12\x12\n\ninstrument\x18\x01 \x01(\t\x12\r\n\x05\x63lass\x18\x02 \x01(\t\x12\x0e\n\x06\x66\x61\x63tor\x18\x03 \x01(\t\"B\n\x05Price\x12\x0e\n\x06symbol\x18\x01 \x01(\t\x12\x1a\n\x04\x64\x61te\x18\x02 \x01(\x0b\x32\x0c.johnny.Date\x12\r\n\x05price\x18\x03 \x01(\t\"0\n\x04\x44\x61te\x12\x0c\n\x04year\x18\x02 \x01(\x05\x12\r\n\x05month\x18\x03 \x01(\x05\x12\x0b\n\x03\x64\x61y\x18\x04 \x01(\x05'
+  serialized_pb=b'\n\x0c\x63onfig.proto\x12\x06johnny\"\xb5\x01\n\x06\x43onfig\x12!\n\x08\x61\x63\x63ounts\x18\x01 \x03(\x0b\x32\x0f.johnny.Account\x12\x1d\n\x06\x63hains\x18\x02 \x03(\x0b\x32\r.johnny.Chain\x12\'\n\x11transaction_links\x18\x03 \x03(\x0b\x32\x0c.johnny.Link\x12!\n\x0border_links\x18\x04 \x03(\x0b\x32\x0c.johnny.Link\x12\x1d\n\x06prices\x18\x05 \x03(\x0b\x32\r.johnny.Price\"$\n\x04Link\x12\x0f\n\x07\x63omment\x18\x01 \x01(\t\x12\x0b\n\x03ids\x18\x02 \x03(\t\"+\n\x07\x41\x63\x63ount\x12\x0e\n\x06number\x18\x01 \x01(\t\x12\x10\n\x08nickname\x18\x02 \x01(\t\"j\n\x05\x43hain\x12\x10\n\x08\x63hain_id\x18\x01 \x01(\t\x12\x12\n\ntrade_type\x18\x02 \x01(\t\x12\x0f\n\x07\x63omment\x18\x03 \x01(\t\x12\x17\n\x0ftransaction_ids\x18\x04 \x03(\t\x12\x11\n\torder_ids\x18\x05 \x03(\t\":\n\x05\x41sset\x12\x12\n\ninstrument\x18\x01 \x01(\t\x12\r\n\x05\x63lass\x18\x02 \x01(\t\x12\x0e\n\x06\x66\x61\x63tor\x18\x03 \x01(\t\"B\n\x05Price\x12\x0e\n\x06symbol\x18\x01 \x01(\t\x12\x1a\n\x04\x64\x61te\x18\x02 \x01(\x0b\x32\x0c.johnny.Date\x12\r\n\x05price\x18\x03 \x01(\t\"0\n\x04\x44\x61te\x12\x0c\n\x04year\x18\x02 \x01(\x05\x12\r\n\x05month\x18\x03 \x01(\x05\x12\x0b\n\x03\x64\x61y\x18\x04 \x01(\x05'
 )
 
 
@@ -199,6 +199,13 @@ _CHAIN = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='order_ids', full_name='johnny.Chain.order_ids', index=4,
+      number=5, type=9, cpp_type=9, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
   ],
   extensions=[
   ],
@@ -212,7 +219,7 @@ _CHAIN = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=291,
-  serialized_end=378,
+  serialized_end=397,
 )
 
 
@@ -257,8 +264,8 @@ _ASSET = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=380,
-  serialized_end=438,
+  serialized_start=399,
+  serialized_end=457,
 )
 
 
@@ -303,8 +310,8 @@ _PRICE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=440,
-  serialized_end=506,
+  serialized_start=459,
+  serialized_end=525,
 )
 
 
@@ -349,8 +356,8 @@ _DATE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=508,
-  serialized_end=556,
+  serialized_start=527,
+  serialized_end=575,
 )
 
 _CONFIG.fields_by_name['accounts'].message_type = _ACCOUNT

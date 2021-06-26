@@ -70,6 +70,12 @@ message Chain {
   // removed from the table and extracted as a unique chain. Make sure that
   // matches without these trades can resolve.
   repeated string transaction_ids = 4;
+
+  // If this is present, an explicit list of order ids that are part of the
+  // trade. All the rows matching these transactions will be automatically
+  // removed from the table and extracted as a unique chain. Make sure that
+  // matches without these trades can resolve.
+  repeated string order_ids = 5;
 }
 
 // Declaration of asset vs. asset-class mapping.
