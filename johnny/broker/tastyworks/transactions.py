@@ -65,11 +65,15 @@ def GetRowType(rowtype: str, rec: Record) -> str:
     if rowtype == 'Trade':
         return 'Trade'
     elif rowtype == 'Receive Deliver':
-        if re.match(r"Removal of .* due to expiration", rec.Description):
+        if re.match(r"Removal of .* due to (expiration|exercise|assignment)",
+                    rec.Description):
             return 'Expire'
+        elif re.match(r"(Buy|Sell) to", rec.Description):
+            return 'Trade'
         elif re.match(r"Symbol change", rec.Description):
             return 'Trade'
-    return KeyError("Invalid rowtype: '{}' ({})".format(rowtype, rec.Description))
+    return KeyError("Invalid rowtype '{}'; description: '{}'".format(
+        rowtype, rec.Description))
 
 
 def GetOrderId(value: str, rec: Record) -> str:
@@ -176,10 +180,11 @@ def ParseStrikePrice(string: str) -> Decimal:
 
 
 _INSTYPES = {
-    'Equity'        : 'Equity',
-    'Equity Option' : 'EquityOption',
-    'Future'        : 'Future',
-    'Future Option' : 'FutureOption',
+    'Equity'         : 'Equity',
+    'Equity Option'  : 'EquityOption',
+    'Future'         : 'Future',
+    'Future Option'  : 'FutureOption',
+    'Cryptocurrency' : 'Crypto',
 }
 
 
@@ -357,6 +362,18 @@ def GetTransactions(filename: str) -> Tuple[Table, Table]:
     """Process the filename, normalize, and produce tables."""
     table = petl.fromcsv(filename)
     trades_table, other_table = SplitTables(table)
+
+    # TODO(blais): Figure out Cryptocurrency awards. What are these? They are
+    # recorded as 'Receive and Deliver' and not trades. Are these transfers in
+    # kind? I'm not sure what to do with them yet.
+    award_table, trades_table = (
+        trades_table
+        .biselect(lambda r: (r['Instrument Type'] == 'Cryptocurrency' and
+                             re.search('Awarded', r.Description))))
+    if award_table.nrows() > 0:
+        logging.error("You have Cryptocurrency Awarded rows; skipping those rows:\n{}"
+                      .format(award_table.lookallstr()))
+
     norm_trades_table = NormalizeTrades(trades_table, GetAccount(filename))
     return norm_trades_table, other_table
 

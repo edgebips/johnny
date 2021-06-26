@@ -31,6 +31,8 @@ def ParseSymbol(symbol: str, instype: Optional[str]) -> instrument.Instrument:
     # And finally, just equities.
     elif instype == 'Equity':
         inst = _ParseEquitySymbol(symbol)
+    elif instype == 'Crypto':
+        inst = _ParseCrypto(symbol)
     else:
         raise ValueError(f"Unknown instrument type: {instype}")
     return inst
@@ -109,3 +111,11 @@ def _ParseFuturesOptionSymbol(symbol: str) -> instrument.Instrument:
                          expiration=expiration,
                          putcall=putcall,
                          strike=strike)
+
+
+def _ParseCrypto(symbol: str) -> instrument.Instrument:
+    match = re.match('([A-Z]{3})/([A-Z]{3})', symbol)
+    assert match
+    base, quote = match.groups()
+    return instrument.Instrument(underlying='{}_{}'.format(base, quote),
+                                 multiplier=1)

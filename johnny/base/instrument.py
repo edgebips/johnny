@@ -134,7 +134,7 @@ def FromString(symbol: str) -> Instrument:
                       else None)
         strike = Decimal(strike_str)
     else:
-        assert '_' not in symbol, symbol
+        assert re.match('[A-Z]{3}_[A-Z]{3}', symbol) or ('_' not in symbol), symbol
         expiration, expcode, putcall, strike = None, None, None, None
         underlying = symbol
 

@@ -26,6 +26,7 @@ needed on its own.
   * `EquityOption`
   * `Future`
   * `FutureOption`
+  * `Crypto`
 
 - `underlying: str`: The underlying instrument, with normalized name. If this is
   a futures instrument, includes the calendar month (and is normalized to
