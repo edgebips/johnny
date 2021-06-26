@@ -33,7 +33,7 @@ MatchFn = Callable[[str], Optional[Tuple[str, str, callable]]]
 
 def FindFiles(fileordirs: List[str],
               matchers: List[MatchFn]) -> Dict[str, callable]:
-    """Read in the transations log files from given directory and filenames."""
+    """Read in the transactions log files from given directory and filenames."""
 
     # If input is empty, use the CWD.
     if not fileordirs:

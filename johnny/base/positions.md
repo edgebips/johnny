@@ -6,7 +6,7 @@ Here is the definition of the fields we're expecting from the positions file;
   the brokerage. This can be used if a file contains information about multiple
   accounts.
 
-- `group: Optionnal[str]`: A group name that can be created by the application, if
+- `group: Optional[str]`: A group name that can be created by the application, if
   possible. thinkorswim has the ability to create position groups. Tastyworks
   does not. This is a kind of user label common to multiple positions.
 
@@ -17,7 +17,7 @@ Here is the definition of the fields we're expecting from the positions file;
   The individual fields of the instrument's symbol may be expanded into their
   individual components. See the file "instrument.md" for details.
 
-- `quantity: Decimal`: The quantity helpd. This number is signed, positive if
+- `quantity: Decimal`: The quantity held. This number is signed, positive if
   long, negative if short. Note that this is different than the `transactions`
   table.
 
@@ -34,7 +34,7 @@ Here is the definition of the fields we're expecting from the positions file;
 - `cost: Decimal`: The total cost for acquiring this position. This is a signed
   value as well, following the `price` field.
 
-- `net_liq: Decimal`: The total value of this position, as mark by the `mark`
+- `net_liq: Decimal`: The total value of this position, as marked by the `mark`
   field. This is a signed value as well, following the `mark` field.
 
 Note that pairs of `price` and `cost`, `mark` and `net_liq` are redundant. We

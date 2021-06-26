@@ -49,7 +49,7 @@ needed on its own.
   This is a multiplier for the quantity. For equities, this is 1. For equity
   options, it should be set to 100. For futures contracts, set to whatever the
   multiplier for the contract is. (These values are static and technically are
-  inferred automatically from the underlying and instrumen ttype.
+  inferred automatically from the underlying and instrument type.)
 
 The currency that the instrument is quoted in is not included; we assume the US
 dollar is the quoting currency so far.

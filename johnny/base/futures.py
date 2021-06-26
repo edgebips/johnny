@@ -47,6 +47,7 @@ MULTIPLIERS = {
     '/6A'     : 100_000,
     '/6C'     : 100_000,
     '/6B'     : 62_500,
+    '/SFX'    : 100,
 
     # Energy
     '/CL'     : 1000,
@@ -83,6 +84,11 @@ MULTIPLIERS = {
     # Livestock
     '/HE'     : 400,
     '/LE'     : 400,
+
+    # Small exchange unrelated
+    '/SM75'   : 100,
+    '/STIX'   : 100,
+    '/S420'   : 100
 }
 
 
