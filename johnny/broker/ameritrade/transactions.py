@@ -40,6 +40,7 @@ from dateutil import parser
 from johnny.base import futures
 from johnny.base import instrument
 from johnny.base import match
+from johnny.base import inventories
 from johnny.base import number
 from johnny.base import transactions as txnlib
 from johnny.base.etl import petl, Table, Record, WrapRecords
@@ -824,7 +825,7 @@ def _AddMissingExpirations(txns: Table) -> Table:
 
     # Match all the state from the transactions we have, utilizing as much as we
     # can of the opening and closing effect field.
-    inventory = collections.defaultdict(match.MinInventory)
+    inventory = collections.defaultdict(inventories.MinInventory)
     for txn in (txns
                 # Note: This covers index options as well. Also, futures options aren't
                 # covered because we don't have their precise expiration date (we use

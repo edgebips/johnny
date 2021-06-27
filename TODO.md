@@ -47,9 +47,55 @@
 - Factor out ZERO in petl
 
 
+# Simplify and make State-based Processing more Robust
+
+Reduce the following loops and dependencies on positions to a single loop at all:
+
+    /home/blais/p/johnny/johnny/base/match.py:114:    invs = collections.defaultdict(FifoInventory)
+
+      _CreateMatchMappings()
+
+    /home/blais/p/johnny/johnny/base/opening.py:40:    inventory = collections.defaultdict(Decimal)
+
+      Open()
+
+    /home/blais/p/johnny/johnny/base/chains.py:281:    inventory = collections.defaultdict(lambda: collections.defaultdict(Pos))
+
+      _LinkByOverlapping()
+
+    /home/blais/p/johnny/johnny/broker/ameritrade/transactions.py:827:    inventory = collections.defaultdict(match.MinInventory)
+
+      _AddMissingExpirations()
+
+    /home/blais/p/johnny/johnny/broker/tastyworks/transactions.py:202:    inventory = collections.defaultdict(Decimal)
+
+      GetExpirationSigns()
+
+We want to centralize the processing *after* the transactional log and relax the
+conditions on the production of a normalized log.
+
+Moreover, we want the positions file to be optional, and to only include
+positions that aren't seen at all in the log.
+
+  If you had a position before the beginning of the log, and the positions file
+  holds it, its opening has to be synthesized somehow.
+
+  Basically, if you have only a partial window of time of a transactions log, you have to be ready to reconcile
+
+  1. positions opened and closed within the window
+  2. positions opened BEFORE the window and closed within the window
+  3. positions opened within the window and never closed (or closed after the window, if the window isn't up to now)
+  4. positions opened before the window, and never closed during the window (or closed after the window)
+
+  (1) is never a problem.
+  (2) will require synthesizing a fake opening trade, and can be detected by their unmatched closing
+  (3) is going to result in residual positions leftover in the inventory accumulator after processing the log
+  (4) is basically undetectable, except if you have a positions file to reconcile against (you will find positions you didn't expect and for those you need to synthesize opens for those)
+
+
 # Personal
 
-- Complete categorizing all trades
+- Complete categorizing all my own trades
 
 
 # Bugs
@@ -61,8 +107,6 @@
 
 - Create account name mapping, the account numbers shouldn't appear in anywhere.
   Needs nicknames, which means, needs a configuration file.
-
-- Read and support proto config.
 
 - Support account name mapping, the account numbers shouldn't appear in
   anywhere. Needs nicknames, which means, needs a configuration file.
