@@ -1,5 +1,16 @@
 #!/usr/bin/env python3
-"""Get the list of transacttions for a TW account."""
+"""Get the list of transacttions for a TW account.
+
+Running this script with <filename> <username> <password> will incrementally
+update a local dbm mapping of unique transaction-id to JSON/dict data. You can
+access it with a shelve.
+
+* The script will automatically avoid fetching again old data.
+* It will start at the beginning of the account time creation.
+* You can just run this regularly to build a local database of all your
+  transactions log.
+
+"""
 
 from functools import partial
 from typing import Dict, List, Union
