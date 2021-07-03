@@ -10,13 +10,32 @@ access it with a shelve.
 * You can just run this regularly to build a local database of all your
   transactions log.
 
+NOTE: Your username and/or password is not stored anywhere. The session token,
+however, is cached and reused as much as possible; where needed, your username
+and password can be provided in one of three ways:
+
+- As command-line arguments (--username, --password). Note that this makes them
+  visible to procinfo for the root user while the script is running.
+
+- As environment variables (`TW_USER` / `TW_PASSWORD`). Note that this makes
+  them visible for the root while the program is running as it is possible
+  inspect the environment of any process.
+
+- If not provided, you will be queried on the command-line for their values,
+  only when needed. The password is hidden from the console. But you have to
+  type it in each time it is needed.
+
 """
 
 from functools import partial
-from typing import Dict, List, Union
+from typing import Dict, List, Optional, Union
 import datetime
+import getpass
 import logging
 import shelve
+import os
+from os import path
+
 
 import click
 import requests
@@ -37,25 +56,52 @@ class TastyApiError(Exception):
 
 
 class Session:
-    """A simple requests session wrapper."""
-
+    """A simple requests session wrapper.
+    This inserts the authentication token automatically.
+    """
     def __init__(self, session_token):
         self.headers = {'Authorization': session_token}
 
     def __getattr__(self, name):
+        """Delegate a call to requests, adding the auth token along the way."""
         func = getattr(requests, name)
         return partial(func, headers=self.headers)
 
 
-def GetSession(username: str, password: str) -> Session:
+def GetSession(username: Optional[str], password: Optional[str]) -> Session:
     """A simplistic one-off session getter with no storge nor refresh.
     (This will do for simple tasks.)"""
-    body = {'login': username,
-            'password': password}
-    resp = requests.post(f'{API_URL}/sessions', json=body)
-    if resp.status_code != 201:
-        raise TastyApiError(f'Could not log in', resp)
-    session_token = GetData(resp)['session-token']
+
+    cache_filename = path.expanduser('~/.tastyworks/Scripts/token_cache')
+    if path.exists(cache_filename):
+        with open(cache_filename) as token_file:
+            session_token = token_file.read().strip()
+        logging.info(f'Reusing cached token: {session_token}')
+    else:
+        logging.info('Invalid session cache; refreshing new token from credentials.')
+        num_retry = 3
+        for _ in range(num_retry):
+            if username is None:
+                username = os.getenv('TW_USER')
+                if not username:
+                    username = getpass.getpass('Username: ')
+            if password is None:
+                password = os.getenv('TW_PASSWORD')
+                if not password:
+                    password = getpass.getpass('Password: ')
+            resp = requests.post(f'{API_URL}/sessions', json={'login': username,
+                                                              'password': password})
+            if resp.status_code == 201:
+                break
+            logging.error(f'Failed to acquire token; try again?')
+        else:
+            raise TastyApiError(f'Could not log in after {num_retry} trials', resp)
+
+        session_token = GetData(resp)['session-token']
+        os.makedirs(path.dirname(cache_filename), exist_ok=True)
+        with open(cache_filename, 'w') as token_file:
+            token_file.write(session_token)
+
     session = Session(session_token)
 
     resp = session.post(f'{API_URL}/sessions/validate')
@@ -65,7 +111,7 @@ def GetSession(username: str, password: str) -> Session:
     return session
 
 
-def GetData(response) -> Json:
+def GetData(response: requests.Response) -> Json:
     """Get formatted response body with the right types."""
     return response.json(use_decimal=True)['data']
 
@@ -104,7 +150,8 @@ def PaginatedGet(session, url, *args, **kwargs) -> List[Json]:
     return all_items
 
 
-def GetAccounts(session: Session):
+def GetAccounts(session: Session) -> List[Json]:
+    """Return a list of active accounts."""
     resp = session.get(f'{API_URL}/customers/me/accounts')
     if resp.status_code != 200:
         raise TastyApiError('Could not get trading accounts info', resp)
@@ -114,9 +161,9 @@ def GetAccounts(session: Session):
 
 @click.command()
 @click.argument('database') # Path to database file.
-@click.argument('username') # Tastyworks username. THIS IS NOT STORED ANYWHERE.
-@click.argument('password') # Tastyworks password. THIS IS NOT STORED ANYWHERE.
-def main(database: str, username: str, password: str):
+@click.option('--username', '-u', help="Tastyworks username.")
+@click.option('--password') # Tastyworks password.
+def main(database: str, username: Optional[str], password: Optional[str]):
     logging.basicConfig(level=logging.INFO, format='%(levelname)-8s: %(message)s')
 
     # Open the database and get the latest transaction stored in it from a
