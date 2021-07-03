@@ -1,0 +1,149 @@
+#!/usr/bin/env python3
+"""Get the list of transacttions for a TW account."""
+
+from functools import partial
+from typing import Dict, List, Union
+import datetime
+import logging
+import shelve
+
+import click
+import requests
+from dateutil import parser
+
+
+Json = Union[Dict[str, 'Json'], List['Json'], str, int, float]
+
+
+API_URL = 'https://api.tastyworks.com'
+
+
+class TastyApiError(Exception):
+    """An error occurring due to authentications and/or token refresh."""
+    def __init__(self, description, response):
+        message = response.json()['error']['message']
+        super().__init__(f'{description}: {message}')
+
+
+class Session:
+    """A simple requests session wrapper."""
+
+    def __init__(self, session_token):
+        self.headers = {'Authorization': session_token}
+
+    def __getattr__(self, name):
+        func = getattr(requests, name)
+        return partial(func, headers=self.headers)
+
+
+def GetSession(username: str, password: str) -> Session:
+    """A simplistic one-off session getter with no storge nor refresh.
+    (This will do for simple tasks.)"""
+    body = {'login': username,
+            'password': password}
+    resp = requests.post(f'{API_URL}/sessions', json=body)
+    if resp.status_code != 201:
+        raise TastyApiError(f'Could not log in', resp)
+    session_token = GetData(resp)['session-token']
+    session = Session(session_token)
+
+    resp = session.post(f'{API_URL}/sessions/validate')
+    if resp.status_code != 201:
+        raise TastyApiError(f'Could not validate session', resp)
+
+    return session
+
+
+def GetData(response) -> Json:
+    """Get formatted response body with the right types."""
+    return response.json(use_decimal=True)['data']
+
+
+def PaginatedGet(session, url, *args, **kwargs) -> List[Json]:
+    """Do a paginated GET request and accumulate all 'items' field in a list."""
+    per_page = 1024
+
+    page_offset = 0
+    total_pages = None
+    total_items = 0
+    all_items = []
+    while total_pages is None or page_offset < total_pages:
+        logging.info(f"Getting page {page_offset} for {url}")
+        params = kwargs.pop('params', {})
+        params.update({'per-page': per_page,
+                       'page-offset': page_offset})
+        kwargs['params'] = params
+        resp = session.get(url, *args, **kwargs)
+        if resp.status_code != 200:
+            raise TastyApiError(f'Error in paginated requets at {url}', resp)
+
+        page_offset += 1
+        json = resp.json(use_decimal=True)
+        if total_pages is None:
+            pagination = json['pagination']
+            total_pages = pagination['total-pages']
+            total_items = pagination['total-items']
+
+        items = json['data']['items']
+        if items:
+            all_items.extend(items)
+
+    assert len(all_items) == total_items, (
+        "Could not fetch some items in paginated request.")
+    return all_items
+
+
+def GetAccounts(session: Session):
+    resp = session.get(f'{API_URL}/customers/me/accounts')
+    if resp.status_code != 200:
+        raise TastyApiError('Could not get trading accounts info', resp)
+    items = GetData(resp)['items']
+    return [item['account'] for item in items if item['authority-level'] == 'owner']
+
+
+@click.command()
+@click.argument('database') # Path to database file.
+@click.argument('username') # Tastyworks username. THIS IS NOT STORED ANYWHERE.
+@click.argument('password') # Tastyworks password. THIS IS NOT STORED ANYWHERE.
+def main(database: str, username: str, password: str):
+    logging.basicConfig(level=logging.INFO, format='%(levelname)-8s: %(message)s')
+
+    # Open the database and get the latest transaction stored in it from a
+    # special slot.
+    db = shelve.open(database)
+    latest = db.get('__latest__', {})
+
+    # Get the list of accounts.
+    session = GetSession(username, password)
+    accounts = GetAccounts(session)
+
+    # Process each of the accounts..
+    now = datetime.datetime.now().isoformat() + 'Z'
+    for account in accounts:
+        accid = account['account-number']
+        logging.info(f'Updating account {accid}')
+        latest_time = latest.get(accid, None) or parser.parse(account['opened-at'])
+        latest_timestr = latest_time.isoformat() + 'Z'
+
+        # Fetch the list of transactions since the latest one.
+        transactions = PaginatedGet(
+            session, f'{API_URL}/accounts/{accid}/transactions', params = {
+                'start-date': latest_timestr,
+                'end-date': now,
+            })
+        for txn in transactions:
+            key = str(txn['id'])
+            if key in db:
+                continue
+            logging.info(f'Storing transaction: id={key}')
+            db[key] = txn
+            latest_time = max(latest_time, parser.parse(txn['executed-at']))
+        latest[accid] = latest_time
+
+    # Update latest downloaded times.
+    db['__latest__'] = latest
+    db.close()
+
+
+if __name__ == '__main__':
+    main()
