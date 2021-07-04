@@ -16,6 +16,7 @@ petl.config.failonerror = True
 
 
 KNOWN = {
+    # From blais@
     ('Money Movement', 'Balance Adjustment', None),
     ('Money Movement', 'Credit Interest', None),
     ('Money Movement', 'Mark to Market', None),
@@ -30,6 +31,18 @@ KNOWN = {
     ('Trade', 'Sell', 'Sell'),
     ('Trade', 'Sell to Close', 'Sell to Close'),
     ('Trade', 'Sell to Open', 'Sell to Open'),
+
+    # From hg@
+    # ('Money Movement', 'Deposit', None),
+    # ('Money Movement', 'Dividend', None),
+    # ('Money Movement', 'Fee', None),
+    # ('Receive Deliver', 'ACAT', 'Buy to Open'),
+    # ('Receive Deliver', 'ACAT', 'Sell to Open'),
+    # ('Receive Deliver', 'Assignment', None),
+    # ('Receive Deliver', 'Cash Settled Assignment', None),
+    # ('Receive Deliver', 'Cash Settled Exercise', None),
+    # ('Receive Deliver', 'Exercise', None),
+    # ('Receive Deliver', 'Expiration', None),
 }
 
 @click.command()
@@ -52,9 +65,6 @@ def main(database: str):
              .convert('id', lambda _: '12345678')
              )
     print(table.lookallstr())
-
-
-
 
 
 if __name__ == '__main__':
