@@ -61,8 +61,19 @@ def main(database: str):
              #.complement(known)
 
              .select(Filter)
+
+             # Anonymize content.
              .convert('account-number', lambda _: '<HIDDEN>')
              .convert('id', lambda _: '12345678')
+
+             # Make all numbers opaque.
+             .convert('net-value', lambda _: '123.45')
+             .convert('value', lambda _: '123.45')
+             .convert('commission', lambda _: '123.45')
+             .convert('regulatory-fees', lambda _: '123.45')
+             .convert('clearing-fees', lambda _: '123.45')
+             .convert('proprietary-index-option-fees', lambda _: '123.45')
+             .convert('quantity', lambda _: '1.0')
              )
     print(table.lookallstr())
 
