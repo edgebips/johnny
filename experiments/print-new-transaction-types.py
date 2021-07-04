@@ -74,6 +74,10 @@ def main(database: str):
              .convert('clearing-fees', lambda _: '123.45')
              .convert('proprietary-index-option-fees', lambda _: '123.45')
              .convert('quantity', lambda _: '1.0')
+
+             # Reduce to the first row of each distinct type.
+             .rowreduce(key=('transaction-type', 'transaction-sub-type', 'action'),
+                        reducer=lambda _, g: next(iter(g)))
              )
     print(table.lookallstr())
 
