@@ -189,10 +189,32 @@ def chain(chain_id: str):
         chain_id=chain_id,
         comment=chain_obj.comment if chain_obj else '',
         chain=ToHtmlString(chain, 'chain_summary'),
+        chain_proto=flask.url_for('chain_proto', chain_id=chain_id),
         transactions=ToHtmlString(txns, 'chain_transactions'),
         history=history_html,
         graph=flask.url_for('chain_graph', chain_id=chain_id),
         **GetNavigation())
+
+
+@app.route('/chain_proto/<chain_id>')
+def chain_proto(chain_id: str):
+    # Get the chain object from the configuration.
+    chain_obj = STATE.chains_map.get(chain_id)
+    if chain_obj is None:
+        chain_obj = configlib.Chain()
+        chain_obj.chain_id = chain_id
+
+    # Update the order ids.
+    txns = (STATE.transactions
+            .selecteq('chain_id', chain_id))
+    chain_obj.ClearField('order_ids')
+    chain_obj.order_ids.extend(txns.values('order_id'))
+
+    config = configlib.Config()
+    config.chains.add().CopyFrom(chain_obj)
+    response = flask.make_response(configlib.ToText(config), 200)
+    response.mimetype = "text/plain"
+    return response
 
 
 def RenderHistoryText(txns: Table) -> str:
