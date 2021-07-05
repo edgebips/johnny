@@ -119,6 +119,7 @@ _TEMPORARY_MAPPING = {
     ('/SO', 'N'): ('/SI', 'N'),
     ('/OG', 'N'): ('/GC', 'Q'),
     ('/EUU', 'M'): ('/6E', 'M'),
+    ('/EUU', 'Q'): ('/6E', 'U'),
     ('/OZC', 'N'): ('/ZC', 'N'),
     ('/OZS', 'N'): ('/ZS', 'N'),
     ('/OZN', 'N'): ('/ZN', 'U'),
@@ -133,6 +134,8 @@ _TEMPORARY_MAPPING = {
     ('/R3E', 'N'): ('/RTY', 'U'),
     ('/RTM', 'N'): ('/RTY', 'U'),
     ('/QNE', 'N'): ('/NQ', 'U'),
+    ('/OZB', 'Q'): ('/ZB', 'U'),
+    ('/OZS', 'U'): ('/ZS', 'U'),
 }
 
 def GetUnderlyingMonth(optcontract: str, optmonth: str) -> Tuple[str, str]:
