@@ -714,10 +714,11 @@ def _ParseTradeDescription(description: str) -> Dict[str, Any]:
 
     # Custom options combos.
     # '2/2/1/1 ~IRON CONDOR RUT 100 16 APR 21 [AM] 2230/2250/2150/2055 CALL/PUT'
-    # '1/-1/1/-1 CUSTOM SPX 100 (Weeklys) 16 APR 21/16 APR 21 [AM]/19 MAR 21/19 MAR 21 3990/3980/4000/4010 CALL/CALL/CALL/CALL @-.80'
+    # '-1 1/2 BACKRATIO /ZSU21:XCBT 1/50 SEP 21 /OZSU21:XCBT 1230/1340 CALL'
+    # '1/-1/1/-1 CUSTOM SPX 100 (Weeklys) 16 APR 21/16 APR 21 [AM]/19 MAR 21/19 MAR 21 3990/3980/4000/4010 CALL/CALL/CALL/CALL'
     # '5/-4 CUSTOM SPX 100 16 APR 21 [AM]/16 APR 21 [AM] 3750/3695 PUT/PUT'
     match = re.match(
-        f"(?P<shape>-?\d+(?:/-?\d+)*) (?P<strategy>~IRON CONDOR|CUSTOM) "
+        f"(?P<shape>-?\d+(?:/-?\d+)*) (?P<strategy>~IRON CONDOR|CUSTOM|BACKRATIO) "
         f"{underlying} {details}", rest)
     if match:
         sub = match.groupdict()
