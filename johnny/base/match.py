@@ -54,9 +54,6 @@ def Match(transactions: Table, closing_time: Optional[datetime.datetime]=None) -
                   ('quantity', Decimal),
                   ('transaction_id', str))
 
-    # TODO(blais): Parse the instrument, add in the multiplier and expiration
-    # for necessary processing here.
-
     # Create a mapping of transaction ids to matches.
     invs, match_map, expire_map, effect_map = _CreateMatchMappings(transactions)
 

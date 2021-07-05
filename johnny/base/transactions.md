@@ -25,8 +25,8 @@ A normalized transactions table contains the following columns and data types.
 
 - `datetime: datetime.datetime`: A date/time converted to local time and naive
   (no timezone, not "timezone aware"). This is the date and time at which the
-  transaction occurred. This is distinct from the settlement date (which is not
-  provided by this data structure).
+  transaction occurred, in local time. This is distinct from the settlement date
+  (which is not provided by this data structure).
 
 - `rowtype: str`: An enum string for the row, whether this is a trade, an
     expiration, or a mark-to-market synthetic close (used to value currency
@@ -62,13 +62,17 @@ A normalized transactions table contains the following columns and data types.
 ### Information Affecting the Balance
 
 - `effect: str`: The effect on the position, either `OPENING` or `CLOSING`, or
-  `?`. For futures contracts, the value is not usually known, it will be
-  inferred later, from processing the entire file from the initial positions.
+  `?`. This is important to return for `Equity` and options positions, because
+  we use it to reconstruct the initial position of the account before the
+  transactions log window. Ideally include the state if you have it available.
+  If not, set the value to `?`.
 
-  If it is not known, state-based code providing and updating the state of
-  inventories is required to sort out whether this will cause an increase or
-  decrease of the position automatically. Ideally include the state if you have
-  it available. If not, set the value to `?`.
+  For futures contracts, the value is usually not known, and it will be inferred
+  automatically later, from processing the entire file from the initial
+  positions. (The Thinkorswim log provides a value, but when it crosses the null
+  position line it is incorrectly set to `TO_CLOSE`; Tastyworks does not provide
+  a value for effect.) Rows may be split if necessary (when crossing the null
+  position line), in order to provide accurate cost basis values.
 
 - `instruction: Optional[str]`: An enum, `BUY`, `SELL`. If this is an
   expiration, this can be left unset and inferred automatically by the matching

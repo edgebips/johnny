@@ -23,7 +23,10 @@ message Config {
   repeated Chain chains = 2;
 
   // Explicitly linked transactions or orders. These lists can be used to join
-  // together pairs that would otherwise be resolved to independent chains.
+  // together pairs that would otherwise be resolved to independent chains. Note
+  // that it is legitimate to link together orders from different accounts.
+  // Differences in trading time across platforms, e.g. on the EXT session,
+  // sometimes require us to cross-trade between accounts for hedging.
   repeated Link transaction_links = 3;
   repeated Link order_links = 4;
 

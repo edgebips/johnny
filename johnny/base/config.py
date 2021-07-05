@@ -14,6 +14,11 @@ from johnny.base.etl import petl, Table
 from google.protobuf import text_format
 
 
+def ToText(message) -> str:
+    """Convert a proto message to pretty-printed text."""
+    return text_format.MessageToString(message)
+
+
 def ParseFile(filename: str) -> config_pb2.Config:
     """Parse a text-formatted proto configuration file."""
     with open(filename) as infile:

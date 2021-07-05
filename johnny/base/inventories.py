@@ -235,7 +235,7 @@ class FifoInventory:
         return (matched, basis, match_id)
 
     def position(self) -> Tuple[Decimal, Decimal, Optional[str]]:
-        """Return the sum total quantity and cost basis."""
+        """Return the sum total (quantity, cost-basis, unique-match-id)."""
         if not self.lots:
             return ZERO, ZERO, None
         position = sum(lot.quantity for lot in self.lots)
