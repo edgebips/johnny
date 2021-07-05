@@ -43,6 +43,11 @@ KNOWN = {
     # ('Receive Deliver', 'Cash Settled Exercise', None),
     # ('Receive Deliver', 'Exercise', None),
     # ('Receive Deliver', 'Expiration', None),
+
+    # From Graeme22@
+    # ('Receive Deliver', 'Buy to Open', 'Buy to Open'),
+    # ('Receive Deliver', 'Sell to Close', 'Sell to Close'),
+    # ('Receive Deliver', 'Transfer', 'Buy to Open'),
 }
 
 @click.command()
@@ -79,7 +84,7 @@ def main(database: str):
              .rowreduce(key=('transaction-type', 'transaction-sub-type', 'action'),
                         reducer=lambda _, g: next(iter(g)))
              )
-    print(table.lookallstr())
+    print(petl.cut(table, 'transaction-type', 'transaction-sub-type', 'action').lookallstr())
 
 
 if __name__ == '__main__':
