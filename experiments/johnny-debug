@@ -30,12 +30,19 @@ from johnny.base import consolidate
 from johnny.base import instrument
 from johnny.base import opening
 from johnny.base import match
+from johnny.base import match2
 from johnny.base.etl import Table, WrapRecords
 
 
 @click.command()
 @click.argument('filesordirs', nargs=-1)
 def debug(filesordirs: str):
+    transactions, filenames = discovery.GetTransactions(filesordirs)
+    transactions = match2.Process(transactions)
+    print(transactions.lookallstr())
+
+
+def debug2(filesordirs: str):
     "Find, process and print transactions."
     transactions, filenames = discovery.GetTransactions(filesordirs)
     positions, filenames = discovery.GetPositions(filesordirs)

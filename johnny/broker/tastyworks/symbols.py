@@ -20,18 +20,20 @@ def ParseSymbol(symbol: str, instype: Optional[str]) -> instrument.Instrument:
 
     # Futures options always start with a period.
     inst = None
-    if instype == 'FutureOption' or instype is None and symbol.startswith("./"):
+    if (instype in {'FutureOption', 'Future Option'} or
+        instype is None and symbol.startswith("./")):
         inst = _ParseFuturesOptionSymbol(symbol)
     # Futures always start with a slash.
     elif instype == 'Future' or instype is None and symbol.startswith("/"):
         inst = _ParseFuturesSymbol(symbol)
     # Then we have options, with a space.
-    elif instype == 'EquityOption' or instype is None and ' ' in symbol:
+    elif (instype in {'EquityOption', 'Equity Option'} or
+          instype is None and ' ' in symbol):
         inst = _ParseEquityOptionSymbol(symbol)
     # And finally, just equities.
     elif instype == 'Equity':
         inst = _ParseEquitySymbol(symbol)
-    elif instype == 'Crypto':
+    elif instype in {'Crypto', 'Cryptocurrency'}:
         inst = _ParseCrypto(symbol)
     else:
         raise ValueError(f"Unknown instrument type: {instype}")
