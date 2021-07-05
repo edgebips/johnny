@@ -1,5 +1,7 @@
 # General
 
+- URGENT BUG: x9627.210209_150023.SPX.Collar - what are GS and /NG doing in there?
+
 - 'maxdate' on an Active position should be set to today. Somehow it isn't.
   Urgent.
 
@@ -59,10 +61,6 @@ Reduce the following loops and dependencies on positions to a single loop at all
 
       Open()
 
-    /home/blais/p/johnny/johnny/base/chains.py:281:    inventory = collections.defaultdict(lambda: collections.defaultdict(Pos))
-
-      _LinkByOverlapping()
-
     /home/blais/p/johnny/johnny/broker/ameritrade/transactions.py:827:    inventory = collections.defaultdict(match.MinInventory)
 
       _AddMissingExpirations()
@@ -70,6 +68,14 @@ Reduce the following loops and dependencies on positions to a single loop at all
     /home/blais/p/johnny/johnny/broker/tastyworks/transactions.py:202:    inventory = collections.defaultdict(Decimal)
 
       GetExpirationSigns()
+
+    /home/blais/p/johnny/johnny/base/chains.py:281:    inventory = collections.defaultdict(lambda: collections.defaultdict(Pos))
+
+      _LinkByOverlapping()
+
+
+
+
 
 We want to centralize the processing *after* the transactional log and relax the
 conditions on the production of a normalized log.

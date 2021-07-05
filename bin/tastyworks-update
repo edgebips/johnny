@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
 """Get the list of transacttions for a TW account.
 
-Running this script with <filename> <username> <password> will incrementally
-update a local dbm mapping of unique transaction-id to JSON/dict data. You can
-access it with a shelve.
+Running this script with `database-filename` will incrementally update a local
+dbm/Python shelve mapping of unique transaction-id to JSON/dict data. You can
+access it with a shelve. Example:
+
+    tastyworks-update transactions.db
+
+Notes:
 
 * The script will automatically avoid fetching again old data.
 * It will start at the beginning of the account time creation.
@@ -179,9 +183,12 @@ def main(database: str, username: Optional[str], password: Optional[str]):
     now = datetime.datetime.now().isoformat() + 'Z'
     for account in accounts:
         accid = account['account-number']
-        logging.info(f'Updating account {accid}')
-        latest_time = latest.get(accid, None) or parser.parse(account['opened-at'])
+        try:
+            latest_time = latest[accid]
+        except KeyError:
+            latest_time = parser.parse(account['opened-at'])
         latest_timestr = latest_time.isoformat() + 'Z'
+        logging.info(f'Updating account {accid} from {latest_timestr} to {now}')
 
         # Fetch the list of transactions since the latest one.
         transactions = PaginatedGet(
@@ -192,8 +199,9 @@ def main(database: str, username: Optional[str], password: Optional[str]):
         for txn in transactions:
             key = str(txn['id'])
             if key in db:
+                logging.info(f'> Skipping transaction {key} (at {txn["executed-at"]})')
                 continue
-            logging.info(f'Storing transaction: id={key}')
+            logging.info(f'> Storing transaction {key} (at {txn["executed-at"]})')
             db[key] = txn
             latest_time = max(latest_time, parser.parse(txn['executed-at']))
         latest[accid] = latest_time
