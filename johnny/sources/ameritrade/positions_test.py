@@ -3,7 +3,7 @@ __license__ = "GNU GPLv2"
 
 import unittest
 
-from johnny.broker.ameritrade import positions
+from johnny.sources.ameritrade import positions
 
 
 _EXAMPLE_INSTRUMENTS = [

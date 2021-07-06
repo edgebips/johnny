@@ -30,7 +30,7 @@ from johnny.base import match
 from johnny.base import transactions as txnlib
 from johnny.base.etl import petl, Table, Record, WrapRecords
 from johnny.base.number import ToDecimal
-from johnny.broker.tastyworks import symbols
+from johnny.sources.tastyworks import symbols
 
 
 ZERO = Decimal(0)
