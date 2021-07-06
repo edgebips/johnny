@@ -23,7 +23,7 @@ from johnny.base import match
 from johnny.base import positions as poslib
 from johnny.base.etl import petl, Table, Record, WrapRecords
 from johnny.base.number import ToDecimal
-from johnny.sources.tastyworks import symbols
+from johnny.sources.tastyworks_csv import symbols
 
 
 _INSTYPES = {
