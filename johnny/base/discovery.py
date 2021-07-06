@@ -16,10 +16,10 @@ from johnny.base.etl import petl, Table
 
 from johnny.base import chains
 from johnny.base import match
-from johnny.sources.ameritrade import positions as positions_tos
-from johnny.sources.ameritrade import transactions as transactions_tos
-from johnny.sources.tastyworks import positions as positions_tw
-from johnny.sources.tastyworks import transactions as transactions_tw
+from johnny.sources.thinkorswim_csv import positions as positions_tos
+from johnny.sources.thinkorswim_csv import transactions as transactions_tos
+from johnny.sources.tastyworks_csv import positions as positions_tw
+from johnny.sources.tastyworks_csv import transactions as transactions_tw
 
 
 # Args:

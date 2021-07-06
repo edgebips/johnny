@@ -42,7 +42,7 @@ from typing import List, Tuple, Optional, NamedTuple
 from dateutil.parser import parse
 import click
 
-from johnny.sources.ameritrade import utils
+from johnny.sources.thinkorswim_csv import utils
 from johnny.base import positions as poslib
 from johnny.base import futures
 from johnny.base import instrument

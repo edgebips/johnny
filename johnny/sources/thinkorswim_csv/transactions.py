@@ -44,7 +44,7 @@ from johnny.base import inventories
 from johnny.base import number
 from johnny.base import transactions as txnlib
 from johnny.base.etl import petl, Table, Record, WrapRecords
-from johnny.sources.ameritrade import utils
+from johnny.sources.thinkorswim_csv import utils
 from johnny.utils import csv_utils
 
 
