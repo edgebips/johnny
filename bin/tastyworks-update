@@ -81,33 +81,51 @@ def GetSession(username: Optional[str], password: Optional[str]) -> Session:
         with open(cache_filename) as token_file:
             session_token = token_file.read().strip()
         logging.info(f'Reusing cached token: {session_token}')
-    else:
-        logging.info('Invalid session cache; refreshing new token from credentials.')
-        num_retry = 3
-        for _ in range(num_retry):
-            if username is None:
-                username = os.getenv('TW_USER')
-                if not username:
-                    username = getpass.getpass('Username: ')
-            if password is None:
-                password = os.getenv('TW_PASSWORD')
-                if not password:
-                    password = getpass.getpass('Password: ')
-            resp = requests.post(f'{API_URL}/sessions', json={'login': username,
-                                                              'password': password})
-            if resp.status_code == 201:
-                break
-            logging.error(f'Failed to acquire token; try again?')
+
+        # Attempt to validate the token.
+        session = Session(session_token)
+        resp = session.post(f'{API_URL}/sessions/validate')
+        if resp.status_code == 201:
+            return session
         else:
-            raise TastyApiError(f'Could not log in after {num_retry} trials', resp)
+            logging.info('Expired session token; refreshing new token from credentials')
+    else:
+        logging.info('Invalid session cache; refreshing new token from credentials')
 
-        session_token = GetData(resp)['session-token']
-        os.makedirs(path.dirname(cache_filename), exist_ok=True)
-        with open(cache_filename, 'w') as token_file:
-            token_file.write(session_token)
+    # Get a new token from credentials.
+    num_retry = 3
+    for _ in range(num_retry):
+        if username is None:
+            username = os.getenv('TW_USER')
+            if not username:
+                username = getpass.getpass('Username: ')
+        if password is None:
+            password = os.getenv('TW_PASSWORD')
+            if not password:
+                password = getpass.getpass('Password: ')
 
+        if not username.strip():
+            raise TastyApiError(f'No username to acquire token')
+        if not password.strip():
+            raise TastyApiError(f'No password to acquire token for user {username}')
+
+        resp = requests.post(f'{API_URL}/sessions', json={'login': username,
+                                                          'password': password})
+        if resp.status_code == 201:
+            break
+        logging.error(f'Failed to acquire token; try again?')
+    else:
+        raise TastyApiError(f'Could not log in after {num_retry} trials', resp)
+
+    # Write out the new toklen
+    session_token = GetData(resp)['session-token']
+    os.makedirs(path.dirname(cache_filename), exist_ok=True)
+    with open(cache_filename, 'w') as token_file:
+        token_file.write(session_token)
+
+
+    # Make sure it's valid.
     session = Session(session_token)
-
     resp = session.post(f'{API_URL}/sessions/validate')
     if resp.status_code != 201:
         raise TastyApiError(f'Could not validate session', resp)
