@@ -109,7 +109,8 @@ def GetRowType(rec: Record) -> bool:
 
 def MapAccountNumber(number: str) -> str:
     """Map the account number to the configured value."""
-    return f'x{number[-4:]}' # TODO(blais): Implement this translation from the configuration.
+    return f'x{number[-4:]}' # TODO(blais): Implement the translation to
+                             # nickname from the configuration.
 
 
 LOCAL_ZONE = tzlocal.get_localzone()
@@ -179,9 +180,8 @@ def CalculateCost(rec: Record) -> Decimal:
 def GetTransactions(filename: str) -> Tuple[Table, Table]:
     """Open a local database of Tastyworks API transactions and normalize it."""
 
-    db = shelve.open(filename, 'r')
-
     # Convert numerical fields to decimals.
+    db = shelve.open(filename, 'r')
     items = PreprocessTransactions(db.items())
 
     table = (petl.fromdicts(items)
@@ -230,7 +230,7 @@ def GetTransactions(filename: str) -> Tuple[Table, Table]:
              # Compute cost and verify the totals.
              .addfield('cost', CalculateCost)
 
-             #.cut(txnlib.FIELDS)
+             #.cut(txnlib.FIELDS) TODO(blais): Restore this.
              .cut('account',
                   'transaction_id',
                   'datetime',
@@ -247,10 +247,14 @@ def GetTransactions(filename: str) -> Tuple[Table, Table]:
                   'description')
 
              .cutout('transaction_id')
-             .selecteq('account', 'x2003')
              .sort(('account', 'datetime', 'description', 'quantity'))
              )
     return table
+
+
+def Import(source: str) -> Table:
+    """Process the filename, normalize, and output as a table."""
+    return GetTransactions(source)
 
 
 @click.command()

@@ -44,6 +44,7 @@ import click
 
 from johnny.sources.thinkorswim_csv import utils
 from johnny.base import positions as poslib
+from johnny.base import discovery
 from johnny.base import futures
 from johnny.base import instrument
 from johnny.base.number import ToDecimal
@@ -326,6 +327,12 @@ def MatchFile(filename: str) -> Optional[Tuple[str, str, callable]]:
         return None
     date = match.group(1)
     return 'thinkorswim', date, poslib.MakeParser(GetPositions)
+
+
+def Import(source: str) -> Table:
+    """Process the filename, normalize, and output as a table."""
+    filename = discovery.GetLatestFile(source)
+    return GetPositions(filename)
 
 
 @click.command()

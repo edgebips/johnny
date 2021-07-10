@@ -19,6 +19,7 @@ import decimal
 import click
 from dateutil import parser
 
+from johnny.base import discovery
 from johnny.base import match
 from johnny.base import positions as poslib
 from johnny.base.etl import petl, Table, Record, WrapRecords
@@ -125,6 +126,12 @@ def MatchFile(filename: str) -> Optional[Tuple[str, str, callable]]:
         return None
     account, date = match.groups()
     return account, date, poslib.MakeParser(GetPositions)
+
+
+def Import(source: str) -> Table:
+    """Process the filename, normalize, and output as a table."""
+    filename = discovery.GetLatestFile(source)
+    return GetPositions(filename)
 
 
 @click.command()
