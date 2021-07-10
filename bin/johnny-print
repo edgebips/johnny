@@ -15,7 +15,12 @@ The purpose of this tool is to
 - Make it straightforward to debug input file parsing and conversion,
 - Work from the command-line.
 
+NOTE: This script will be replaced to print from the local database eventually.
+We will have an import stage that does all the processing at once, and this will
+be used to extract a portion of that local processed file, or we will remove
+this.
 """
+
 __copyright__ = "Copyright (C) 2021  Martin Blais"
 __license__ = "GNU GPLv2"
 
@@ -25,6 +30,7 @@ from typing import List, Optional
 import click
 
 from johnny.base import discovery
+from johnny.base import config as configlib
 from johnny.base import consolidate
 from johnny.base import instrument
 from johnny.base.etl import Table
@@ -40,28 +46,33 @@ def cli(ctx: click.Context, expand: bool):
     ctx.obj['expand'] = expand
 
 
+def GetLogTables(config_filename: str, logtype: int) -> Table:
+    """Process the log tables."""
+    config = configlib.ParseFile(config_filename)
+    logtables = discovery.ReadConfiguredInputs(config)
+    return logtables[logtype]
+
+
 @cli.command()
-@click.argument('filesordirs', nargs=-1)
+@click.argument('config_filename')
 @click.pass_context
-def transactions(ctx: click.Context, filesordirs: str):
+def transactions(ctx: click.Context, config_filename: str):
     "Find, process and print transactions."
-    transactions_, filenames = discovery.GetTransactions(filesordirs)
-    print_table(transactions_, filenames, ctx.obj['expand'])
+    table = GetLogTables(config_filename, configlib.Account.LogType.TRANSACTIONS)
+    print_table(table, ctx.obj['expand'])
 
 
 @cli.command()
-@click.argument('filesordirs', nargs=-1)
+@click.argument('config_filename')
 @click.pass_context
-def positions(ctx: click.Context, filesordirs: str):
+def positions(ctx: click.Context, config_filename: str):
     "Find, process and print positions."
-    positions_, filenames = discovery.GetPositions(filesordirs)
-    print_table(positions_, filenames, ctx.obj['expand'])
+    table = GetLogTables(config_filename, configlib.Account.LogType.POSITIONS)
+    print_table(table, ctx.obj['expand'])
 
 
-def print_table(table: Table, filenames: List[str], expand: bool):
+def print_table(table: Table, expand: bool):
     """Print the table, given the options."""
-    for filename in filenames:
-        logging.info("Processing file '%s'", filename)
     if expand:
         table = instrument.Expand(table, 'symbol')
     print(table.lookallstr())
