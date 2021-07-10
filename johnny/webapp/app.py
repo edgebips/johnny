@@ -57,19 +57,21 @@ class State(NamedTuple):
 
 
 def Initialize():
-    directory = os.getenv("JOHNNY_ROOT")
-    if not directory:
-        directory = os.getcwd()
-        logging.warning("Error: No root directory set; using '%s'", directory)
+    # Make sure we have a configuration to work from.
+    config_filename = os.getenv("JOHNNY_CONFIG")
+    if not config_filename:
+        logging.error("Error: No configuration file set set. Please set JOHNNY_CONFIG to "
+                      "your .pbtxt file with a text-formatted config.proto.")
+        raise SystemExit
 
     ledger: str = os.getenv("JOHNNY_LEDGER")
 
     global STATE
     with _STATE_LOCK:
         if STATE is None:
-            app.logger.info("Initializing application state from '%s'...", directory)
+            app.logger.info(f"Initializing application state from '{config_filename}'...")
             transactions, positions, chains, config = consolidate.ConsolidateChains(
-                directory, ledger)
+                config_filename, ledger)
             chains_map = {c.chain_id: c for c in config.chains}
             STATE = State(transactions, positions, chains, chains_map)
             app.logger.info("Done.")

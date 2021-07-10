@@ -68,14 +68,14 @@ def print_table(table: Table, filenames: List[str], expand: bool):
 
 
 @cli.command()
-@click.argument('filesordirs', nargs=-1, type=click.Path(exists=True))
+@click.argument('config_filename', type=click.Path(exists=True))
 @click.option('--ledger', '-l', type=click.Path(exists=False),
               help="Remove transactions from Ledger. Requires order ids.")
-def chains(filesordirs: str, ledger: Optional[str]):
+def chains(config_filename: str, ledger: Optional[str]):
     "Find, process and print positions."
 
     # Read in and consolidate all the data.
-    _, __, chains, config = consolidate.ConsolidateChains(filesordirs, ledger)
+    _, __, chains, config = consolidate.ConsolidateChains(config_filename, ledger)
     print(chains.lookallstr())
 
 
