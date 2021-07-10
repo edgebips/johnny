@@ -379,17 +379,6 @@ def GetTransactions(filename: str) -> Tuple[Table, Table]:
     return norm_trades_table, other_table
 
 
-def MatchFile(filename: str) -> Optional[Tuple[str, str, callable]]:
-    """Return true if this file is a matching transactions file."""
-    _FILENAME_RE = (r"tastyworks_transactions_(.*)_"
-                    r"(\d{4}-\d{2}-\d{2})_(\d{4}-\d{2}-\d{2}).csv")
-    match = re.match(_FILENAME_RE, path.basename(filename))
-    if not match:
-        return None
-    account, date1, date2 = match.groups()
-    return account, date2, txnlib.MakeParser(GetTransactions)
-
-
 def Import(source: str) -> Table:
     """Process the filename, normalize, and output as a table."""
     filename = discovery.GetLatestFile(source)

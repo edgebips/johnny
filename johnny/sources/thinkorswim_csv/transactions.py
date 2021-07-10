@@ -1004,16 +1004,6 @@ def PrepareTables(filename: str) -> Dict[str, Table]:
     return prepared_tables
 
 
-def MatchFile(filename: str) -> Optional[Tuple[str, str, callable]]:
-    """Return true if this file is a matching transactions file."""
-    _FILENAME_RE = r"(\d{4}-\d{2}-\d{2})-AccountStatement.csv"
-    match = re.match(_FILENAME_RE, path.basename(filename))
-    if not match:
-        return None
-    date = match.group(1)
-    return 'thinkorswim', date, txnlib.MakeParser(GetTransactions)
-
-
 def Import(source: str) -> Table:
     """Process the filename, normalize, and output as a table."""
     filename = discovery.GetLatestFile(source)
