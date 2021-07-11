@@ -208,8 +208,8 @@ def GetTransactions(filename: str) -> Tuple[Table, Table]:
 
              # Parse the symbol.
              .rename('symbol', 'symbol-orig')
-             .addfield('symbol', lambda r: symbols.ParseSymbol(r['symbol-orig'],
-                                                               r['instrument-type']))
+             .addfield('symbol', lambda r: str(symbols.ParseSymbol(r['symbol-orig'],
+                                                                   r['instrument-type'])))
 
              # Split 'action' field.
              .addfield('effect', GetPosEffect)
@@ -246,7 +246,6 @@ def GetTransactions(filename: str) -> Tuple[Table, Table]:
                   'fees',
                   'description')
 
-             .cutout('transaction_id')
              .sort(('account', 'datetime', 'description', 'quantity'))
              )
     return table

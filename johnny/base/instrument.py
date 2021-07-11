@@ -121,7 +121,6 @@ def ParseProduct(underlying: str) -> str:
     return match.group(1) if match else underlying
 
 
-
 def FromString(symbol: str) -> Instrument:
     """Build an instrument object from the symbol string."""
 
