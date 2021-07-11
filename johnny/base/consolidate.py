@@ -364,16 +364,13 @@ def CheckMultipleProductsInChain(transactions: Table):
 
 
 def ConsolidateChains(
-        fileordirs: str,
+        config_filename: str,
         ledger: Optional[str]
 ) -> Tuple[Table, Table, Table, configlib.Config]:
     """Read all the data and join it and consolidate it."""
 
     # Read the configuration file and prepare some data structures from it.
-    config_filename = FindNamedFile(fileordirs, CONFIG_FILENAME)
-    config = (configlib.ParseFile(config_filename)
-              if config_filename
-              else configlib.Config())
+    config = configlib.ParseFile(config_filename)
     transactions_chain_map, orders_chain_map = configlib.GetExplicitChains(config)
     transaction_links = [list(links.ids) for links in config.transaction_links]
     order_links = [list(links.ids) for links in config.order_links]
@@ -382,17 +379,10 @@ def ConsolidateChains(
                                              price.date.day)): Decimal(price.price)
                 for price in config.prices}
 
-    # Read the transactions files.
-    transactions, filenames = discovery.GetTransactions(fileordirs)
-    for fn in filenames:
-        logging.info("Read file '%s'", fn)
-    if not transactions:
-        logging.fatal("No input files to read from the arguments.")
-
-    # Read the positions files.
-    positions, filenames = discovery.GetPositions(fileordirs)
-    for fn in filenames:
-        logging.info("Read file '%s'", fn)
+    # Read all the sources.
+    source_tables = discovery.ReadConfiguredInputs(config)
+    transactions = source_tables[configlib.Account.LogType.TRANSACTIONS]
+    positions = source_tables[configlib.Account.LogType.POSITIONS]
 
     # Synthesize opening balances. We need to temporarily expand the instrument
     # fields, as they are needed by the match and chains modules.

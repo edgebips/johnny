@@ -19,11 +19,12 @@ import decimal
 import click
 from dateutil import parser
 
+from johnny.base import discovery
 from johnny.base import match
 from johnny.base import positions as poslib
 from johnny.base.etl import petl, Table, Record, WrapRecords
 from johnny.base.number import ToDecimal
-from johnny.broker.tastyworks import symbols
+from johnny.sources.tastyworks_csv import symbols
 
 
 _INSTYPES = {
@@ -117,14 +118,10 @@ def GetPositions(filename: str) -> Table:
     return table
 
 
-def MatchFile(filename: str) -> Optional[Tuple[str, str, callable]]:
-    """Return true if this file is a matching positions file."""
-    _FILENAME_RE = r"tastyworks_positions_(.*)_(\d{4}-\d{2}-\d{2}).csv"
-    match = re.match(_FILENAME_RE, path.basename(filename))
-    if not match:
-        return None
-    account, date = match.groups()
-    return account, date, poslib.MakeParser(GetPositions)
+def Import(source: str) -> Table:
+    """Process the filename, normalize, and output as a table."""
+    filename = discovery.GetLatestFile(source)
+    return GetPositions(filename)
 
 
 @click.command()

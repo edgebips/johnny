@@ -15,9 +15,8 @@ package johnny;
 
 // Configuration for returns script.
 message Config {
-  // The list of accounts and their nicknames. Only the nicknames are used in
-  // the outputs, for privacy, in case you're sharing with others.
-  repeated Account accounts = 1;
+  // Input configuration.
+  optional Inputs input = 1;
 
   // A list of manually disambiguated trades and their annotations.
   repeated Chain chains = 2;
@@ -39,21 +38,54 @@ message Config {
   repeated Price prices = 5;
 }
 
+// Configuration for inputs to be imported.
+message Inputs {
+  // A list of account sources to pull data from.
+  repeated Account accounts = 1;
+}
+
+// The declaration of an account source. Only declared accounts are ingested.
+// A declaration might look like this:
+//   accounts {
+//     nickname: "tasty"
+//     logtype: TRANSACTIONS
+//     module: "johnny.sources.tastyworks_csv.transactions"
+//     source: "/home/joesmith/Downloads/*-AccountStatement.csv"
+//   }
+//
+message Account {
+  // A short and unique nickname or alias for the account. This should be
+  // something you don't mind sharing publicly. The account name will me
+  // replaced by this nickname for privacy reasons. If this isn't set, the
+  // account number will be kept as is.
+  optional string nickname = 1;
+
+  // Importer type: transactions or positions.
+  enum LogType {
+    TRANSACTIONS = 1;
+    POSITIONS = 2;
+  }
+  optional LogType logtype = 2;
+
+  // Source module to use. This is a Python module-level path. This can be of
+  // the form 'johnny.source.tastyworks_csv.transactions' for example.
+  optional string module = 3;
+
+  // A globbing pattern, URL, or other data telling the importer where to find
+  // the files to import. If more than a single file matches, only the latest
+  // file (by timestamp) will be imported. This is in essence, the configuration
+  // across all possible sources, which are expected to be local files. In order
+  // to contain dependencies, updating these local caches of remote transactions
+  // logs should be done in separate programs using whichever APIs are
+  // necessary; this library merely imports them into a single normalized
+  // database.
+  optional string source = 4;
+}
+
 // An explicit linkage between multiple transactions.
 message Link {
   optional string comment = 1;
   repeated string ids = 2;
-}
-
-// The declaration of an account.
-// Only declared accounts are ingested.
-message Account {
-  // Account number.
-  optional string number = 1;
-
-  // A short and unique nickname or alias for the account. This should be
-  // something you don't mind sharing publicly.
-  optional string nickname = 2;
 }
 
 // A trade chain.

@@ -42,9 +42,10 @@ from johnny.base import instrument
 from johnny.base import match
 from johnny.base import inventories
 from johnny.base import number
+from johnny.base import discovery
 from johnny.base import transactions as txnlib
 from johnny.base.etl import petl, Table, Record, WrapRecords
-from johnny.broker.ameritrade import utils
+from johnny.sources.thinkorswim_csv import utils
 from johnny.utils import csv_utils
 
 
@@ -437,7 +438,7 @@ def CashBalance_Prepare(table: Table) -> Table:
         .cutout('date', 'time')
 
         # Convert numbers to Decimal instances.
-        .convert(('commissions_fees', 'amount', 'balance'), number.ToDecimal)
+        .convert(('misc_fees', 'commissions_fees', 'amount', 'balance'), number.ToDecimal)
 
         # Back out the "Misc Fees" field that is missing using consecutive
         # balances.
@@ -1003,14 +1004,11 @@ def PrepareTables(filename: str) -> Dict[str, Table]:
     return prepared_tables
 
 
-def MatchFile(filename: str) -> Optional[Tuple[str, str, callable]]:
-    """Return true if this file is a matching transactions file."""
-    _FILENAME_RE = r"(\d{4}-\d{2}-\d{2})-AccountStatement.csv"
-    match = re.match(_FILENAME_RE, path.basename(filename))
-    if not match:
-        return None
-    date = match.group(1)
-    return 'thinkorswim', date, txnlib.MakeParser(GetTransactions)
+def Import(source: str) -> Table:
+    """Process the filename, normalize, and output as a table."""
+    filename = discovery.GetLatestFile(source)
+    table, _ = GetTransactions(filename)
+    return table
 
 
 @click.command()

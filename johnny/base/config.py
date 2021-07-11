@@ -5,9 +5,7 @@ __license__ = "GNU GPLv2"
 
 from typing import Mapping, Tuple
 
-from johnny.base.config_pb2 import Config
-from johnny.base.config_pb2 import Chain
-from johnny.base.config_pb2 import Price
+from johnny.base.config_pb2 import Config, Chain, Price, Account
 from johnny.base import config_pb2
 from johnny.base.etl import petl, Table
 
@@ -22,7 +20,27 @@ def ToText(message) -> str:
 def ParseFile(filename: str) -> config_pb2.Config:
     """Parse a text-formatted proto configuration file."""
     with open(filename) as infile:
-        return text_format.Parse(infile.read(), config_pb2.Config())
+        config = text_format.Parse(infile.read(), config_pb2.Config())
+    Validate(config)
+    return config
+
+
+class ConfigError(ValueError):
+    """Error raised for invalid configurations."""
+
+
+def Validate(config: config_pb2.Config):
+    """Validate the configuration."""
+
+    # Check the account nicknames are unique.
+    nicknames = [a.nickname for a in config.input.accounts]
+    if len(nicknames) != len(set(nicknames)):
+        raise ConfigError("Nicknames are not unique")
+
+    # Ensure required fields are set.
+    for a in config.input.accounts:
+        if not a.HasField('logtype'):
+            raise ConfigError("Log type is not set")
 
 
 def MapAccount(config: config_pb2.Config, table: Table, field: str) -> Table:

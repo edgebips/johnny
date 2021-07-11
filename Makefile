@@ -1,7 +1,8 @@
 #!/bin/bash
 
 DOWNLOADS=$(HOME)/trading/downloads
-TASTYWORKS_DB=$(HOME)/tastyworks.db
+#CONFIG=$(JOHNNY_CONFIG)
+CONFIG=$(HOME)/r/q/office/accounting/trading/johnny.pbtxt
 
 move-files:
 	-mv -f $(HOME)/tasty* $(HOME)/*Statement.csv $(DOWNLOADS)
@@ -28,4 +29,8 @@ config-clobber:
 	mv $(DOWNLOADS)/johnny_clean.pbtxt $(shell readlink $(DOWNLOADS)/johnny.pbtxt)
 
 update:
-	tastyworks-update $(TASTYWORKS_DB)
+	tastyworks-update $(DOWNLOADS)/tastyworks-individual.db -a Individual
+	tastyworks-update $(DOWNLOADS)/tastyworks-roth.db -a Roth
+
+import:
+	johnny-import $(CONFIG)

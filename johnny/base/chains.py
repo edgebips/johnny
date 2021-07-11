@@ -316,7 +316,8 @@ def _LinkByOverlapping(transactions: Table) -> List[Tuple[str, str]]:
     inventory = {key: undermap
                  for key, undermap in undermap.items()
                  if undermap}
-    assert not inventory, "Inventory not empty: {}".format(inventory)
+    if inventory:
+        logging.error("Inventory not empty: {}".format(inventory))
 
     return links, transaction_links
 

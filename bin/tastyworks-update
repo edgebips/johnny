@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Get the list of transacttions for a TW account.
+"""Get the list of transacttions for a single TW account.
 
-Running this script with `database-filename` will incrementally update a local
-dbm/Python shelve mapping of unique transaction-id to JSON/dict data. You can
-access it with a shelve. Example:
+Running this script with `database-filename` and `account-pattern` will
+incrementally update a local dbm/Python shelve mapping of unique transaction-id
+to JSON/dict data for that account. You can access it with a shelve. Example:
 
-    tastyworks-update transactions.db
+    tastyworks-update transactions.db Margin
 
 Notes:
 
@@ -38,6 +38,8 @@ import getpass
 import logging
 import shelve
 import os
+import re
+import pprint
 from os import path
 
 
@@ -50,6 +52,7 @@ Json = Union[Dict[str, 'Json'], List['Json'], str, int, float]
 
 
 API_URL = 'https://api.tastyworks.com'
+SESSION_TOKEN_CACHE_FILENAME = '~/.tastyworks/scripts/token_cache'
 
 
 class TastyApiError(Exception):
@@ -76,38 +79,55 @@ def GetSession(username: Optional[str], password: Optional[str]) -> Session:
     """A simplistic one-off session getter with no storge nor refresh.
     (This will do for simple tasks.)"""
 
-    cache_filename = path.expanduser('~/.tastyworks/Scripts/token_cache')
+    cache_filename = path.expanduser(SESSION_TOKEN_CACHE_FILENAME)
     if path.exists(cache_filename):
         with open(cache_filename) as token_file:
             session_token = token_file.read().strip()
-        logging.info(f'Reusing cached token: {session_token}')
-    else:
-        logging.info('Invalid session cache; refreshing new token from credentials.')
-        num_retry = 3
-        for _ in range(num_retry):
-            if username is None:
-                username = os.getenv('TW_USER')
-                if not username:
-                    username = getpass.getpass('Username: ')
-            if password is None:
-                password = os.getenv('TW_PASSWORD')
-                if not password:
-                    password = getpass.getpass('Password: ')
-            resp = requests.post(f'{API_URL}/sessions', json={'login': username,
-                                                              'password': password})
-            if resp.status_code == 201:
-                break
-            logging.error(f'Failed to acquire token; try again?')
+        logging.info(f'Reusing cached token "{session_token}" from "{cache_filename}"')
+
+        # Attempt to validate the token.
+        session = Session(session_token)
+        resp = session.post(f'{API_URL}/sessions/validate')
+        if resp.status_code == 201:
+            return session
         else:
-            raise TastyApiError(f'Could not log in after {num_retry} trials', resp)
+            logging.info('Expired session token; refreshing new token from credentials')
+    else:
+        logging.info('Invalid session cache; refreshing new token from credentials')
 
-        session_token = GetData(resp)['session-token']
-        os.makedirs(path.dirname(cache_filename), exist_ok=True)
-        with open(cache_filename, 'w') as token_file:
-            token_file.write(session_token)
+    # Get a new token from credentials.
+    num_retry = 3
+    for _ in range(num_retry):
+        if username is None:
+            username = os.getenv('TW_USER')
+            if not username:
+                username = getpass.getpass('Username: ')
+        if password is None:
+            password = os.getenv('TW_PASSWORD')
+            if not password:
+                password = getpass.getpass('Password: ')
 
+        if not username.strip():
+            raise TastyApiError(f'No username to acquire token')
+        if not password.strip():
+            raise TastyApiError(f'No password to acquire token for user {username}')
+
+        resp = requests.post(f'{API_URL}/sessions', json={'login': username,
+                                                          'password': password})
+        if resp.status_code == 201:
+            break
+        logging.error(f'Failed to acquire token; try again?')
+    else:
+        raise TastyApiError(f'Could not log in after {num_retry} trials', resp)
+
+    # Write out the new toklen
+    session_token = GetData(resp)['session-token']
+    os.makedirs(path.dirname(cache_filename), exist_ok=True)
+    with open(cache_filename, 'w') as token_file:
+        token_file.write(session_token)
+
+    # Make sure it's valid.
     session = Session(session_token)
-
     resp = session.post(f'{API_URL}/sessions/validate')
     if resp.status_code != 201:
         raise TastyApiError(f'Could not validate session', resp)
@@ -163,38 +183,61 @@ def GetAccounts(session: Session) -> List[Json]:
     return [item['account'] for item in items if item['authority-level'] == 'owner']
 
 
+def GetApproxLatestTime(db: shelve.Shelf) -> Optional[datetime.datetime]:
+    """Return the approximately latest time."""
+    # In order to do this, we find the largest id, and return the associated
+    # date/time on that transaction. The ids are roughly, but not strictly,
+    # incremental, so this should be good enough. The benefit of deriving the
+    # latest time this way is that we don't have to do any housekeeping to keep
+    # a special entry up-to-date, and we also don't have to parse any of the
+    # values (this should scale a good amount).
+    if len(db) == 0:
+        return None
+    max_id = max(db.keys())
+    txn = db[max_id]
+    return parser.parse(txn['executed-at'])
+
+
 @click.command()
 @click.argument('database') # Path to database file.
+@click.option('--regexp', '-a') # Name or part of name of the account id or type
+                                # or nickname.
 @click.option('--username', '-u', help="Tastyworks username.")
 @click.option('--password') # Tastyworks password.
-def main(database: str, username: Optional[str], password: Optional[str]):
+def main(database: str, regexp: str, username: Optional[str], password: Optional[str]):
     logging.basicConfig(level=logging.INFO, format='%(levelname)-8s: %(message)s')
 
     # Open the database and get the latest transaction stored in it from a
     # special slot.
-    db = shelve.open(database)
-    latest = db.get('__latest__', {})
+    with shelve.open(database) as db:
+        # Get the list of accounts.
+        session = GetSession(username, password)
+        accounts = GetAccounts(session)
 
-    # Get the list of accounts.
-    session = GetSession(username, password)
-    accounts = GetAccounts(session)
+        # Filter down to the chosen account.
+        if regexp:
+            accounts = [account
+                        for account in accounts
+                        if any(re.search(regexp, account[field], flags=re.I)
+                               for field in ['account-number', 'account-type-name', 'nickname',
+                                             'external-id', 'margin-or-cash'])]
+        if len(accounts) != 1:
+            raise ValueError(f"More than a single account matches pattern '{regexp}': \n"
+                             "{}".format(pprint.pformat(accounts)))
+        account = next(iter(accounts))
 
-    # Process each of the accounts..
-    now = datetime.datetime.now().isoformat() + 'Z'
-    for account in accounts:
+        # Process each of the accounts.
+        latest_time = GetApproxLatestTime(db) or parser.parse(account['opened-at'])
+        timestr_begin = latest_time.isoformat() + 'Z'
+        timestr_end = datetime.datetime.now().isoformat() + 'Z'
         accid = account['account-number']
-        try:
-            latest_time = latest[accid]
-        except KeyError:
-            latest_time = parser.parse(account['opened-at'])
-        latest_timestr = latest_time.isoformat() + 'Z'
-        logging.info(f'Updating account {accid} from {latest_timestr} to {now}')
+        logging.info(f'Updating account {accid} from {timestr_begin} to {timestr_end}')
 
         # Fetch the list of transactions since the latest one.
         transactions = PaginatedGet(
             session, f'{API_URL}/accounts/{accid}/transactions', params = {
-                'start-date': latest_timestr,
-                'end-date': now,
+                'start-date': timestr_begin,
+                'end-date': timestr_end,
             })
         for txn in transactions:
             key = str(txn['id'])
@@ -203,12 +246,6 @@ def main(database: str, username: Optional[str], password: Optional[str]):
                 continue
             logging.info(f'> Storing transaction {key} (at {txn["executed-at"]})')
             db[key] = txn
-            latest_time = max(latest_time, parser.parse(txn['executed-at']))
-        latest[accid] = latest_time
-
-    # Update latest downloaded times.
-    db['__latest__'] = latest
-    db.close()
 
 
 if __name__ == '__main__':

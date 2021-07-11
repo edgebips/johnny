@@ -61,11 +61,11 @@ Reduce the following loops and dependencies on positions to a single loop at all
 
       Open()
 
-    /home/blais/p/johnny/johnny/broker/ameritrade/transactions.py:827:    inventory = collections.defaultdict(match.MinInventory)
+    /home/blais/p/johnny/johnny/sources/thinkorswim_csv/transactions.py:827:    inventory = collections.defaultdict(match.MinInventory)
 
       _AddMissingExpirations()
 
-    /home/blais/p/johnny/johnny/broker/tastyworks/transactions.py:202:    inventory = collections.defaultdict(Decimal)
+    /home/blais/p/johnny/johnny/sources/tastyworks_csv/transactions.py:202:    inventory = collections.defaultdict(Decimal)
 
       GetExpirationSigns()
 

@@ -42,8 +42,9 @@ from typing import List, Tuple, Optional, NamedTuple
 from dateutil.parser import parse
 import click
 
-from johnny.broker.ameritrade import utils
+from johnny.sources.thinkorswim_csv import utils
 from johnny.base import positions as poslib
+from johnny.base import discovery
 from johnny.base import futures
 from johnny.base import instrument
 from johnny.base.number import ToDecimal
@@ -318,14 +319,10 @@ def GetPositions(filename: str) -> Table:
     return table
 
 
-def MatchFile(filename: str) -> Optional[Tuple[str, str, callable]]:
-    """Return true if this file is a matching transactions file."""
-    _FILENAME_RE = r"(\d{4}-\d{2}-\d{2})-PositionStatement.csv"
-    match = re.match(_FILENAME_RE, path.basename(filename))
-    if not match:
-        return None
-    date = match.group(1)
-    return 'thinkorswim', date, poslib.MakeParser(GetPositions)
+def Import(source: str) -> Table:
+    """Process the filename, normalize, and output as a table."""
+    filename = discovery.GetLatestFile(source)
+    return GetPositions(filename)
 
 
 @click.command()
