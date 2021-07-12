@@ -97,7 +97,11 @@ def GetSession(username: Optional[str], password: Optional[str]) -> Session:
 
     # Get a new token from credentials.
     num_retry = 3
+    orig_username = username
+    orig_password = password
     for _ in range(num_retry):
+        username = orig_username
+        password = orig_password
         if username is None:
             username = os.getenv('TW_USER')
             if not username:
