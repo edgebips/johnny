@@ -80,6 +80,7 @@ def install(filename: str):
 @click.option('--headless/--no-headless', default=True)
 def main(headless: bool):
     logging.basicConfig(level=logging.INFO, format='%(levelname)-8s: %(message)s')
+    subprocess.check_call(['sudo', '/usr/bin/ls', ARCHIVE_DIR], shell=False)
     deb_file_url = get_deb_url(headless)
     logging.info(f"Downloading {deb_file_url}")
     filename = download(deb_file_url)
