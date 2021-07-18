@@ -28,14 +28,6 @@ message Config {
   // sometimes require us to cross-trade between accounts for hedging.
   repeated Link transaction_links = 3;
   repeated Link order_links = 4;
-
-  // Available prices for opening positions. Positions having to be inserted
-  // synthetically to fill in the opening balances will require being priecd.
-  // Fetching these prices is done automatically via the TD API, but it's
-  // convenient to store these in the configuration (they will never change if
-  // you restart from the same specific date) or to enter them manually, if you
-  // don't have access to the TD API.
-  repeated Price prices = 5;
 }
 
 // Configuration for inputs to be imported.
@@ -80,6 +72,22 @@ message Account {
   // necessary; this library merely imports them into a single normalized
   // database.
   optional string source = 4;
+
+  // A filename telling the importer where to find a CSV file with the initial
+  // positions at the beginning of the transactions log. This file must contain
+  // the following columns:
+  //
+  // * `transaction_id`: A unique transaction id for that account.
+  // * `datetime`: The date at which to open the position
+  // * `symbol`: The name of the symbol, including future and equity options.
+  // * `instruction`: 'BUY' or 'SELL'
+  // * `quantity`: Absolute number of units.
+  // * `cost`: The total cost of that position (not per-unit).
+  //
+  // Other columns, if present, will be ignored. If this is provided, the import
+  // will create these positions at the front of the transactions log history
+  // import.
+  optional string initial = 5;
 }
 
 // An explicit linkage between multiple transactions.
@@ -126,24 +134,4 @@ message Asset {
   // class would be "Metals", and factor might be "Copper" for FCX, COPX and
   // /HG.
   optional string factor = 3;
-}
-
-// Price database information. This is consulted to fill in costs for positions
-// being opened synthetically at the start of the timespan of an import.
-message Price {
-  // Symbol being priced.
-  optional string symbol = 1;
-
-  // Date for the price point.
-  optional Date date = 2;
-
-  // A decimal rendering of the price to a string.
-  optional string price = 3;
-}
-
-// A date.
-message Date {
-  optional int32 year = 2;
-  optional int32 month = 3;
-  optional int32 day = 4;
 }

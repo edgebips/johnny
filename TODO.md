@@ -7,6 +7,7 @@
 
 - Convert all enums to have the same capitalized style.
 - Convert 'P' and 'C' to 'PUT' and 'CALL'
+- Refactor ZERO, ONE, etc. definitions.
 
 - Add 'Index Option' as instype for CBOE indices.
 

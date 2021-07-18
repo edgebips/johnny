@@ -18,7 +18,7 @@ Record = petl.Record
 
 # Run assertions. This is expensive, so changing this value to False globally
 # disables all assertions.
-ASSERT = False
+ASSERT = True
 
 
 def WrapRecords(records: List[Record]) -> Table:
@@ -45,10 +45,8 @@ def PrintToPython(table: Table):
 def AssertColumns(table: Table,
                   *columns: List[Tuple[str, Set[Any]]]):
     """Assert the presence of a particular subset of columns."""
-
     if ASSERT is False:
         return
-
     fieldnames = set(table.fieldnames())
     for name, exptypes in columns:
         assert name in fieldnames
@@ -58,6 +56,22 @@ def AssertColumns(table: Table,
         exptypes = {t.__name__ for t in exptypes}
         realtypes = table.typeset(name)
         assert realtypes.issubset(exptypes), (name, realtypes, exptypes)
+
+
+def AssertFields(rec: Union[Record, tuple],
+                 *columns: List[Tuple[str, Set[Any]]]):
+    """Assert the presence of a particular subset of columns."""
+    if ASSERT is False:
+        return
+    fieldnames = set(rec.flds if isinstance(rec, Record) else rec._fields)
+    for name, exptypes in columns:
+        assert name in fieldnames
+        if not isinstance(exptypes, set):
+            exptypes = {exptypes}
+        exptypes = {type(None) if t is None else t for t in exptypes}
+        exptypes = {t.__name__ for t in exptypes}
+        realtype = type(getattr(rec, name)).__name__
+        assert realtype in exptypes, (name, realtype, exptypes)
 
 
 def applyfn(table: Table, function, *args, **kwargs) -> Table:
