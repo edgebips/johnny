@@ -14,7 +14,7 @@ import unittest
 from parameterized import parameterized
 
 from johnny.base import inventories
-from johnny.base.etl import petl, Table
+from johnny.base.etl import petl, Table, AssertTableEqual
 
 
 Lot = inventories.Lot
@@ -176,11 +176,6 @@ def MatchTable(table: Table,
             raise ValueError(f"Invalid row type: {rec.rowtype}")
 
     return inv, TestTable(new_rows)
-
-
-def AssertTableEqual(table1: Table, table2: Table):
-    for rec1, rec2 in zip(table1.records(), table2.records()):
-        assert rec1 == rec2, (rec1, rec2)
 
 
 def SplitSignedQuantity(quantity: Decimal) -> tuple[str, Decimal]:

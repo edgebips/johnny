@@ -42,6 +42,12 @@ def PrintToPython(table: Table):
     print('])')
 
 
+def AssertTableEqual(table1: Table, table2: Table):
+    """Assert equality between two tables."""
+    for rec1, rec2 in zip(table1.records(), table2.records()):
+        assert rec1 == rec2, (rec1, rec2)
+
+
 # NOTE: A big problem with this function is that Table.typeset() forces
 # evaluation of the table. Contemplating giving up this method.
 def AssertColumns(table: Table,

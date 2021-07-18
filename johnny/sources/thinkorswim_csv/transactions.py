@@ -821,58 +821,6 @@ def _ParseExpirationDescriptionDetailed(rec: Record) -> Dict[str, Any]:
     return matches
 
 
-def _AddMissingExpirations(txns: Table) -> Table:
-    """Synthesize missing expirations. Sometimes this occurs with equity options.
-    Returns only new rows to be inserted."""
-
-    # Match all the state from the transactions we have, utilizing as much as we
-    # can of the opening and closing effect field.
-    inventory = collections.defaultdict(inventories.MinInventory)
-    for txn in (txns
-                # Note: This covers index options as well. Also, futures options aren't
-                # covered because we don't have their precise expiration date (we use
-                # expcode's for those).
-                .select(lambda r: r.instype in {'Equity Option'})
-                .records()):
-        if txn.rowtype == 'Trade':
-            sign = -1 if txn.instruction == 'SELL' else +1
-            quantity = sign * txn.quantity
-            updated = inventory[txn.symbol].trade(quantity, txn.effect)
-        elif txn.rowtype == 'Expire':
-            updated = inventory[txn.symbol].expire(quantity)
-        if not updated:
-            logging.warning("Ignored closing: %s; could be from an incomplete log file.", txn)
-    last_date = txn.datetime.date()
-
-    header = (
-        'datetime', 'rowtype', 'effect', 'instruction', 'symbol',
-        'instype', 'underlying', 'expiration', 'expcode', 'putcall', 'strike', 'multiplier',
-        'quantity', 'price', 'commissions', 'fees', 'description')
-    synth_expirations = [header]
-    for symbol, mininv in inventory.items():
-        if mininv.quantity == ZERO:
-            continue
-
-        # Check expiration date against the last row date.
-        inst = instrument.FromString(symbol)
-        assert inst is not None
-        assert inst.expiration is not None, inst
-        if inst.expiration >= last_date:
-            continue
-
-        # Synthetize an expiration.
-        dt_expiration = datetime.datetime.combine(inst.expiration,
-                                                  datetime.time(23, 59, 59))
-        instruction = 'BUY' if mininv.quantity < ZERO else 'SELL'
-        synth_expirations.append(
-            (dt_expiration, 'Expire', 'CLOSING', instruction, symbol,
-             inst.instype, inst.underlying, inst.expiration, inst.expcode, inst.putcall,
-             inst.strike, inst.multiplier,
-             abs(mininv.quantity), ZERO, ZERO, ZERO, 'Synthetic expiration of option'))
-
-    return petl.wrap(synth_expirations)
-
-
 def CleanDescriptionPrefixes(string: str) -> str:
     return re.sub('(WEB:(AA_[A-Z]+|WEB_GRID_SNAP)|tAndroid) ', '', string)
 
@@ -917,13 +865,6 @@ def GetTransactions(filename: str) -> Tuple[Table, Table]:
     txns = (petl.cat(equities_txns, equities_expi,
                      futures_txns, futures_expi)
             .sort('datetime'))
-
-    # Check for missing expiration messages and synthesize them when necessary.
-    # This actually occurs in my file.
-    synth_expirations = _AddMissingExpirations(txns)
-    if synth_expirations.nrows() > 0:
-        txns = (petl.cat(txns, synth_expirations)
-                .sort(['datetime', 'order_id']))
 
     # Add a cost column, calculated from the data.
     def Cost(r: Record) -> Decimal:

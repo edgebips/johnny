@@ -494,11 +494,12 @@ class OpenCloseFifoInventory:
 
         pquantity = self.quantity()
         instruction = 'SELL' if pquantity >= 0 else 'BUY'
-        accumfn(rec._replace(instruction=instruction,
+        accumfn(rec._replace(rowtype='Expire',
+                             instruction=instruction,
                              effect='CLOSING',
                              quantity=abs(pquantity),
                              cost=ZERO,
-                             match_id=self.get_match_id(rec)),
+                             match_id=self.get_match_id(rec),),
                 'EXPIRE')
 
         self.lots[:] = []

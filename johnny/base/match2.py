@@ -7,9 +7,9 @@ positions against each other, in order to:
 - Split rows for futures crossing the null position boundary,
 - Compute expiration quantities and signs,
 - Creates a corresponding match id column to save this in the table.
+- Add missing expiration rows (thinkorswim suffers from some of these),
 
 TODO(blais):
-- Add missing expiration rows (thinkorswim suffers from some of these),
 - Add mark rows for positions still open and active,
 
 Note that adding opening rows for positions created before the transactions time
@@ -105,9 +105,12 @@ def Process(transactions: Table,
     # Create a mapping of transaction ids to matches.
     transactions, invs = _AccumulateStateAndTransform(transactions)
 
-    # TODO(blais): Insert marks and missing expirations.
-
     return transactions
+
+
+def _GetExpirationDate() -> datetime.date:
+    """Get the expiration date. Override for tests."""
+    return datetime.date.today()
 
 
 def _AccumulateStateAndTransform(transactions: Table) -> Tuple[Table, dict[str, Decimal]]:
@@ -127,15 +130,22 @@ def _AccumulateStateAndTransform(transactions: Table) -> Tuple[Table, dict[str, 
     # Accumulator for new records to output.
     new_rows = []
     def accum(nrec, modtype):
-        if debug:
-            if nrec is not rec:
-                print(modtype)
-                print(rec)
-                print(nrec)
-                print()
         new_rows.append(nrec)
 
-    transactions = transactions.addfield('match_id', '')
+    def accum_debug(nrec, modtype):
+        if nrec is not rec:
+            print(modtype)
+            print(rec)
+            print(nrec)
+            print()
+        new_rows.append(nrec)
+
+    # Note: Unfortunately we require two sortings; one to ensure that inventory
+    # matching is done properly, and a final one to reorder the newly
+    # synthesized outputs {123a4903c212}.
+    transactions = (transactions
+                    .addfield('match_id', '')
+                    .sort('datetime'))
     for rec in transactions.namedtuples():
         inv = invs[InstKey(rec.account, rec.symbol)]
 
@@ -154,10 +164,44 @@ def _AccumulateStateAndTransform(transactions: Table) -> Tuple[Table, dict[str, 
         else:
             raise ValueError(f"Invalid row type: {rec.rowtype}")
 
-    # Clean up the residual inventories with zero positions (and cost).
+    # Insert missing expirations.
+    prototype = type(rec)(*[None] * len(transactions.header()))
+    AddMissingExpirations(invs, _GetExpirationDate(), accum, prototype)
+
+    # Produce final set of positions (cull inventories with no positions).
     positions = {key: inv.quantity()
                  for key, inv in invs.items()
                  if inv.quantity() != ZERO or inv.cost() != ZERO}
 
-    new_transactions = petl.wrap(itertools.chain([transactions.header()], new_rows))
+    # Note: We sort again to ensure newly synthesized outputs are ordered
+    # properly {123a4903c212}.
+    new_transactions = (petl.wrap(itertools.chain([transactions.header()], new_rows))
+                        .sort('datetime'))
     return new_transactions, positions
+
+
+def AddMissingExpirations(invs: dict[str, Decimal],
+                          current_date: datetime.datetime,
+                          accum: inventories.TxnAccumFn,
+                          prototype_row: tuple) -> Table:
+    """Create missing expirations. Some sources miss them."""
+
+    for key, inv in sorted(invs.items()):
+        inst = instrument.FromString(key.symbol)
+        if (inst.expiration is not None and
+            inst.expiration < current_date and
+            inv.quantity() != ZERO):
+            expiration_time = datetime.datetime.combine(
+                inst.expiration + datetime.timedelta(days=1),
+                datetime.time(0, 0, 0))
+            rec = prototype_row._replace(
+                account=key.account,
+                symbol=key.symbol,
+                datetime=expiration_time,
+                description=f'Synthetic expiration for {key.symbol}',
+                cost=ZERO,
+                price=ZERO,
+                quantity=ZERO,
+                commissions=ZERO,
+                fees=ZERO)
+            inv.expire(rec, accum)
