@@ -8,8 +8,6 @@ positions against each other, in order to:
 - Compute expiration quantities and signs,
 - Creates a corresponding match id column to save this in the table.
 - Add missing expiration rows (thinkorswim suffers from some of these),
-
-TODO(blais):
 - Add mark rows for positions still open and active,
 
 Note that adding opening rows for positions created before the transactions time
@@ -77,14 +75,16 @@ class InstKey(NamedTuple):
 
 
 def Process(transactions: Table,
-            mark_time: Optional[datetime.datetime]=None) -> Table:
+            mark_time: Optional[datetime.datetime]=None,
+            debug: bool=False) -> Table:
     """Run state-based processing over the transactions log.
 
     Args:
       transactions: The table of transactions, as normalized by each importer code.
       mark_time: The datetime to use for marking position.
     Returns:
-      A fixed up table, as per the description of this module.
+      A fixed up table of processed, transformed and normalized transactions, as
+      per the description of this module.
     """
     AssertColumns(transactions,
                   ('account', str),
@@ -102,34 +102,11 @@ def Process(transactions: Table,
                   ('fees', Decimal),
                   ('description', str))
 
-    # Create a mapping of transaction ids to matches.
-    transactions, invs = _AccumulateStateAndTransform(transactions)
-
-    return transactions
-
-
-def _GetExpirationDate() -> datetime.date:
-    """Get the expiration date. Override for tests."""
-    return datetime.date.today()
-
-
-def _AccumulateStateAndTransform(transactions: Table) -> Tuple[Table, dict[str, Decimal]]:
-    """Run inventory matching on the raw log and transform it.
-
-    Args:
-      transactions: The raw transactions table from the broker converter, with
-        instrument expanded.
-    Returns:
-      A pair of
-        transactions: Processed, transformed and normalized transactions (see docstring).
-        invs: A dict of of InstKey tuples to (position, basis, match-id) tuples.
-    """
-    debug = False
     invs = collections.defaultdict(lambda: inventories.OpenCloseFifoInventory(debug=debug))
 
     # Accumulator for new records to output.
     new_rows = []
-    def accum(nrec, modtype):
+    def accum(nrec, _):
         new_rows.append(nrec)
 
     def accum_debug(nrec, modtype):
@@ -166,30 +143,33 @@ def _AccumulateStateAndTransform(transactions: Table) -> Tuple[Table, dict[str, 
 
     # Insert missing expirations.
     prototype = type(rec)(*[None] * len(transactions.header()))
-    AddMissingExpirations(invs, _GetExpirationDate(), accum, prototype)
+    _AddMissingExpirations(invs, _GetMarkTime(), accum, prototype)
 
-    # Produce final set of positions (cull inventories with no positions).
-    positions = {key: inv.quantity()
-                 for key, inv in invs.items()
-                 if inv.quantity() != ZERO or inv.cost() != ZERO}
+    # Add closing transactions for existing positions.
+    _AddMarkTransactions(invs, _GetMarkTime(), accum, prototype)
 
     # Note: We sort again to ensure newly synthesized outputs are ordered
     # properly {123a4903c212}.
-    new_transactions = (petl.wrap(itertools.chain([transactions.header()], new_rows))
-                        .sort('datetime'))
-    return new_transactions, positions
+    return (petl.wrap(itertools.chain([transactions.header()], new_rows))
+            .sort('datetime'))
 
 
-def AddMissingExpirations(invs: dict[str, Decimal],
-                          current_date: datetime.datetime,
-                          accum: inventories.TxnAccumFn,
-                          prototype_row: tuple) -> Table:
+def _GetMarkTime() -> datetime.datetime:
+    """Get the mark time date. Override for tests."""
+    return datetime.datetime.now()
+
+
+def _AddMissingExpirations(invs: Mapping[str, Decimal],
+                           mark_time: datetime.datetime,
+                           accum: inventories.TxnAccumFn,
+                           prototype_row: tuple):
     """Create missing expirations. Some sources miss them."""
 
+    mark_date = mark_time.date()
     for key, inv in sorted(invs.items()):
         inst = instrument.FromString(key.symbol)
         if (inst.expiration is not None and
-            inst.expiration < current_date and
+            inst.expiration < mark_date and
             inv.quantity() != ZERO):
             expiration_time = datetime.datetime.combine(
                 inst.expiration + datetime.timedelta(days=1),
@@ -205,3 +185,36 @@ def AddMissingExpirations(invs: dict[str, Decimal],
                 commissions=ZERO,
                 fees=ZERO)
             inv.expire(rec, accum)
+
+
+def _AddMarkTransactions(invs: Mapping[str, Decimal],
+                         mark_time: datetime.datetime,
+                         accum: inventories.TxnAccumFn,
+                         prototype_row: tuple):
+    """Add mark transactions to close residual inventory positions."""
+
+    for key, inv in sorted(invs.items()):
+        pquantity = inv.quantity()
+        if pquantity == ZERO:
+            continue
+
+        # Note: We should be able to ignore the input record because this
+        # inventory, having an unclosed position, should already have a valid
+        # match id. An error would be raised here otherwise.
+        match_id = inv.get_match_id(None)
+
+        rec = prototype_row._replace(
+            account=key.account,
+            symbol=key.symbol,
+            datetime=mark_time,
+            description=f'Mark for closing {key.symbol}',
+            cost=ZERO,
+            price=ZERO,
+            quantity=abs(pquantity),
+            commissions=ZERO,
+            fees=ZERO,
+            rowtype='Mark',
+            instruction=('SELL' if pquantity >= 0 else 'BUY'),
+            effect='CLOSING',
+            match_id=match_id)
+        accum(rec, 'MARK')

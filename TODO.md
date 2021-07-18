@@ -1,6 +1,6 @@
 # General
 
-- Add 'Mark' rows.
+- Remove all state accumulation everywhere.
 
 - URGENT BUG: x9627.210209_150023.SPX.Collar - what are GS and /NG doing in there?
 - TODO: Join NKE trade across accounts.

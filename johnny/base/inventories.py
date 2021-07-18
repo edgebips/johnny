@@ -37,6 +37,7 @@ class MatchError(ValueError):
 
 def _CreateMatchId(transaction_id: str) -> str:
     """Create a unique match id from the given transaction id."""
+    assert transaction_id is not None
     md5 = hashlib.blake2s(digest_size=4)
     md5.update(transaction_id.encode('ascii'))
     return "&{}".format(md5.hexdigest())
@@ -499,7 +500,7 @@ class OpenCloseFifoInventory:
                              effect='CLOSING',
                              quantity=abs(pquantity),
                              cost=ZERO,
-                             match_id=self.get_match_id(rec),),
+                             match_id=self.get_match_id(rec)),
                 'EXPIRE')
 
         self.lots[:] = []
