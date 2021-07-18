@@ -18,7 +18,7 @@ Record = petl.Record
 
 # Run assertions. This is expensive, so changing this value to False globally
 # disables all assertions.
-ASSERT = True
+ASSERT = False
 
 
 def WrapRecords(records: List[Record]) -> Table:
@@ -42,6 +42,8 @@ def PrintToPython(table: Table):
     print('])')
 
 
+# NOTE: A big problem with this function is that Table.typeset() forces
+# evaluation of the table. Contemplating giving up this method.
 def AssertColumns(table: Table,
                   *columns: List[Tuple[str, Set[Any]]]):
     """Assert the presence of a particular subset of columns."""

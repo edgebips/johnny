@@ -17,19 +17,58 @@ from typing import List, Optional
 
 import click
 
+from johnny.base import chains
 from johnny.base import config as configlib
 from johnny.base import discovery
+from johnny.base import instrument
+from johnny.base import match2
+from johnny.base.etl import Table
+
+
+def ImportTransactions(config: configlib.Config) -> Table:
+    """Read transactions, and do all necessary processing."""
+
+    # Extract the explicit chains.
+    transactions_chain_map, orders_chain_map = configlib.GetExplicitChains(config)
+
+    # Extract the explicit transsaction and order links.
+    transaction_links = [list(links.ids) for links in config.transaction_links]
+    order_links = [list(links.ids) for links in config.order_links]
+
+    # # Extract the price db to be used for opening positions.
+    # price_db = configlib.GetPriceDB(config)
+
+    # Read the inputs.
+    logtables = discovery.ReadConfiguredInputs(config)
+    transactions = logtables[configlib.Account.LogType.TRANSACTIONS]
+
+    # TODO(blais): Continue here
+
+    # Synthesize opening balances. We need to temporarily expand the instrument
+    # fields, as they are needed by the match and chains modules.
+    transactions = (transactions
+                    .applyfn(match2.Process)
+                    #.applyfn(instrument.Expand, 'symbol')
+                    # .applyfn(chains.Group,
+                    #          explicit_transactions_chain_map=transactions_chain_map,
+                    #          explicit_orders_chain_map=orders_chain_map,
+                    #          transaction_links=transaction_links,
+                    #          order_links=order_links)
+                    #.applyfn(instrument.Shrink)
+                    )
+
+    print(transactions.lookallstr())
 
 
 @click.command()
 @click.argument('config_filename', type=click.Path(exists=True))
-def import_(config_filename: str):
+@click.option('--opening_filename', type=click.Path(exists=True),
+              help=("CSV filename with opening positions. "
+                    "See ReadOpeningPositions() for details"))
+def import_(config_filename: str, opening_filename: str):
     config = configlib.ParseFile(config_filename)
-    logtables = discovery.ReadConfiguredInputs(config)
+    ImportTransactions(config)
 
-    for logtype, table in logtables.items():
-        print(table.lookallstr())
-        # TODO(blais): Implement this.
 
 
 if __name__ == '__main__':
