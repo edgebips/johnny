@@ -3,6 +3,7 @@
 DOWNLOADS=$(HOME)/trading/downloads
 #CONFIG=$(JOHNNY_CONFIG)
 CONFIG=$(HOME)/r/q/office/accounting/trading/johnny.pbtxt
+IMPORTED=$(HOME)/r/q/office/accounting/trading/imported.pickledb
 
 move-files:
 	-mv -f $(HOME)/tasty* $(HOME)/*Statement.csv $(DOWNLOADS)
@@ -33,4 +34,4 @@ update:
 	tastyworks-update $(DOWNLOADS)/tastyworks-roth.db -a Roth
 
 import:
-	johnny-import $(CONFIG)
+	johnny-import $(CONFIG) $(IMPORTED)

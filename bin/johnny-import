@@ -16,6 +16,7 @@ import logging
 from typing import List, Optional
 
 import click
+import simplejson
 
 from johnny.base import chains
 from johnny.base import config as configlib
@@ -48,27 +49,27 @@ def ImportTransactions(config: configlib.Config) -> Table:
     # fields, as they are needed by the match and chains modules.
     transactions = (transactions
                     .applyfn(match2.Process)
-                    #.applyfn(instrument.Expand, 'symbol')
-                    # .applyfn(chains.Group,
-                    #          explicit_transactions_chain_map=transactions_chain_map,
-                    #          explicit_orders_chain_map=orders_chain_map,
-                    #          transaction_links=transaction_links,
-                    #          order_links=order_links)
-                    #.applyfn(instrument.Shrink)
+
+                    .applyfn(instrument.Expand, 'symbol')
+                    .applyfn(chains.Group,
+                             explicit_transactions_chain_map=transactions_chain_map,
+                             explicit_orders_chain_map=orders_chain_map,
+                             transaction_links=transaction_links,
+                             order_links=order_links)
+                    .applyfn(instrument.Shrink)
                     )
 
-    print(transactions.lookallstr())
+    return transactions
 
 
 @click.command()
 @click.argument('config_filename', type=click.Path(exists=True))
-@click.option('--opening_filename', type=click.Path(exists=True),
-              help=("CSV filename with opening positions. "
-                    "See ReadOpeningPositions() for details"))
-def import_(config_filename: str, opening_filename: str):
+@click.argument('imported_pickle')
+def import_(config_filename: str, imported_pickle: str):
+    """Parse the configuration, the sources, transform, and save."""
     config = configlib.ParseFile(config_filename)
-    ImportTransactions(config)
-
+    imported = ImportTransactions(config)
+    imported.topickle(imported_pickle)
 
 
 if __name__ == '__main__':
