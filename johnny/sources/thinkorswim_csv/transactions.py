@@ -903,7 +903,7 @@ def GetTransactionId(rec: Record) -> str:
     # some of the other importers.
     md5.update(str(rec['order_id']).encode('ascii'))
     md5.update(rec['description'].encode('ascii'))
-    return "^{}".format(md5.hexdigest())
+    return md5.hexdigest()
 
 
 def PrepareTables(filename: str) -> Dict[str, Table]:
