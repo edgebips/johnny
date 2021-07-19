@@ -44,8 +44,9 @@ def GetLatestFile(source: str) -> str:
 def ReadInitialPositions(filename: str) -> Table:
     """Read a table of initial positions."""
     table = (petl.fromcsv(filename)
-            .cut('transaction_id', 'datetime', 'symbol', 'instruction', 'quantity', 'cost')
+            .cut('datetime', 'symbol', 'instruction', 'quantity', 'cost')
 
+            .addfield('transaction_id', lambda r: 'open-{}'.format(r.symbol))
             .addfield('account', '')
             .convert('datetime', lambda v: parser.parse(v))
             .addfield('rowtype', 'Open')
