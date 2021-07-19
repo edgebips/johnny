@@ -55,6 +55,7 @@ __license__ = "GNU GPLv2"
 
 import datetime
 import collections
+import hashlib
 import itertools
 import logging
 from decimal import Decimal
@@ -156,7 +157,7 @@ def Process(transactions: Table,
 
 def _GetMarkTime() -> datetime.datetime:
     """Get the mark time date. Override for tests."""
-    return datetime.datetime.now()
+    return datetime.datetime.now().replace(microsecond=0)
 
 
 def _AddMissingExpirations(invs: Mapping[str, Decimal],
@@ -203,8 +204,16 @@ def _AddMarkTransactions(invs: Mapping[str, Decimal],
         # match id. An error would be raised here otherwise.
         match_id = inv.get_match_id(None)
 
+        # Compute a transaction id that will be invariable. Each symbol can only
+        # be marked once, so we use a hash on that.
+        h = hashlib.blake2s(digest_size=6)
+        h.update(key.account.encode('ascii'))
+        h.update(key.symbol.encode('ascii'))
+        transaction_id = 'mark-{}'.format(h.hexdigest()[:6])
+
         rec = prototype_row._replace(
             account=key.account,
+            transaction_id=transaction_id,
             symbol=key.symbol,
             datetime=mark_time,
             description=f'Mark for closing {key.symbol}',
