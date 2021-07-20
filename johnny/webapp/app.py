@@ -73,16 +73,12 @@ def Initialize():
             # Get the imported transactions.
             config = configlib.ParseFile(config_filename)
             transactions = petl.frompickle(config.output.imported_filename)
+            chains = chainslib.TransactionsToChains(transactions, config)
+            chains_map = {c.chain_id: c for c in config.chains}
+
+            # Extract current positions from marks.
             positions = (transactions
                          .selecteq('rowtype', 'Mark'))
-
-            # Mark the transactions.
-            price_map = mark.GetPriceMap(transactions, config)
-            transactions = mark.Mark(transactions, price_map)
-
-            # Compute the chains.
-            chains = chainslib.TransactionsToChains(transactions)
-            chains_map = {c.chain_id: c for c in config.chains}
 
             STATE = State(transactions, positions, chains, chains_map)
             app.logger.info("Done.")

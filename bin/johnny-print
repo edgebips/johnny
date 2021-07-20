@@ -114,13 +114,7 @@ def chains(config_filename: str):
 
     config = configlib.ParseFile(config_filename)
     transactions = petl.frompickle(config.output.imported_filename)
-
-    # Mark the transactions.
-    price_map = mark.GetPriceMap(transactions, config)
-    transactions = mark.Mark(transactions, price_map)
-
-    # Compute the chains.
-    chains = chainslib.TransactionsToChains(transactions)
+    chains = chainslib.TransactionsToChains(transactions, config)
     print(chains.lookallstr())
 
 

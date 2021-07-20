@@ -31,22 +31,16 @@ def chains(config_filename: str,
 
     config = configlib.ParseFile(config_filename)
     transactions = petl.frompickle(config.output.imported_filename)
-
-    # Mark the transactions.
-    price_map = mark.GetPriceMap(transactions, config)
-    transactions = mark.Mark(transactions, price_map)
-
-    # Compute the chains.
-    chains = chainslib.TransactionsToChains(transactions)
-    table_chain_ids = set(chains.values('chain_id'))
+    chains = chainslib.TransactionsToChains(transactions, config)
 
     # A copy of the original proto, to be cleaned up.
     chain_map = {chain.chain_id: chain for chain in config.chains}
+    chain_ids = set(chains.values('chain_id'))
 
     # Produce a clean output proto with existing chains.
     clean = copy.copy(config)
     clean.ClearField('chains')
-    for chain_id in sorted(table_chain_ids):
+    for chain_id in sorted(chain_ids):
         new_chain = clean.chains.add()
         chain = chain_map.pop(chain_id, None)
         if chain is None:

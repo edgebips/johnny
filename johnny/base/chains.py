@@ -38,7 +38,9 @@ import logging
 from more_itertools import first
 import networkx as nx
 
+from johnny.base import config as configlib
 from johnny.base import instrument
+from johnny.base import mark
 from johnny.base.etl import AssertColumns, Record, Table
 
 
@@ -363,8 +365,12 @@ def _CalculateNetLiq(pairs: Iterator[Tuple[str, Decimal]]):
                        if rowtype == 'Mark'))
 
 
-def TransactionsToChains(transactions: Table) -> Table:
+def TransactionsToChains(transactions: Table, config: configlib.Config) -> Table:
     """Aggregate transactions to aggregated chains."""
+
+    # Mark the transactions.
+    price_map = mark.GetPriceMap(transactions, config)
+    transactions = mark.Mark(transactions, price_map)
 
     agg = {
         'account': ('account', first),

@@ -51,13 +51,7 @@ def debug(config_filename: str):
     """Parse the configuration, the sources, transform, and save."""
     config = configlib.ParseFile(config_filename)
     transactions = petl.frompickle(config.output.imported_filename)
-
-    # Mark the transactions.
-    price_map = mark.GetPriceMap(transactions, config)
-    transactions = mark.Mark(transactions, price_map)
-
-    # Compute the chains.
-    chains = chainslib.TransactionsToChains(transactions)
+    chains = chainslib.TransactionsToChains(transactions, config)
     print(chains
           #.selecteq('underlying', '')
           .lookallstr())
