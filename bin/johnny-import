@@ -36,9 +36,6 @@ def ImportTransactions(config: configlib.Config) -> Table:
     transaction_links = [list(links.ids) for links in config.transaction_links]
     order_links = [list(links.ids) for links in config.order_links]
 
-    # # Extract the price db to be used for opening positions.
-    # price_db = configlib.GetPriceDB(config)
-
     # Read the inputs.
     logtables = discovery.ReadConfiguredInputs(config)
     transactions = logtables[configlib.Account.LogType.TRANSACTIONS]

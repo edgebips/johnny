@@ -218,31 +218,3 @@ def ConsolidatePositionStatement(
               .aggregate(key=None, aggregation=sums))
 
     return atable, totals
-
-#-------------------------------------------------------------------------------
-
-@click.command()
-@click.argument('positions_csv', type=click.Path(resolve_path=True, exists=True))
-@click.option('--reference', '-r', type=Decimal, default=None,
-              help="Price of the beta-weighted reference applied to the downloaded file.")
-@click.option('--notional', '-x', is_flag=True,
-              help="Estimate notional exposure for each position.")
-def main(positions_csv: str, reference: Decimal, notional: bool):
-    """Simple local runner for this translator."""
-
-    # If the reference isn't given, attempt to get tit from
-    if reference is None:
-        try:
-            from beanprice.sources import yahoo
-        except ImportError:
-            pass
-        else:
-            source = yahoo.Source()
-            sprice = source.get_latest_price("SPY")
-            reference = sprice.price
-
-    # Read positions statement and consolidate it.
-    print(table.lookallstr())
-    table = petl.fromcsv(filename)
-    atable, totals = ConsolidatePositionStatement(filename, reference, debug_tables=notional)
-    print(atable.lookallstr())

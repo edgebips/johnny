@@ -24,6 +24,11 @@ message Config {
   // A list of manually disambiguated trades and their annotations.
   repeated Chain chains = 3;
 
+  // A list of chains that aren't in use; these are produced by the
+  // configuration cleaner, to avoid losing chain data that isn't matched by the
+  // chains processing.
+  repeated Chain residual_chains = 7;
+
   // Explicitly linked transactions or orders. These lists can be used to join
   // together pairs that would otherwise be resolved to independent chains. Note
   // that it is legitimate to link together orders from different accounts.

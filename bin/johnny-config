@@ -14,49 +14,54 @@ from typing import List, Optional
 import click
 
 from johnny.base import discovery
-from johnny.base import consolidate
+from johnny.base import mark
 from johnny.base import instrument
-from johnny.base.etl import Table
+from johnny.base.etl import petl, Table
 from johnny.base import config as configlib
+from johnny.base import chains as chainslib
 
 
 @click.command()
 @click.argument('config_filename', type=click.Path(exists=True))
-@click.argument('clean_config', type=click.Path(exists=False))
-@click.argument('residual_config', type=click.Path(exists=False))
 @click.option('--ledger', '-l', type=click.Path(exists=False),
               help="Remove transactions from Ledger. Requires order ids.")
 def chains(config_filename: str,
-           clean_config: str,
-           residual_config: str,
            ledger: Optional[str]):
     "Find, process and print positions."
 
-    _, __, chains, config = consolidate.ConsolidateChains(config_filename, ledger)
+    config = configlib.ParseFile(config_filename)
+    transactions = petl.frompickle(config.output.imported_filename)
+
+    # Mark the transactions.
+    price_map = mark.GetPriceMap(transactions, config)
+    transactions = mark.Mark(transactions, price_map)
+
+    # Compute the chains.
+    chains = chainslib.TransactionsToChains(transactions)
+    table_chain_ids = set(chains.values('chain_id'))
 
     # A copy of the original proto, to be cleaned up.
+    chain_map = {chain.chain_id: chain for chain in config.chains}
+
+    # Produce a clean output proto with existing chains.
     clean = copy.copy(config)
     clean.ClearField('chains')
-
-    # Move invalid chains to residual.
-    residual = configlib.Config()
-    table_chain_ids = set(chains.values('chain_id'))
-    for chain in config.chains:
-        dest = clean if chain.chain_id in table_chain_ids else residual
-        new_chain = dest.chains.add()
-        new_chain.CopyFrom(chain)
-
-    # Add missing chains to the proto.
-    config_chain_ids = {chain.chain_id for chain in clean.chains}
-    for chain_id in table_chain_ids:
-        if chain_id not in config_chain_ids:
-            new_chain = clean.chains.add()
+    for chain_id in sorted(table_chain_ids):
+        new_chain = clean.chains.add()
+        chain = chain_map.pop(chain_id, None)
+        if chain is None:
+            # Create a new chain that wasn't present in the original list.
             new_chain.chain_id = chain_id
+        else:
+            new_chain.MergeFrom(chain)
 
-    with open(residual_config, 'w') as outfile:
-        print(residual, file=outfile)
-    with open(clean_config, 'w') as outfile:
-        print(clean, file=outfile)
+    # Add residual chains.
+    clean.ClearField('residual_chains')
+    for chain in chain_map.values():
+        new_chain = clean.chains.add()
+        new_chain.MergeFrom(chain)
+
+    print(clean)
 
 
 if __name__ == '__main__':

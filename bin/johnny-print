@@ -33,7 +33,6 @@ from johnny.base import discovery
 from johnny.base import mark
 from johnny.base import chains as chainslib
 from johnny.base import config as configlib
-from johnny.base import consolidate
 from johnny.base import instrument
 from johnny.base.etl import petl, Table
 

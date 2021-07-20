@@ -24,7 +24,7 @@ Instructions:
 
 The output will include:
 
-- A consolidated position detail table.
+- A position detail table.
 - A table with the extrema for each greek or columns.
 """
 

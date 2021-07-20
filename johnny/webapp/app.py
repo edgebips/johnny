@@ -29,7 +29,6 @@ from more_itertools import first
 import click
 import flask
 
-from johnny.base import consolidate
 from johnny.base import config as configlib
 from johnny.base import chains as chainslib
 from johnny.base import mark

@@ -17,7 +17,6 @@ import click
 
 from johnny.base import chains
 from johnny.base import config as configlib
-from johnny.base import consolidate
 from johnny.base import discovery
 from johnny.base import instrument
 from johnny.base import match
