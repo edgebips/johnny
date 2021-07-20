@@ -10,9 +10,6 @@ move-files:
 serve: move-files
 	johnny-web $(DOWNLOADS)
 
-chains:
-	johnny-print chains $(DOWNLOADS)
-
 config:
 	johnny-config $(DOWNLOADS) $(DOWNLOADS)/johnny_clean.pbtxt $(DOWNLOADS)/johnny_residual.pbtxt
 

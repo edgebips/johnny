@@ -42,13 +42,15 @@ from typing import List, Tuple, Optional, NamedTuple
 from dateutil.parser import parse
 import click
 
-from johnny.sources.thinkorswim_csv import utils
-from johnny.base import positions as poslib
+from johnny.base import config as configlib
 from johnny.base import discovery
 from johnny.base import futures
 from johnny.base import instrument
-from johnny.base.number import ToDecimal
+from johnny.base import positions as poslib
 from johnny.base.etl import petl, WrapRecords
+from johnny.base.number import ToDecimal
+from johnny.sources.thinkorswim_csv import utils
+FutOptMonthMapper = futures.FutOptMonthMapper
 
 
 Table = petl.Table
@@ -142,7 +144,9 @@ def SplitGroups(lines: List[str]) -> List[Group]:
 
 _FUTSYM = "/([A-Z0-9]+[FGHJKMNQUVXZ]2[0-9])"
 
-def ParseInstrumentDescription(string: str, symroot: str) -> instrument.Instrument:
+def ParseInstrumentDescription(
+        string: str, symroot: str,
+        month_mapper: FutOptMonthMapper) -> instrument.Instrument:
     """Parse an instrument description to a Beansym."""
 
     # Handle Future Option, e.g.,
@@ -154,8 +158,7 @@ def ParseInstrumentDescription(string: str, symroot: str) -> instrument.Instrume
          expcode,
          strike, putcall) = match.groups()
         try:
-            underlying, month = futures.GetUnderlyingMonth('/{}'.format(expcode[:-3]),
-                                                           expcode[-3])
+            underlying, month = month_mapper.get('/{}'.format(expcode[:-3]), expcode[-3])
         except KeyError as exc:
             raise KeyError("Missing underlying/month {} from {}, {}".format(
                 exc, string, symroot)) from exc
@@ -214,7 +217,7 @@ def InferCostFromTradePrice(rec: Record) -> Decimal:
     return -rec.quantity * rec._instrument.multiplier * rec.price
 
 
-def FoldInstrument(table: Table) -> Table:
+def FoldInstrument(table: Table, month_mapper: FutOptMonthMapper) -> Table:
     """Given a group table, remove and fold the underlying row into a replicated
     column. This function removes redundant grouping rows, folding their unique
     values as columns.
@@ -251,7 +254,8 @@ def FoldInstrument(table: Table) -> Table:
 
              # Synthetize our symbol.
              .addfield('_instrument',
-                       lambda r: ParseInstrumentDescription(r.Instrument, r.symroot))
+                       lambda r: ParseInstrumentDescription(r.Instrument, r.symroot,
+                                                            month_mapper))
              .addfield('symbol',
                        lambda r: str(r._instrument))
 
@@ -291,7 +295,7 @@ def ReduceFragmentedPositions(table: Table) -> Table:
     return table.aggregate('symbol', agg)
 
 
-def GetPositions(filename: str) -> Table:
+def GetPositions(filename: str, month_mapper: FutOptMonthMapper) -> Table:
     """Read and parse the positions statement."""
 
     # Read the positions table.
@@ -307,7 +311,7 @@ def GetPositions(filename: str) -> Table:
         if x.table.nrows() == 0:
             continue
 
-        gtable = (FoldInstrument(x.table)
+        gtable = (FoldInstrument(x.table, month_mapper)
                   .addfield('group', x.name, index=0))
         tables.append(gtable)
 
@@ -319,10 +323,11 @@ def GetPositions(filename: str) -> Table:
     return table
 
 
-def Import(source: str) -> Table:
+def Import(source: str, config: configlib.Config) -> Table:
     """Process the filename, normalize, and output as a table."""
     filename = discovery.GetLatestFile(source)
-    return GetPositions(filename)
+    month_mapper = FutOptMonthMapper(config.futures_option_month_mapping)
+    return GetPositions(filename, month_mapper)
 
 
 @click.command()

@@ -6,6 +6,8 @@ __license__ = "GNU GPLv2"
 
 from typing import Tuple
 
+from johnny.base import config as configlib
+
 
 # Standard equity option contract size.
 OPTION_CONTRACT_SIZE = 100
@@ -92,62 +94,13 @@ MULTIPLIERS = {
 }
 
 
-# This is a mapping of (option-product-code, month-code) to
-# (futures-product-code, month-code). Options are offered on a monthly basis,
-# but the underlying futures contract isn't necessarily offered for every month
-# (depends on seasonality sometimes), so the underlying is sometimes for the
-# same month (and the options expire a few days ahead of the futures) or for the
-# subsequent month (in which case multiple months are applicable to the same
-# underlying).
-#
-# CME has definitions on this, like this: "/SI: Monthly contracts listed for 3
-# consecutive months and any Jan, Mar, May, and Sep in the nearest 23 months and
-# any Jul and Dec in the nearest 60 months."
-# https://www.cmegroup.com/trading/metals/precious/silver_contractSpecs_options.html
-#
-# We need to eventually encode all those rules as logic, as some input files
-# (notably, from TOS) sometimes only produce the options code and in order to
-# produce a normalized symbol we need both.
+class FutOptMonthMapper:
+    """A read-only dict mapping options month codes to futures month codes."""
 
-# NOTE(blais): Temporary monster hack, based on my own file.
-# Update as needed.
+    def __init__(self, mapping: configlib.FutOptMonthMapping):
+        self.month_map = {
+            (m.option_product, m.option_month): (m.future_product, m.future_month)
+            for m in mapping.months}
 
-# TODO(blais): Remove leading slash in the option code key. It's just not
-# expected to be there.
-_TEMPORARY_MAPPING = {
-    ('/CAU', 'N'): ('/6C', 'U'),
-    ('/EUU', 'M'): ('/6E', 'M'),
-    ('/EUU', 'Q'): ('/6E', 'U'),
-    ('/EW', 'N'): ('/ES', 'U'),
-    ('/EW3', 'N'): ('/ES', 'U'),
-    ('/EW3', 'Q'): ('/ES', 'U'),
-    ('/GBU', 'N'): ('/6B', 'U'),
-    ('/JPY', 'N'): ('/6J', 'U'),
-    ('/LNE', 'N'): ('/NG', 'N'),
-    ('/LO', 'N'): ('/CL', 'N'),
-    ('/LO', 'U'): ('/CL', 'U'),
-    ('/LO', 'X'): ('/CL', 'X'),
-    ('/OG', 'N'): ('/GC', 'Q'),
-    ('/OZB', 'Q'): ('/ZB', 'U'),
-    ('/OZB', 'U'): ('/ZB', 'U'),
-    ('/OZC', 'N'): ('/ZC', 'N'),
-    ('/OZN', 'N'): ('/ZN', 'U'),
-    ('/OZN', 'U'): ('/ZN', 'U'),
-    ('/OZS', 'N'): ('/ZS', 'N'),
-    ('/OZS', 'U'): ('/ZS', 'U'),
-    ('/QNE', 'G'): ('/NQ', 'H'),
-    ('/QNE', 'N'): ('/NQ', 'U'),
-    ('/R3E', 'N'): ('/RTY', 'U'),
-    ('/RTM', 'N'): ('/RTY', 'U'),
-    ('/SO', 'M'): ('/SI', 'N'),
-    ('/SO', 'N'): ('/SI', 'N'),
-}
-
-def GetUnderlyingMonth(optcontract: str, optmonth: str) -> Tuple[str, str]:
-    """Given the future option contract code and its month (e.g., '/SOM'), return
-    the underlying future and its month ('/SIN'). The reason this function
-    exists is that not all the months are available as underlyings. This depends
-    on the particulars of each futures contract, and the details depend on
-    cyclicality / availability / seasonality of the product.
-    """
-    return _TEMPORARY_MAPPING[(optcontract, optmonth)]
+    def get(self, optcontract: str, optmonth: str) -> Tuple[str, str]:
+        return self.month_map[(optcontract, optmonth)]

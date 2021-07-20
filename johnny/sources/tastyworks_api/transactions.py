@@ -26,6 +26,7 @@ from dateutil import parser
 import pytz
 import tzlocal
 
+from johnny.base import config as configlib
 from johnny.base import match
 from johnny.base import transactions as txnlib
 from johnny.base.etl import petl, Table, Record, WrapRecords
@@ -269,7 +270,7 @@ def GetTransactions(filename: str) -> Tuple[Table, Table]:
     return table
 
 
-def Import(source: str) -> Table:
+def Import(source: str, config: configlib.Config) -> Table:
     """Process the filename, normalize, and output as a table."""
     return GetTransactions(source)
 

@@ -24,6 +24,7 @@ import os
 import click
 from dateutil import parser
 
+from johnny.base import config as configlib
 from johnny.base import discovery
 from johnny.base import match
 from johnny.base import transactions as txnlib
@@ -379,7 +380,7 @@ def GetTransactions(filename: str) -> Tuple[Table, Table]:
     return norm_trades_table, other_table
 
 
-def Import(source: str) -> Table:
+def Import(source: str, config: configlib.Config) -> Table:
     """Process the filename, normalize, and output as a table."""
     filename = discovery.GetLatestFile(source)
     table, _ = GetTransactions(filename)

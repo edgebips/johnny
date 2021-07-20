@@ -99,7 +99,7 @@ def ReadConfiguredInputs(
 
         # Import module transactions.
         module = importlib.import_module(account.module)
-        table = module.Import(account.source)
+        table = module.Import(account.source, config)
         if table is not None:
             output_tables.append(table.update('account', account.nickname))
 

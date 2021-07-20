@@ -31,6 +31,11 @@ message Config {
   // sometimes require us to cross-trade between accounts for hedging.
   repeated Link transaction_links = 4;
   repeated Link order_links = 5;
+
+  // Mapping of futures options months to their corresponding underlying options
+  // months. This is a temporary mapping we use until we code up the rules from
+  // the CME contracts.
+  optional FutOptMonthMapping futures_option_month_mapping = 6;
 }
 
 // Configuration for inputs to be imported.
@@ -43,6 +48,32 @@ message Inputs {
 message Outputs {
   // A database file to contain the processed and normalized transactions.
   optional string imported_filename = 1;
+}
+
+// This is a mapping of (option-product-code, month-code) to
+// (futures-product-code, month-code). Options are offered on a monthly basis,
+// but the underlying futures contract isn't necessarily offered for every month
+// (depends on seasonality sometimes), so the underlying is sometimes for the
+// same month (and the options expire a few days ahead of the futures) or for the
+// subsequent month (in which case multiple months are applicable to the same
+// underlying).
+//
+// CME has definitions on this, like this: "/SI: Monthly contracts listed for 3
+// consecutive months and any Jan, Mar, May, and Sep in the nearest 23 months and
+// any Jul and Dec in the nearest 60 months."
+// https://www.cmegroup.com/trading/metals/precious/silver_contractSpecs_options.html
+//
+// We need to eventually encode all those rules as logic, as some input files
+// (notably, from TOS) sometimes only produce the options code and in order to
+// produce a normalized symbol we need both.
+message FutOptMonthMapping {
+  message Item {
+    optional string option_product = 1;
+    optional string option_month = 2;
+    optional string future_product = 3;
+    optional string future_month = 4;
+  };
+  repeated Item months = 1;
 }
 
 // The declaration of an account source. Only declared accounts are ingested.

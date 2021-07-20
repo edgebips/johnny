@@ -37,16 +37,17 @@ import typing
 import click
 from dateutil import parser
 
+from johnny.base import config as configlib
+from johnny.base import discovery
 from johnny.base import futures
 from johnny.base import instrument
-from johnny.base import match
 from johnny.base import inventories
+from johnny.base import match
 from johnny.base import number
-from johnny.base import discovery
 from johnny.base import transactions as txnlib
 from johnny.base.etl import petl, Table, Record, WrapRecords
-from johnny.sources.thinkorswim_csv import utils
 from johnny.sources.thinkorswim_csv import symbols
+from johnny.sources.thinkorswim_csv import utils
 from johnny.utils import csv_utils
 
 
@@ -894,7 +895,7 @@ def PrepareTables(filename: str) -> Dict[str, Table]:
     return prepared_tables
 
 
-def Import(source: str) -> Table:
+def Import(source: str, config: configlib.Config) -> Table:
     """Process the filename, normalize, and output as a table."""
     filename = discovery.GetLatestFile(source)
     table, _ = GetTransactions(filename)
