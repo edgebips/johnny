@@ -8,7 +8,7 @@ from functools import partial
 import logging
 import os
 from decimal import Decimal
-from typing import List, Optional, Mapping
+from typing import List, Optional, Mapping, Tuple
 
 from more_itertools import first, last
 import click
@@ -69,10 +69,12 @@ def FetchPricesFromTransactionsLog(transactions: Table) -> Mapping[str, Decimal]
              .sort('datetime')
              .select(lambda r: r.rowtype not in {'Open', 'Mark'})
              .rowreduce('symbol', fn, header=['symbol', 'price', 'datetime']))
-    return table.lookupone('symbol', 'price')
+    return {key: (value, 'transactions')
+            for key, value in table.lookupone('symbol', 'price').items()}
 
 
-def GetPriceMap(transactions: Table, config: configlib.Config) -> Mapping[str, Decimal]:
+def GetPriceMap(transactions: Table,
+                config: configlib.Config) -> Mapping[str, Tuple[Decimal, str]]:
     """Produce a mapping of (symbol, mark-price)."""
     # Read prices from the transactions log itself. This is the baseline.
     price_map = FetchPricesFromTransactionsLog(transactions)
@@ -86,17 +88,29 @@ def GetPriceMap(transactions: Table, config: configlib.Config) -> Mapping[str, D
         pos_price_map = (positions
                          .convert('mark', abs)
                          .lookupone('symbol', 'mark'))
+        pos_price_map = {key: (value, 'positions')
+                         for key, value in pos_price_map.items()}
         price_map.update(pos_price_map)
 
     return price_map
 
 
-def Mark(transactions: Table, price_map: Mapping[str, Decimal]) -> Table:
+def Mark(transactions: Table, price_map: Mapping[str, Tuple[Decimal, str]]) -> Table:
     """Mark the live positions."""
 
     def set_mark(price: Decimal, row: Record) -> Decimal:
         "Set mark price from price database."
-        return price if row.rowtype != 'Mark' else (price_map.get(row.symbol, price))
+        if row.rowtype != 'Mark':
+            return price
+        price, _ = price_map.get(row.symbol, (price, 'N/A'))
+        return price
+
+    def set_description(description: str, row: Record) -> Decimal:
+        "Place the source of the price in the description."
+        if row.rowtype != 'Mark':
+            return description
+        _, source = price_map.get(row.symbol, (None, 'N/A'))
+        return f"{description} (source: {source})"
 
     def get_cost(cost: Decimal, rec: Record) -> Decimal:
         "Calculate cost from updated price."
@@ -107,6 +121,7 @@ def Mark(transactions: Table, price_map: Mapping[str, Decimal]) -> Table:
 
     return (transactions
             .convert('price', set_mark, pass_row=True)
+            .convert('description', set_description, pass_row=True)
             .applyfn(instrument.Expand, 'symbol')
             .convert('cost', get_cost, pass_row=True)
             .applyfn(instrument.Shrink))

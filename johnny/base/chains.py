@@ -353,21 +353,27 @@ def InitialCredits(pairs: Iterator[Tuple[str, Decimal]]) -> Decimal:
     return first_order_sum
 
 
-def _GetStatus(group):
-    return 'ACTIVE' if any(rowtype == 'Mark' for rowtype in group) else 'DONE'
+def _GetStatus(rowtypes):
+    return 'ACTIVE' if any(rowtype == 'Mark' for rowtype in rowtypes) else 'DONE'
+
+
+def _CalculateNetLiq(pairs: Iterator[Tuple[str, Decimal]]):
+    return Decimal(sum(cost
+                       for rowtype, cost in pairs
+                       if rowtype == 'Mark'))
 
 
 def TransactionsToChains(transactions: Table) -> Table:
     """Aggregate transactions to aggregated chains."""
-
 
     agg = {
         'account': ('account', first),
         'mindate': ('datetime', lambda g: min(g).date()),
         'maxdate': ('datetime', lambda g: max(g).date()),
         'underlying': ('underlying', first),
-        'cost': ('cost', sum),
+        'pnl_chain': ('cost', sum),
         'init': (('order_id', 'cost'), InitialCredits),
+        'net_liq': (('rowtype', 'cost'), _CalculateNetLiq),
         'commissions': ('commissions', sum),
         'fees': ('fees', sum),
         'status': ('rowtype', _GetStatus),
@@ -381,6 +387,6 @@ def TransactionsToChains(transactions: Table) -> Table:
         .aggregate('chain_id', agg)
         .sort('maxdate')
         .cut('chain_id', 'account', 'underlying', 'status', 'mindate', 'maxdate',
-             'cost', 'init', 'commissions', 'fees'))
+             'init', 'pnl_chain', 'net_liq', 'commissions', 'fees'))
 
     return chains

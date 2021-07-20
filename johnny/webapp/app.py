@@ -32,6 +32,7 @@ import flask
 from johnny.base import consolidate
 from johnny.base import config as configlib
 from johnny.base import chains as chainslib
+from johnny.base import mark
 from johnny.base import instrument
 from johnny.base.etl import petl, Table, Record, WrapRecords
 
@@ -64,17 +65,31 @@ def Initialize():
                       "your .pbtxt file with a text-formatted config.proto.")
         raise SystemExit
 
+    # TODO(blais): Restore usage of the ledger.
     ledger: str = os.getenv("JOHNNY_LEDGER")
 
     global STATE
     with _STATE_LOCK:
         if STATE is None:
             app.logger.info(f"Initializing application state from '{config_filename}'...")
-            transactions, positions, chains, config = consolidate.ConsolidateChains(
-                config_filename, ledger)
+
+            # Get the imported transactions.
+            config = configlib.ParseFile(config_filename)
+            transactions = petl.frompickle(config.output.imported_filename)
+            positions = (transactions
+                         .selecteq('rowtype', 'Mark'))
+
+            # Mark the transactions.
+            price_map = mark.GetPriceMap(transactions, config)
+            transactions = mark.Mark(transactions, price_map)
+
+            # Compute the chains.
+            chains = chainslib.TransactionsToChains(transactions)
             chains_map = {c.chain_id: c for c in config.chains}
+
             STATE = State(transactions, positions, chains, chains_map)
             app.logger.info("Done.")
+
     return STATE
 
 STATE = None
@@ -87,7 +102,7 @@ def ToHtmlString(table: Table, cls: str, ids: List[str] = None) -> bytes:
     html = sink.getvalue().decode('utf8')
     html = re.sub("class='petl'", f"class='display compact nowrap cell-border' id='{cls}'", html)
     if ids:
-        iter_ids = itertools.chain([''], iter(ids))
+        iter_ids = itertools.chain(['header'], iter(ids))
         html = re.sub('<tr>', lambda _: '<tr id="{}">'.format(next(iter_ids)), html)
     return html
 
