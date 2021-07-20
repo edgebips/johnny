@@ -42,7 +42,6 @@ from johnny.base import discovery
 from johnny.base import futures
 from johnny.base import instrument
 from johnny.base import inventories
-from johnny.base import match
 from johnny.base import number
 from johnny.base import transactions as txnlib
 from johnny.base.etl import petl, Table, Record, WrapRecords

@@ -3,26 +3,15 @@
 __copyright__ = "Copyright (C) 2021  Martin Blais"
 __license__ = "GNU GPLv2"
 
-import functools
-from functools import partial
-import logging
-import os
 from decimal import Decimal
-from typing import List, Optional, Mapping, Tuple
+from typing import Mapping, Tuple
 
-from more_itertools import first, last
-import click
-import ameritrade as td
+from more_itertools import last
 
 from johnny.base import config as configlib
 from johnny.base import discovery
 from johnny.base import instrument
-from johnny.base import opening
-from johnny.base import match
-from johnny.base import match2
-from johnny.base.etl import petl, Table, Record, WrapRecords
-from johnny.sources.tastyworks_csv.positions import ReadPricesFromPositionsFile
-from johnny.sources.thinkorswim_csv import symbols as tdsymbols
+from johnny.base.etl import Table, Record
 Instrument = instrument.Instrument
 
 

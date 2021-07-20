@@ -57,11 +57,10 @@ import datetime
 import collections
 import hashlib
 import itertools
-import logging
 from decimal import Decimal
-from typing import Any, Dict, Mapping, NamedTuple, Optional, Tuple
+from typing import Mapping, NamedTuple, Optional
 
-from johnny.base.etl import petl, AssertColumns, Table, Record
+from johnny.base.etl import petl, AssertColumns, Table
 from johnny.base import instrument
 from johnny.base import inventories
 
@@ -110,14 +109,6 @@ def Process(transactions: Table,
     def accum(nrec, _):
         new_rows.append(nrec)
 
-    def accum_debug(nrec, modtype):
-        if nrec is not rec:
-            print(modtype)
-            print(rec)
-            print(nrec)
-            print()
-        new_rows.append(nrec)
-
     # Note: Unfortunately we require two sortings; one to ensure that inventory
     # matching is done properly, and a final one to reorder the newly
     # synthesized outputs {123a4903c212}.
@@ -142,12 +133,15 @@ def Process(transactions: Table,
         else:
             raise ValueError(f"Invalid row type: {rec.rowtype}")
 
+    if mark_time is None:
+        mark_time = _GetMarkTime()
+
     # Insert missing expirations.
     prototype = type(rec)(*[None] * len(transactions.header()))
-    _AddMissingExpirations(invs, _GetMarkTime(), accum, prototype)
+    _AddMissingExpirations(invs, mark_time, accum, prototype)
 
     # Add closing transactions for existing positions.
-    _AddMarkTransactions(invs, _GetMarkTime(), accum, prototype)
+    _AddMarkTransactions(invs, mark_time, accum, prototype)
 
     # Note: We sort again to ensure newly synthesized outputs are ordered
     # properly {123a4903c212}.

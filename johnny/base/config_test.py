@@ -5,7 +5,7 @@ import unittest
 
 from johnny.base import config_pb2
 from johnny.base import config
-from johnny.base.etl import petl, Table
+from johnny.base.etl import petl
 
 
 class TestConfig(unittest.TestCase):

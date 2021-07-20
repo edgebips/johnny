@@ -5,14 +5,9 @@ __license__ = "GNU GPLv2"
 
 from decimal import Decimal
 from typing import Callable, Tuple
-import datetime
 import functools
-import warnings
 
-from johnny.base import chains
-from johnny.base import match
-from johnny.base import instrument
-from johnny.base.etl import Record, Table, petl
+from johnny.base.etl import Record, Table
 
 
 GetFn = Callable[[str], Tuple[Table, Table]]
@@ -40,7 +35,8 @@ def MakeParser(parser_fn: GetFn) -> ParserFn:
             try:
                 ValidatePositionRecord(rec)
             except Exception as exc:
-                raise ValidationError("Invalid validation on row {}: {}".format(repr(rec), exc)) from exc
+                raise ValidationError("Invalid validation on row {}: {}".format(
+                    repr(rec), exc)) from exc
 
         return positions
 

@@ -21,7 +21,6 @@ from dateutil import parser
 
 from johnny.base import config as configlib
 from johnny.base import discovery
-from johnny.base import match
 from johnny.base import positions as poslib
 from johnny.base.etl import petl, Table, Record, WrapRecords
 from johnny.base.number import ToDecimal

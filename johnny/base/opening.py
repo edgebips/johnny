@@ -9,14 +9,12 @@ __copyright__ = "Copyright (C) 2021  Martin Blais"
 __license__ = "GNU GPLv2"
 
 import datetime
-from pprint import pprint
 import collections
-import itertools
 import hashlib
 from decimal import Decimal
-from typing import Any, Dict, Tuple, Mapping, NamedTuple, Optional
+from typing import Tuple, Mapping
 
-from johnny.base.etl import petl, Table, Record
+from johnny.base.etl import petl, Table
 from johnny.base import instrument
 
 

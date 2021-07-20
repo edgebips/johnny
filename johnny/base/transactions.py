@@ -8,10 +8,7 @@ from typing import Callable, Tuple
 import datetime
 import functools
 
-from johnny.base import chains
-from johnny.base import match
-from johnny.base import instrument
-from johnny.base.etl import Record, Table, petl
+from johnny.base.etl import Record, Table
 
 
 GetFn = Callable[[str], Tuple[Table, Table]]

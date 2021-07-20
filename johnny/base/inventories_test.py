@@ -7,7 +7,6 @@ __license__ = "GNU GPLv2"
 
 from decimal import Decimal
 from typing import List
-from unittest.mock import patch
 import itertools
 import unittest
 
@@ -334,7 +333,7 @@ class TestOpenCloseFifoInventory(unittest.TestCase):
             ('e', 'Trade', 'CLOSING', 'SELL', Decimal(1), Decimal(105), 'm-a'),
             ('f', 'Trade', 'OPENING', 'BUY', Decimal(1), Decimal(106), 'm-f'),
         ]
-        inv, table = MatchTable(TestTable(rows).convert('effect', lambda _: ''))
+        _, table = MatchTable(TestTable(rows).convert('effect', lambda _: ''))
         expected_rows = [
             ('a', 'Trade', 'OPENING', 'BUY', Decimal(1), Decimal(101), 'm-a'),
             ('b.1', 'Trade', 'CLOSING', 'SELL', Decimal(1), Decimal(102), 'm-a'),
@@ -359,7 +358,7 @@ class TestOpenCloseFifoInventory(unittest.TestCase):
             ('h', 'Trade', 'OPENING', 'SELL', Decimal(1), Decimal(108), 'm-h'),
             ('i', 'Trade', 'CLOSING', 'BUY', Decimal(1), Decimal(109), 'm-h'),
         ]
-        inv, table = MatchTable(TestTable(rows).convert('effect', lambda _: ''))
+        _, table = MatchTable(TestTable(rows).convert('effect', lambda _: ''))
         expected_rows = [
             ('a', 'Trade', 'OPENING', 'BUY', Decimal(1), Decimal(101), 'm-a'),
             ('b', 'Trade', 'CLOSING', 'SELL', Decimal(1), Decimal(102), 'm-a'),
@@ -405,7 +404,7 @@ class TestOpenCloseFifoInventory(unittest.TestCase):
             ('a', 'Trade', 'OPENING', effect, Decimal(1), Decimal(100), 'm-a'),
             ('b', 'Expire', '', '', Decimal(1), Decimal(0), 'm-b'),
         ]
-        inv, table = MatchTable(TestTable(rows))
+        _, table = MatchTable(TestTable(rows))
         expected_rows = [
             ('a', 'Trade', 'OPENING', effect, Decimal(1), Decimal(100), 'm-a'),
             ('b', 'Expire', 'CLOSING', OtherEffect(effect), Decimal(1), Decimal(0), 'm-a'),

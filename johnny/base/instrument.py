@@ -7,7 +7,7 @@ __license__ = "GNU GPLv2"
 import datetime
 import re
 from decimal import Decimal
-from typing import List, NamedTuple, Optional
+from typing import NamedTuple, Optional
 
 from johnny.base import futures
 from johnny.base.etl import Table
@@ -72,7 +72,7 @@ class Instrument(NamedTuple):
         return ToString(self)
 
     @staticmethod
-    def from_string(self, string: str) -> 'Instrument':
+    def from_string(string: str) -> 'Instrument':
         return FromString(string)
 
 

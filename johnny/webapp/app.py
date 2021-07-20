@@ -8,8 +8,7 @@ __license__ = "GNU GPLv2"
 from decimal import Decimal
 from functools import partial
 from os import path
-from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple, Iterator, Iterable
-from typing import Set, NamedTuple
+from typing import Any, Dict, List, Mapping, NamedTuple
 import io
 import functools
 import itertools
@@ -26,14 +25,13 @@ matplotlib.use('Agg')
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from more_itertools import first
 
-import click
 import flask
 
 from johnny.base import config as configlib
 from johnny.base import chains as chainslib
 from johnny.base import mark
 from johnny.base import instrument
-from johnny.base.etl import petl, Table, Record, WrapRecords
+from johnny.base.etl import petl, Table, Record
 
 
 ZERO = Decimal(0)
@@ -250,7 +248,7 @@ def RenderHistoryText(txns: Table) -> str:
         return '; '.join(fmt.format(r=row)
                          for row in rows
                          if row.putcall and row.putcall[0] == 'C')
-    def Accrue(prv, cur, nxt) -> Decimal:
+    def Accrue(prv, cur, _) -> Decimal:
         last = prv.accr if prv else ZERO
         return last + cur.cost
 
@@ -285,8 +283,6 @@ def RenderHistorySVG(txns: Table) -> str:
     diff_strike = (max_strike - min_strike)
     if diff_strike == 0:
         diff_strike = 1
-    min_x = 0
-    max_x = 1000
     width = 1000
 
     svg = io.StringIO()
@@ -430,7 +426,6 @@ def stats():
     pnl_win = np.array(win.values('chain_pnl'))
     pnl_los = np.array(los.values('chain_pnl'))
     init_cr = np.array(chains.values('init'))
-    accr_cr = np.array(chains.values('accr'))
 
     pct_cr = np.array(chains.values('pct_cr'))
     pct_cr_win = np.array(win.values('pct_cr'))
@@ -531,7 +526,6 @@ def stats_pnlpctinit():
 @app.route('/stats/pnlinit.png')
 def stats_pnlinit():
     chains = FilterChains(STATE.chains)
-    pnl = np.array(chains.values('chain_pnl')).astype(float)
     init = np.array(chains.values('init')).astype(float)
     image = RenderHistogram(init, "Initial Credits ($)")
     return flask.Response(image, mimetype='image/png')

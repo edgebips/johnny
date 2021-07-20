@@ -27,7 +27,6 @@ import pytz
 import tzlocal
 
 from johnny.base import config as configlib
-from johnny.base import match
 from johnny.base import transactions as txnlib
 from johnny.base.etl import petl, Table, Record, WrapRecords
 from johnny.base.number import ToDecimal

@@ -9,9 +9,8 @@ import unittest
 from unittest import mock
 
 from johnny.base import match2
-from johnny.base import instrument
 from johnny.base.etl import petl
-from johnny.base.etl import petl, Table, AssertTableEqual
+from johnny.base.etl import petl, AssertTableEqual
 
 
 ZERO = Decimal(0)

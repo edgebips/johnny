@@ -12,7 +12,6 @@ __copyright__ = "Copyright (C) 2021  Martin Blais"
 __license__ = "GNU GPLv2"
 
 import hashlib
-import logging
 from decimal import Decimal
 from typing import Callable, List, Tuple, NamedTuple, Optional
 

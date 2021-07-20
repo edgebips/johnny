@@ -9,25 +9,18 @@ __license__ = "GNU GPLv2"
 
 from decimal import Decimal
 from os import path
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Dict, Optional
 import collections
 import glob
 import importlib
-import os
 
 from more_itertools import last
 from dateutil import parser
 
 from johnny.base.etl import petl, Table
-from johnny.base import chains
-from johnny.base import match
 from johnny.base import instrument
 from johnny.base import transactions as txnlib
 from johnny.base import config as configlib
-from johnny.sources.thinkorswim_csv import positions as positions_tos
-from johnny.sources.thinkorswim_csv import transactions as transactions_tos
-from johnny.sources.tastyworks_csv import positions as positions_tw
-from johnny.sources.tastyworks_csv import transactions as transactions_tw
 
 
 ZERO = Decimal(0)

@@ -160,7 +160,7 @@ def linearize(iterator, joiner=list):
     Returns:
       A list of return values from joiner.
     """
-    return list(map(list, iterator))
+    return joiner(map(list, iterator))
 
 
 class TestLineUtils(unittest.TestCase):

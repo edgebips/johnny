@@ -53,7 +53,7 @@ def ToDecimal(string: str) -> Decimal:
         if len(s64th) == 3:
             try:
                 frac64ths += _SUB_FRACTIONS[s64th[2]]
-            except KeyError as exc:
+            except KeyError:
                 raise ValueError("Invalid subfraction in '{}'".format(ostring))
         return sign * Decimal(integral) + frac64ths / Decimal(64)
 
@@ -67,7 +67,7 @@ def ToDecimal(string: str) -> Decimal:
         if len(s32th) == 3:
             try:
                 frac32ths += _SUB_FRACTIONS[s32th[2]]
-            except KeyError as exc:
+            except KeyError:
                 raise ValueError("Invalid subfraction in '{}'".format(ostring))
         return sign * Decimal(integral) + frac32ths / Decimal(32)
 

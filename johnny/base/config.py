@@ -5,6 +5,7 @@ __license__ = "GNU GPLv2"
 
 from typing import Mapping, Tuple
 
+# pylint: disable=unused-import
 from johnny.base.config_pb2 import Config, Chain, Account, FutOptMonthMapping
 from johnny.base import config_pb2
 from johnny.base.etl import petl, Table
