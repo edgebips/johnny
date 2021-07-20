@@ -30,10 +30,12 @@ from typing import List, Optional
 import click
 
 from johnny.base import discovery
+from johnny.base import mark
+from johnny.base import chains as chainslib
 from johnny.base import config as configlib
 from johnny.base import consolidate
 from johnny.base import instrument
-from johnny.base.etl import Table
+from johnny.base.etl import petl, Table
 
 
 @click.group()
@@ -56,7 +58,7 @@ def GetLogTables(config_filename: str, logtype: int) -> Table:
 @cli.command()
 @click.argument('config_filename')
 @click.pass_context
-def transactions(ctx: click.Context, config_filename: str):
+def rawtxns(ctx: click.Context, config_filename: str):
     "Find, process and print transactions."
     table = GetLogTables(config_filename, configlib.Account.LogType.TRANSACTIONS)
     print_table(table, ctx.obj['expand'])
@@ -65,7 +67,7 @@ def transactions(ctx: click.Context, config_filename: str):
 @cli.command()
 @click.argument('config_filename')
 @click.pass_context
-def positions(ctx: click.Context, config_filename: str):
+def rawpos(ctx: click.Context, config_filename: str):
     "Find, process and print positions."
     table = GetLogTables(config_filename, configlib.Account.LogType.POSITIONS)
     print_table(table, ctx.obj['expand'])
@@ -79,14 +81,47 @@ def print_table(table: Table, expand: bool):
 
 
 @cli.command()
-@click.argument('config_filename', type=click.Path(exists=True))
-@click.option('--ledger', '-l', type=click.Path(exists=False),
-              help="Remove transactions from Ledger. Requires order ids.")
-def chains(config_filename: str, ledger: Optional[str]):
+@click.argument('config_filename')
+def imported(config_filename: str):
     "Find, process and print positions."
 
-    # Read in and consolidate all the data.
-    _, __, chains, config = consolidate.ConsolidateChains(config_filename, ledger)
+    config = configlib.ParseFile(config_filename)
+    imported = petl.frompickle(config.output.imported_filename)
+    print(imported.lookallstr())
+
+
+@cli.command()
+@click.argument('config_filename')
+def marks(config_filename: str):
+    "Print out marks."
+
+    config = configlib.ParseFile(config_filename)
+    transactions = petl.frompickle(config.output.imported_filename)
+
+    # Mark the transactions.
+    price_map = mark.GetPriceMap(transactions, config)
+    transactions = mark.Mark(transactions, price_map)
+
+    # Print out the marks.
+    marks = (transactions
+             .selecteq('rowtype', 'Mark'))
+    print(marks.lookallstr())
+
+
+@cli.command()
+@click.argument('config_filename')
+def chains(config_filename: str):
+    "Print out marked chains."
+
+    config = configlib.ParseFile(config_filename)
+    transactions = petl.frompickle(config.output.imported_filename)
+
+    # Mark the transactions.
+    price_map = mark.GetPriceMap(transactions, config)
+    transactions = mark.Mark(transactions, price_map)
+
+    # Compute the chains.
+    chains = chainslib.TransactionsToChains(transactions)
     print(chains.lookallstr())
 
 

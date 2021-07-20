@@ -3,19 +3,12 @@
 DOWNLOADS=$(HOME)/trading/downloads
 #CONFIG=$(JOHNNY_CONFIG)
 CONFIG=$(HOME)/r/q/office/accounting/trading/johnny.pbtxt
-IMPORTED=$(HOME)/r/q/office/accounting/trading/imported.pickledb
 
 move-files:
 	-mv -f $(HOME)/tasty* $(HOME)/*Statement.csv $(DOWNLOADS)
 
 serve: move-files
 	johnny-web $(DOWNLOADS)
-
-transactions txn:
-	johnny-print transactions $(DOWNLOADS)
-
-positions pos:
-	johnny-print positions $(DOWNLOADS)
 
 chains:
 	johnny-print chains $(DOWNLOADS)
@@ -34,4 +27,7 @@ update:
 	tastyworks-update $(DOWNLOADS)/tastyworks-roth.db -a Roth
 
 import:
-	johnny-import $(CONFIG) $(IMPORTED)
+	johnny-import $(CONFIG)
+
+debug:
+	python3 ./experiments/johnny-debug $(CONFIG)

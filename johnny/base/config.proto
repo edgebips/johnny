@@ -18,22 +18,31 @@ message Config {
   // Input configuration.
   optional Inputs input = 1;
 
+  // Output configuration.
+  optional Outputs output = 2;
+
   // A list of manually disambiguated trades and their annotations.
-  repeated Chain chains = 2;
+  repeated Chain chains = 3;
 
   // Explicitly linked transactions or orders. These lists can be used to join
   // together pairs that would otherwise be resolved to independent chains. Note
   // that it is legitimate to link together orders from different accounts.
   // Differences in trading time across platforms, e.g. on the EXT session,
   // sometimes require us to cross-trade between accounts for hedging.
-  repeated Link transaction_links = 3;
-  repeated Link order_links = 4;
+  repeated Link transaction_links = 4;
+  repeated Link order_links = 5;
 }
 
 // Configuration for inputs to be imported.
 message Inputs {
   // A list of account sources to pull data from.
   repeated Account accounts = 1;
+}
+
+// Configuration for outputs and databases.
+message Outputs {
+  // A database file to contain the processed and normalized transactions.
+  optional string imported_filename = 1;
 }
 
 // The declaration of an account source. Only declared accounts are ingested.

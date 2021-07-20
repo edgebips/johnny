@@ -87,6 +87,7 @@ ALLOW_TYPES = {
     ('Receive Deliver', 'Cash Settled Assignment'): 'Assign',
     ('Receive Deliver', 'Cash Settled Exercise'): 'Trade',
     ('Receive Deliver', 'Exercise'): 'Trade',
+    ('Receive Deliver', 'Forward Split'): 'Trade',
 }
 
 OTHER_TYPES = {
@@ -103,7 +104,8 @@ OTHER_TYPES = {
 def GetRowType(rec: Record) -> bool:
     """Predicate to filter out row types we're not interested in."""
     typekey = (rec['transaction-type'], rec['transaction-sub-type'])
-    assert typekey in ALLOW_TYPES or typekey in OTHER_TYPES
+    assert typekey in ALLOW_TYPES or typekey in OTHER_TYPES, (
+        rec)
     return ALLOW_TYPES.get(typekey, None)
 
 
@@ -174,7 +176,21 @@ def CalculateCost(rec: Record) -> Decimal:
     derived_net_value = rec['value'] + rec['commissions'] + rec['fees']
     assert rec['net-value'] == derived_net_value, (
         rec['net-value'], derived_net_value)
-    return rec['value']
+
+    sign = +1 if 'BUY' else -1
+    return sign * rec['value']
+
+
+def CalculatePrice(value: str, rec: Record) -> Decimal:
+    """Clean up prices and calculate them where missing."""
+
+    # TODO(blais): Contemplate adding a new type.
+    if rec.description.startswith('Forward split'):
+        assert value is None
+        return abs(rec.cost / rec.quantity)
+    if value is None:
+        return ZERO
+    return Decimal(value)
 
 
 def GetTransactions(filename: str) -> Tuple[Table, Table]:
@@ -219,9 +235,6 @@ def GetTransactions(filename: str) -> Tuple[Table, Table]:
              # Safely convert quantity field to a numerical value.
              .convert('quantity', ConvertSafeInteger)
 
-             # Convert price to decimal.
-             .convert('price', lambda v: ZERO if v is None else Decimal(v))
-
              # Rename commissions.
              .rename('commission', 'commissions')
 
@@ -230,6 +243,9 @@ def GetTransactions(filename: str) -> Tuple[Table, Table]:
 
              # Compute cost and verify the totals.
              .addfield('cost', CalculateCost)
+
+             # Convert price to decimal.
+             .convert('price', CalculatePrice, pass_row=True)
 
              #.cut(txnlib.FIELDS) TODO(blais): Restore this.
              .cut('account',
@@ -249,6 +265,7 @@ def GetTransactions(filename: str) -> Tuple[Table, Table]:
 
              .sort(('account', 'datetime', 'description', 'quantity'))
              )
+
     return table
 
 

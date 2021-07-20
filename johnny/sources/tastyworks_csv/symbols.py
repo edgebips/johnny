@@ -10,9 +10,10 @@ from decimal import Decimal
 
 from johnny.base import futures
 from johnny.base import instrument
+Instrument = instrument.Instrument
 
 
-def ParseSymbol(symbol: str, instype: Optional[str]) -> instrument.Instrument:
+def ParseSymbol(symbol: str, instype: Optional[str]) -> Instrument:
     """Parse a symbol from the Tastyworks platforms."""
     # Note: The instrument type is a normalized one, not the original one.
     if not symbol:
@@ -44,14 +45,14 @@ def ParseSymbol(symbol: str, instype: Optional[str]) -> instrument.Instrument:
 _STRIKE_PRICE_DIVISOR = Decimal('1000')
 
 
-def _ParseEquitySymbol(symbol: str) -> instrument.Instrument:
-    return instrument.Instrument(underlying=symbol,
-                                 multiplier=1)
+def _ParseEquitySymbol(symbol: str) -> Instrument:
+    return Instrument(underlying=symbol,
+                      multiplier=1)
 
 
-def _ParseEquityOptionSymbol(symbol: str) -> instrument.Instrument:
+def _ParseEquityOptionSymbol(symbol: str) -> Instrument:
     # e.g. 'TLRY  210416C00075000' for equity option;
-    return instrument.Instrument(
+    return Instrument(
         underlying=symbol[0:6].rstrip(),
         expiration=datetime.date(int(symbol[6:8]), int(symbol[8:10]), int(symbol[10:12])),
         putcall=symbol[12],
@@ -73,17 +74,17 @@ _FUTSYM = "([A-Z0-9]+)([FGHJKMNQUVXZ])2?([0-9])"
 _DECADE = datetime.date.today().year % 100 // 10
 
 
-def _ParseFuturesSymbol(symbol: str) -> instrument.Instrument:
+def _ParseFuturesSymbol(symbol: str) -> Instrument:
     match = re.fullmatch(f"/{_FUTSYM}", symbol)
     assert match, "Invalid futures options symbol: {}".format(symbol)
     root, fmonth, fyear = match.groups()
     underlying = f"/{root}{fmonth}{_DECADE}{fyear}"
     multiplier = futures.MULTIPLIERS[underlying[:-3]]
-    return instrument.Instrument(underlying=underlying,
-                                 multiplier=multiplier)
+    return Instrument(underlying=underlying,
+                      multiplier=multiplier)
 
 
-def _ParseFuturesOptionSymbol(symbol: str) -> instrument.Instrument:
+def _ParseFuturesOptionSymbol(symbol: str) -> Instrument:
     # e.g., "./6JM1 JPUK1 210507P0.009" for futures option.
     assert symbol.startswith(r"./"), "Invalid futures options symbol: {}".format(symbol)
     underlying = symbol[1:7].rstrip()
@@ -115,9 +116,9 @@ def _ParseFuturesOptionSymbol(symbol: str) -> instrument.Instrument:
                          strike=strike)
 
 
-def _ParseCrypto(symbol: str) -> instrument.Instrument:
+def _ParseCrypto(symbol: str) -> Instrument:
     match = re.match('([A-Z]{3})/([A-Z]{3})', symbol)
     assert match
     base, quote = match.groups()
-    return instrument.Instrument(underlying='{}_{}'.format(base, quote),
-                                 multiplier=1)
+    return Instrument(underlying='{}_{}'.format(base, quote),
+                      multiplier=1)

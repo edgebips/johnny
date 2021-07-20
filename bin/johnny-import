@@ -48,8 +48,11 @@ def ImportTransactions(config: configlib.Config) -> Table:
     # Synthesize opening balances. We need to temporarily expand the instrument
     # fields, as they are needed by the match and chains modules.
     transactions = (transactions
+
+                    # Run the matching process.
                     .applyfn(match2.Process)
 
+                    # Run the chains heuristic.
                     .applyfn(instrument.Expand, 'symbol')
                     .applyfn(chains.Group,
                              explicit_transactions_chain_map=transactions_chain_map,
@@ -64,12 +67,11 @@ def ImportTransactions(config: configlib.Config) -> Table:
 
 @click.command()
 @click.argument('config_filename', type=click.Path(exists=True))
-@click.argument('imported_pickle')
-def import_(config_filename: str, imported_pickle: str):
+def import_(config_filename: str):
     """Parse the configuration, the sources, transform, and save."""
     config = configlib.ParseFile(config_filename)
     imported = ImportTransactions(config)
-    imported.topickle(imported_pickle)
+    imported.topickle(config.output.imported_filename)
 
 
 if __name__ == '__main__':

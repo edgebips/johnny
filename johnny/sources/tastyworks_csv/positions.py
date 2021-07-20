@@ -7,7 +7,7 @@ __license__ = "GNU GPLv2"
 import collections
 from decimal import Decimal
 from os import path
-from typing import Any, Optional, Tuple
+from typing import Any, Optional, Tuple, Mapping
 import datetime
 import hashlib
 import logging
@@ -28,6 +28,7 @@ from johnny.sources.tastyworks_csv import symbols
 
 
 _INSTYPES = {
+    'STOCK': 'Equity',
     'EQUITY': 'Equity',
     'OPTION': 'EquityOption',
     'FUTURES': 'Future',
@@ -122,6 +123,24 @@ def Import(source: str) -> Table:
     """Process the filename, normalize, and output as a table."""
     filename = discovery.GetLatestFile(source)
     return GetPositions(filename)
+
+
+def ReadPricesFromPositionsFile(filename: str) -> Mapping[str, Decimal]:
+    """Read the CSV file, normalize the symbols and return the prices."""
+    if not filename or not path.exists(filename):
+        return {}
+    return (petl.fromcsv(filename)
+            .convert('Type', _INSTYPES.__getitem__)
+            .rename('Type', 'instype')
+
+            .addfield('symbol', lambda r: str(symbols.ParseSymbol(
+                r['Symbol'], r['instype'])))
+
+            .rename('Mark', 'mark')
+            .convert('mark', ToDecimal)
+
+            .cut('symbol', 'mark')
+            .lookupone('symbol', 'mark'))
 
 
 @click.command()

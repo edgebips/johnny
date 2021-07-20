@@ -27,33 +27,19 @@ __copyright__ = "Copyright (C) 2021  Martin Blais"
 __license__ = "GNU GPLv2"
 
 
-
 from decimal import Decimal
-from enum import Enum
-from typing import Any, Dict, Iterable, Iterator, List, Mapping, NamedTuple, Union, Set
-from typing import Optional, Tuple
-import argparse
+from typing import Iterator, List, Mapping, Tuple
 import hashlib
-import functools
 import collections
-import pprint
 import datetime
 import itertools
-from os import path
-import os
 import logging
-import re
-import sys
-from more_itertools import first, unzip
-from pprint import pformat
 
-import numpy
-from dateutil import parser
+from more_itertools import first
 import networkx as nx
-from matplotlib import pyplot
 
 from johnny.base import instrument
-from johnny.base.etl import petl, AssertColumns, PrintGroups, Record, Table, WrapRecords
+from johnny.base.etl import AssertColumns, Record, Table
 
 
 ZERO = Decimal(0)
@@ -96,7 +82,7 @@ def Group(transactions: Table,
         for transaction_id in cc:
             node = graph.nodes[transaction_id]
             try:
-                node_type = node['type']
+                unused_node_type = node['type']
             except KeyError:
                 raise KeyError("Node with no type for transaction: {}".format(
                     transaction_id))
@@ -199,7 +185,7 @@ def CreateGraph(transactions: Table,
 
 
 def _LinkByOverlappingMatch(transactions: Table,
-                            explicit_chains=None) -> List[Tuple[str, str]]:
+                            unused_explicit_chains=None) -> List[Tuple[str, str]]:
     """Return pairs of linked matches, matched strictly by common expiration."""
 
     AssertColumns(transactions,
@@ -235,7 +221,7 @@ def _LinkByOverlappingMatch(transactions: Table,
     under_map = {(account, underlying, expiration): set()
                  for _, account, underlying, expiration, __ in spans}
     linked_matches = []
-    for dt, account, underlying, expiration, match_id in sorted(spans):
+    for _, account, underlying, expiration, match_id in sorted(spans):
         # Update the set of active matches, removing or adding.
         active_set = under_map[(account, underlying, expiration)]
         if match_id in active_set:
@@ -352,3 +338,49 @@ def ChainName(txns: List[Record],
     return ".".join([first_txn.account,
                      "{:%y%m%d_%H%M%S}".format(first_txn.datetime),
                      first_txn.underlying.lstrip('/')])
+
+
+def InitialCredits(pairs: Iterator[Tuple[str, Decimal]]) -> Decimal:
+    """Compute the initial credits from a group of chain rows."""
+    first_order_id = None
+    first_order_sum = ZERO
+    for order_id, cost in pairs:
+        if first_order_id is None or order_id is None or order_id < first_order_id:
+            first_order_id = order_id
+            first_order_sum = cost
+        elif order_id == first_order_id:
+            first_order_sum += cost
+    return first_order_sum
+
+
+def _GetStatus(group):
+    return 'ACTIVE' if any(rowtype == 'Mark' for rowtype in group) else 'DONE'
+
+
+def TransactionsToChains(transactions: Table) -> Table:
+    """Aggregate transactions to aggregated chains."""
+
+
+    agg = {
+        'account': ('account', first),
+        'mindate': ('datetime', lambda g: min(g).date()),
+        'maxdate': ('datetime', lambda g: max(g).date()),
+        'underlying': ('underlying', first),
+        'cost': ('cost', sum),
+        'init': (('order_id', 'cost'), InitialCredits),
+        'commissions': ('commissions', sum),
+        'fees': ('fees', sum),
+        'status': ('rowtype', _GetStatus),
+    }
+    chains = (
+        transactions
+        .addfield('underlying', lambda r: instrument.ParseUnderlying(r.symbol))
+        .replace('commissions', None, ZERO)
+        .replace('fees', None, ZERO)
+
+        .aggregate('chain_id', agg)
+        .sort('maxdate')
+        .cut('chain_id', 'account', 'underlying', 'status', 'mindate', 'maxdate',
+             'cost', 'init', 'commissions', 'fees'))
+
+    return chains

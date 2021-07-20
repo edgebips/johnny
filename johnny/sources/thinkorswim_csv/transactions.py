@@ -46,6 +46,7 @@ from johnny.base import discovery
 from johnny.base import transactions as txnlib
 from johnny.base.etl import petl, Table, Record, WrapRecords
 from johnny.sources.thinkorswim_csv import utils
+from johnny.sources.thinkorswim_csv import symbols
 from johnny.utils import csv_utils
 
 
@@ -54,15 +55,6 @@ Record = petl.Record
 debug = False
 Config = Any
 ZERO = Decimal(0)
-
-
-# Symbol name changes sometimes occur out of sync in the TOS platform. You may
-# find the old symbol name in the trading history and the new one in the cash
-# statement.
-SYMBOL_NAME_CHANGES = {
-    # https://investorplace.com/2021/03/chpt-stock-12-things-to-know-as-chargepoint-trading-spac-merger-sbe-stock/
-    'CHPT': 'SBE',
-}
 
 
 def SplitCashBalance(statement: Table, trade_hist: Table) -> Tuple[Table, Table]:
@@ -544,7 +536,8 @@ def AccountTradeHistory_Prepare(table: Table) -> Table:
         .addfield('instype', InferInstrumentType)
 
         # Generate Beancount symbol from the row.
-        .addfield('_instrument', ToInstrument)
+        .addfield('_instrument', symbols.ToInstrument)
+        # TODO(blais): Can we simply replace this antiquated code by instrument.Expand()?
         .addfield('underlying', lambda r: r._instrument.underlying)
         .addfield('expiration', lambda r: r._instrument.expiration)
         .addfield('expcode', lambda r: r._instrument.expcode)
@@ -578,50 +571,6 @@ def InferInstrumentType(rec: Record) -> str:
         else:
             return 'Equity Option'
     raise ValueError("Could not infer instrument type for {}".format(rec))
-
-
-def ToInstrument(rec: Record) -> str:
-    """Generate an Instrument symbol from the row."""
-
-    # Normalize and fixup the symbols to remove the multiplier and month
-    # string. '/CLK21 1/1000 MAY 21' is redundant.
-    underlying = rec.symbol.split()[0]
-    underlying = SYMBOL_NAME_CHANGES.get(underlying, underlying)
-
-    if rec.instype == 'Equity':
-        return instrument.Instrument(underlying=underlying,
-                                     multiplier=1)
-
-    elif rec.instype == 'Future':
-        short_under = underlying[:-3]
-        multiplier = futures.MULTIPLIERS[short_under]
-        return instrument.Instrument(underlying=underlying,
-                                     multiplier=multiplier)
-
-    elif rec.instype == 'Equity Option':
-        expiration = datetime.datetime.strptime(rec.exp.upper(), '%d %b %y').date()
-        assert rec.type in {'CALL', 'PUT'}
-        return instrument.Instrument(underlying=underlying,
-                                     expiration=expiration,
-                                     strike=Decimal(rec.strike),
-                                     putcall=rec.type[0],
-                                     multiplier=futures.OPTION_CONTRACT_SIZE)
-
-    elif rec.instype == 'Future Option':
-        assert rec.exp.startswith('/')
-        # TODO(blais): Infer the actual expiration date from CME specs. The
-        # software does not provide it.
-        short_under = underlying[:-3]
-        multiplier = futures.MULTIPLIERS[short_under]
-        return instrument.Instrument(underlying=underlying,
-                                     expiration=None,
-                                     expcode=rec.exp,
-                                     strike=Decimal(rec.strike),
-                                     putcall=rec.type[0],
-                                     multiplier=multiplier)
-
-    else:
-        raise ValueError("Could not infer Beansym for {}".format(rec))
 
 
 def ParseDateTimePair(date_field: str, time_field: str, rec: Record) -> datetime.date:
@@ -868,7 +817,7 @@ def GetTransactions(filename: str) -> Tuple[Table, Table]:
 
     # Add a cost column, calculated from the data.
     def Cost(r: Record) -> Decimal:
-        sign = -1 if r.instruction == 'BUY' else 1
+        sign = -1 if r.instruction == 'BUY' else +1
         return sign * r.quantity * r.multiplier * r.price
 
     # Add some more missing columns.

@@ -20,24 +20,50 @@ __copyright__ = "Copyright (C) 2021  Martin Blais"
 __license__ = "GNU GPLv2"
 
 import functools
+from functools import partial
 import logging
-from typing import List, Optional
+import os
+from decimal import Decimal
+from typing import List, Optional, Mapping
 
+from more_itertools import first, last
 import click
+import ameritrade as td
 
+from johnny.base import config as configlib
 from johnny.base import discovery
 from johnny.base import consolidate
 from johnny.base import instrument
 from johnny.base import opening
 from johnny.base import match
 from johnny.base import match2
-from johnny.base.etl import Table, WrapRecords
+from johnny.base import mark
+from johnny.base import chains as chainslib
+from johnny.base.etl import petl, Table, Record, WrapRecords
+from johnny.sources.tastyworks_csv.positions import ReadPricesFromPositionsFile
+from johnny.sources.thinkorswim_csv import symbols as tdsymbols
+Instrument = instrument.Instrument
+
+
+ZERO = Decimal(0)
 
 
 @click.command()
-@click.argument('filesordirs', nargs=-1)
-def debug(filesordirs: str):
-    pass
+@click.argument('config_filename', type=click.Path(exists=True))
+def debug(config_filename: str):
+    """Parse the configuration, the sources, transform, and save."""
+    config = configlib.ParseFile(config_filename)
+    transactions = petl.frompickle(config.output.imported_filename)
+
+    # Mark the transactions.
+    price_map = mark.GetPriceMap(transactions, config)
+    transactions = mark.Mark(transactions, price_map)
+
+    # Compute the chains.
+    chains = chainslib.TransactionsToChains(transactions)
+    print(chains
+          #.selecteq('underlying', '')
+          .lookallstr())
 
 
 if __name__ == '__main__':
