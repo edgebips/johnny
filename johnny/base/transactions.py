@@ -36,25 +36,6 @@ class ValidationError(Exception):
     """Conformance for transactions table. Check your importer."""
 
 
-def MakeParser(parser_fn: GetFn) -> ParserFn:
-    """Make a parser function, including matches and chains."""
-
-    @functools.wraps(parser_fn)
-    def parser(filename: str) -> Table:
-        output = parser_fn(filename)
-        transactions = output[0]
-        ValidateFieldNames(transactions)
-        for rec in transactions.records():
-            try:
-                ValidateTransactionRecord(rec)
-            except Exception as exc:
-                raise ValidationError("Invalid validation on row {}".format(repr(rec))) from exc
-
-        return transactions
-
-    return parser
-
-
 def IsZoneAware(d: datetime.datetime) -> bool:
     """Return true if the time is timezone aware."""
     return (d.tzinfo is not None and

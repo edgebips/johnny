@@ -24,25 +24,6 @@ class ValidationError(Exception):
     """Conformance for positions table. Check your importer."""
 
 
-def MakeParser(parser_fn: GetFn) -> ParserFn:
-    """Make a parser function, including matches and chains."""
-
-    @functools.wraps(parser_fn)
-    def parser(filename: str) -> Table:
-        positions = parser_fn(filename)
-        ValidateFieldNames(positions)
-        for rec in positions.records():
-            try:
-                ValidatePositionRecord(rec)
-            except Exception as exc:
-                raise ValidationError("Invalid validation on row {}: {}".format(
-                    repr(rec), exc)) from exc
-
-        return positions
-
-    return parser
-
-
 def ValidateFieldNames(table: Table):
     """Validate the field names and their order."""
     if list(table.header())[:len(FIELDS)] != FIELDS:
