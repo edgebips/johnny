@@ -529,7 +529,7 @@ def AccountTradeHistory_Prepare(table: Table) -> Table:
         # Convert pos effect to single word naming.
         .convert('pos_effect', lambda r: 'OPENING' if r == 'TO OPEN' else 'CLOSING')
 
-        # Convert order ids to integers (because they area).
+        # Convert order ids to integers (because they are).
         .convert('order_id', lambda v: int(v) if v else 0)
 
         # Infer instrument type.
@@ -850,6 +850,8 @@ def GetTransactionId(rec: Record) -> str:
     md5 = hashlib.blake2s(digest_size=6)
     # Note: You could use the sequenced order id instead. That's what we do in
     # some of the other importers.
+    #
+    # TODO(blais): What about if there is no order id, .e.g None?
     md5.update(str(rec['order_id']).encode('ascii'))
     md5.update(rec['description'].encode('ascii'))
     return md5.hexdigest()

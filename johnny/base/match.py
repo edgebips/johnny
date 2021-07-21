@@ -110,7 +110,7 @@ def Process(transactions: Table,
         new_rows.append(nrec)
 
     # Note: Unfortunately we require two sortings; one to ensure that inventory
-    # matching is done properly, and a final one to reorder the newly
+    # matching is done in time order, and a final one to reorder the newly
     # synthesized outputs {123a4903c212}.
     transactions = (transactions
                     .addfield('match_id', '')
@@ -143,8 +143,8 @@ def Process(transactions: Table,
     # Add closing transactions for existing positions.
     _AddMarkTransactions(invs, mark_time, accum, prototype)
 
-    # Note: We sort again to ensure newly synthesized outputs are ordered
-    # properly {123a4903c212}.
+    # Note: We sort again to ensure newly synthesized rows are ordered in
+    # datetime order {123a4903c212}.
     return (petl.wrap(itertools.chain([transactions.header()], new_rows))
             .sort('datetime'))
 

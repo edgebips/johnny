@@ -70,6 +70,8 @@ def Group(transactions: Table,
       A modified table with an extra "chain" column, identifying groups of
       related transactions, by episode, or chain.
     """
+    explicit_transactions_chain_map = explicit_transactions_chain_map or {}
+    explicit_orders_chain_map = explicit_orders_chain_map or {}
 
     # Create the graph.
     graph = CreateGraph(transactions, by_match, by_order, by_time,
@@ -122,8 +124,6 @@ def CreateGraph(transactions: Table,
                   ('underlying', str))
 
     # Extract out transactions that are explicitly chained.
-    explicit_transactions_chain_map = explicit_transactions_chain_map or {}
-    explicit_orders_chain_map = explicit_orders_chain_map or {}
     explicit_transactions, implicit_transactions = transactions.biselect(
         lambda rec: (rec.transaction_id in explicit_transactions_chain_map or
                      rec.order_id in explicit_orders_chain_map))
@@ -365,8 +365,13 @@ def _CalculateNetLiq(pairs: Iterator[Tuple[str, Decimal]]):
                        if rowtype == 'Mark'))
 
 
+def _GetInstruments(symbols: Iterator[str]) -> List[str]:
+    return set(instrument.FromString(symbol).underlying
+               for symbol in symbols)
+
+
 def TransactionsToChains(transactions: Table, config: configlib.Config) -> Table:
-    """Aggregate transactions to aggregated chains."""
+    """Aggregate already chained transactions to aggregated chains."""
 
     # Mark the transactions.
     price_map = mark.GetPriceMap(transactions, config)
@@ -385,6 +390,7 @@ def TransactionsToChains(transactions: Table, config: configlib.Config) -> Table
         'fees': ('fees', sum),
         'status': ('rowtype', _GetStatus),
         'trade_type': ('chain_id', lambda cids: type_map.get(next(cids), '')),
+        'instruments': ('symbol', _GetInstruments),
     }
     chains = (
         transactions
@@ -397,6 +403,7 @@ def TransactionsToChains(transactions: Table, config: configlib.Config) -> Table
         .sort('maxdate')
         .cut('chain_id', 'account', 'underlying', 'status',
              'mindate', 'maxdate', 'days',
-             'init', 'pnl_chain', 'net_liq', 'commissions', 'fees', 'trade_type'))
+             'init', 'pnl_chain', 'net_liq', 'commissions', 'fees',
+             'trade_type', 'instruments'))
 
     return chains

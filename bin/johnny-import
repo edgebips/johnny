@@ -40,8 +40,6 @@ def ImportTransactions(config: configlib.Config) -> Table:
     logtables = discovery.ReadConfiguredInputs(config)
     transactions = logtables[configlib.Account.LogType.TRANSACTIONS]
 
-    # TODO(blais): Continue here
-
     # Synthesize opening balances. We need to temporarily expand the instrument
     # fields, as they are needed by the match and chains modules.
     transactions = (transactions

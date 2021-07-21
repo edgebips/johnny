@@ -221,7 +221,7 @@ def GetTransactions(filename: str) -> Tuple[Table, Table]:
 
              # Reuse the original order ids.
              .rename('order-id', 'order_id')
-             .convert('order_id', str)
+             .convert('order_id', lambda v: str(v) if isinstance(v, int) else '')
 
              # Parse the symbol.
              .rename('symbol', 'symbol-orig')
