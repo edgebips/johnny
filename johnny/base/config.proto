@@ -29,18 +29,14 @@ message Config {
   // chains processing.
   repeated Chain residual_chains = 7;
 
-  // Explicitly linked transactions or orders. These lists can be used to join
-  // together pairs that would otherwise be resolved to independent chains. Note
-  // that it is legitimate to link together orders from different accounts.
-  // Differences in trading time across platforms, e.g. on the EXT session,
-  // sometimes require us to cross-trade between accounts for hedging.
-  repeated Link transaction_links = 4;
-  repeated Link order_links = 5;
-
   // Mapping of futures options months to their corresponding underlying options
   // months. This is a temporary mapping we use until we code up the rules from
   // the CME contracts.
   optional FutOptMonthMapping futures_option_month_mapping = 6;
+
+  // Deprecated. Use explicit chains instead.
+  repeated Link DEPRECATED_transaction_links = 4 [deprecated = true];
+  repeated Link DEPRECATED_order_links = 5 [deprecated = true];
 }
 
 // Configuration for inputs to be imported.

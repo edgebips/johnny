@@ -32,10 +32,6 @@ def ImportTransactions(config: configlib.Config) -> Table:
     # Extract the explicit chains.
     transactions_chain_map, orders_chain_map = configlib.GetExplicitChains(config)
 
-    # Extract the explicit transsaction and order links.
-    transaction_links = [list(links.ids) for links in config.transaction_links]
-    order_links = [list(links.ids) for links in config.order_links]
-
     # Read the inputs.
     logtables = discovery.ReadConfiguredInputs(config)
     transactions = logtables[configlib.Account.LogType.TRANSACTIONS]
@@ -51,11 +47,8 @@ def ImportTransactions(config: configlib.Config) -> Table:
                     .applyfn(instrument.Expand, 'symbol')
                     .applyfn(chains.Group,
                              explicit_transactions_chain_map=transactions_chain_map,
-                             explicit_orders_chain_map=orders_chain_map,
-                             transaction_links=transaction_links,
-                             order_links=order_links)
-                    .applyfn(instrument.Shrink)
-                    )
+                             explicit_orders_chain_map=orders_chain_map)
+                    .applyfn(instrument.Shrink))
 
     return transactions
 

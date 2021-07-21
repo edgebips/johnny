@@ -19,7 +19,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   syntax='proto2',
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_pb=b'\n\x0c\x63onfig.proto\x12\x06johnny\"\x9d\x02\n\x06\x43onfig\x12\x1d\n\x05input\x18\x01 \x01(\x0b\x32\x0e.johnny.Inputs\x12\x1f\n\x06output\x18\x02 \x01(\x0b\x32\x0f.johnny.Outputs\x12\x1d\n\x06\x63hains\x18\x03 \x03(\x0b\x32\r.johnny.Chain\x12&\n\x0fresidual_chains\x18\x07 \x03(\x0b\x32\r.johnny.Chain\x12\'\n\x11transaction_links\x18\x04 \x03(\x0b\x32\x0c.johnny.Link\x12!\n\x0border_links\x18\x05 \x03(\x0b\x32\x0c.johnny.Link\x12@\n\x1c\x66utures_option_month_mapping\x18\x06 \x01(\x0b\x32\x1a.johnny.FutOptMonthMapping\"+\n\x06Inputs\x12!\n\x08\x61\x63\x63ounts\x18\x01 \x03(\x0b\x32\x0f.johnny.Account\"$\n\x07Outputs\x12\x19\n\x11imported_filename\x18\x01 \x01(\t\"\xa9\x01\n\x12\x46utOptMonthMapping\x12/\n\x06months\x18\x01 \x03(\x0b\x32\x1f.johnny.FutOptMonthMapping.Item\x1a\x62\n\x04Item\x12\x16\n\x0eoption_product\x18\x01 \x01(\t\x12\x14\n\x0coption_month\x18\x02 \x01(\t\x12\x16\n\x0e\x66uture_product\x18\x03 \x01(\t\x12\x14\n\x0c\x66uture_month\x18\x04 \x01(\t\"\xa2\x01\n\x07\x41\x63\x63ount\x12\x10\n\x08nickname\x18\x01 \x01(\t\x12(\n\x07logtype\x18\x02 \x01(\x0e\x32\x17.johnny.Account.LogType\x12\x0e\n\x06module\x18\x03 \x01(\t\x12\x0e\n\x06source\x18\x04 \x01(\t\x12\x0f\n\x07initial\x18\x05 \x01(\t\"*\n\x07LogType\x12\x10\n\x0cTRANSACTIONS\x10\x01\x12\r\n\tPOSITIONS\x10\x02\"$\n\x04Link\x12\x0f\n\x07\x63omment\x18\x01 \x01(\t\x12\x0b\n\x03ids\x18\x02 \x03(\t\"j\n\x05\x43hain\x12\x10\n\x08\x63hain_id\x18\x01 \x01(\t\x12\x12\n\ntrade_type\x18\x02 \x01(\t\x12\x0f\n\x07\x63omment\x18\x03 \x01(\t\x12\x17\n\x0ftransaction_ids\x18\x04 \x03(\t\x12\x11\n\torder_ids\x18\x05 \x03(\t\":\n\x05\x41sset\x12\x12\n\ninstrument\x18\x01 \x01(\t\x12\r\n\x05\x63lass\x18\x02 \x01(\t\x12\x0e\n\x06\x66\x61\x63tor\x18\x03 \x01(\t'
+  serialized_pb=b'\n\x0c\x63onfig.proto\x12\x06johnny\"\xbb\x02\n\x06\x43onfig\x12\x1d\n\x05input\x18\x01 \x01(\x0b\x32\x0e.johnny.Inputs\x12\x1f\n\x06output\x18\x02 \x01(\x0b\x32\x0f.johnny.Outputs\x12\x1d\n\x06\x63hains\x18\x03 \x03(\x0b\x32\r.johnny.Chain\x12&\n\x0fresidual_chains\x18\x07 \x03(\x0b\x32\r.johnny.Chain\x12@\n\x1c\x66utures_option_month_mapping\x18\x06 \x01(\x0b\x32\x1a.johnny.FutOptMonthMapping\x12\x36\n\x1c\x44\x45PRECATED_transaction_links\x18\x04 \x03(\x0b\x32\x0c.johnny.LinkB\x02\x18\x01\x12\x30\n\x16\x44\x45PRECATED_order_links\x18\x05 \x03(\x0b\x32\x0c.johnny.LinkB\x02\x18\x01\"+\n\x06Inputs\x12!\n\x08\x61\x63\x63ounts\x18\x01 \x03(\x0b\x32\x0f.johnny.Account\"$\n\x07Outputs\x12\x19\n\x11imported_filename\x18\x01 \x01(\t\"\xa9\x01\n\x12\x46utOptMonthMapping\x12/\n\x06months\x18\x01 \x03(\x0b\x32\x1f.johnny.FutOptMonthMapping.Item\x1a\x62\n\x04Item\x12\x16\n\x0eoption_product\x18\x01 \x01(\t\x12\x14\n\x0coption_month\x18\x02 \x01(\t\x12\x16\n\x0e\x66uture_product\x18\x03 \x01(\t\x12\x14\n\x0c\x66uture_month\x18\x04 \x01(\t\"\xa2\x01\n\x07\x41\x63\x63ount\x12\x10\n\x08nickname\x18\x01 \x01(\t\x12(\n\x07logtype\x18\x02 \x01(\x0e\x32\x17.johnny.Account.LogType\x12\x0e\n\x06module\x18\x03 \x01(\t\x12\x0e\n\x06source\x18\x04 \x01(\t\x12\x0f\n\x07initial\x18\x05 \x01(\t\"*\n\x07LogType\x12\x10\n\x0cTRANSACTIONS\x10\x01\x12\r\n\tPOSITIONS\x10\x02\"$\n\x04Link\x12\x0f\n\x07\x63omment\x18\x01 \x01(\t\x12\x0b\n\x03ids\x18\x02 \x03(\t\"j\n\x05\x43hain\x12\x10\n\x08\x63hain_id\x18\x01 \x01(\t\x12\x12\n\ntrade_type\x18\x02 \x01(\t\x12\x0f\n\x07\x63omment\x18\x03 \x01(\t\x12\x17\n\x0ftransaction_ids\x18\x04 \x03(\t\x12\x11\n\torder_ids\x18\x05 \x03(\t\":\n\x05\x41sset\x12\x12\n\ninstrument\x18\x01 \x01(\t\x12\r\n\x05\x63lass\x18\x02 \x01(\t\x12\x0e\n\x06\x66\x61\x63tor\x18\x03 \x01(\t'
 )
 
 
@@ -44,8 +44,8 @@ _ACCOUNT_LOGTYPE = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   serialized_options=None,
-  serialized_start=688,
-  serialized_end=730,
+  serialized_start=718,
+  serialized_end=760,
 )
 _sym_db.RegisterEnumDescriptor(_ACCOUNT_LOGTYPE)
 
@@ -87,26 +87,26 @@ _CONFIG = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
-      name='transaction_links', full_name='johnny.Config.transaction_links', index=4,
-      number=4, type=11, cpp_type=10, label=3,
-      has_default_value=False, default_value=[],
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-    _descriptor.FieldDescriptor(
-      name='order_links', full_name='johnny.Config.order_links', index=5,
-      number=5, type=11, cpp_type=10, label=3,
-      has_default_value=False, default_value=[],
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-    _descriptor.FieldDescriptor(
-      name='futures_option_month_mapping', full_name='johnny.Config.futures_option_month_mapping', index=6,
+      name='futures_option_month_mapping', full_name='johnny.Config.futures_option_month_mapping', index=4,
       number=6, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='DEPRECATED_transaction_links', full_name='johnny.Config.DEPRECATED_transaction_links', index=5,
+      number=4, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=b'\030\001', file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='DEPRECATED_order_links', full_name='johnny.Config.DEPRECATED_order_links', index=6,
+      number=5, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=b'\030\001', file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
   ],
   extensions=[
   ],
@@ -120,7 +120,7 @@ _CONFIG = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=25,
-  serialized_end=310,
+  serialized_end=340,
 )
 
 
@@ -151,8 +151,8 @@ _INPUTS = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=312,
-  serialized_end=355,
+  serialized_start=342,
+  serialized_end=385,
 )
 
 
@@ -183,8 +183,8 @@ _OUTPUTS = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=357,
-  serialized_end=393,
+  serialized_start=387,
+  serialized_end=423,
 )
 
 
@@ -236,8 +236,8 @@ _FUTOPTMONTHMAPPING_ITEM = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=467,
-  serialized_end=565,
+  serialized_start=497,
+  serialized_end=595,
 )
 
 _FUTOPTMONTHMAPPING = _descriptor.Descriptor(
@@ -267,8 +267,8 @@ _FUTOPTMONTHMAPPING = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=396,
-  serialized_end=565,
+  serialized_start=426,
+  serialized_end=595,
 )
 
 
@@ -328,8 +328,8 @@ _ACCOUNT = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=568,
-  serialized_end=730,
+  serialized_start=598,
+  serialized_end=760,
 )
 
 
@@ -367,8 +367,8 @@ _LINK = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=732,
-  serialized_end=768,
+  serialized_start=762,
+  serialized_end=798,
 )
 
 
@@ -427,8 +427,8 @@ _CHAIN = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=770,
-  serialized_end=876,
+  serialized_start=800,
+  serialized_end=906,
 )
 
 
@@ -473,17 +473,17 @@ _ASSET = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=878,
-  serialized_end=936,
+  serialized_start=908,
+  serialized_end=966,
 )
 
 _CONFIG.fields_by_name['input'].message_type = _INPUTS
 _CONFIG.fields_by_name['output'].message_type = _OUTPUTS
 _CONFIG.fields_by_name['chains'].message_type = _CHAIN
 _CONFIG.fields_by_name['residual_chains'].message_type = _CHAIN
-_CONFIG.fields_by_name['transaction_links'].message_type = _LINK
-_CONFIG.fields_by_name['order_links'].message_type = _LINK
 _CONFIG.fields_by_name['futures_option_month_mapping'].message_type = _FUTOPTMONTHMAPPING
+_CONFIG.fields_by_name['DEPRECATED_transaction_links'].message_type = _LINK
+_CONFIG.fields_by_name['DEPRECATED_order_links'].message_type = _LINK
 _INPUTS.fields_by_name['accounts'].message_type = _ACCOUNT
 _FUTOPTMONTHMAPPING_ITEM.containing_type = _FUTOPTMONTHMAPPING
 _FUTOPTMONTHMAPPING.fields_by_name['months'].message_type = _FUTOPTMONTHMAPPING_ITEM
@@ -564,4 +564,6 @@ Asset = _reflection.GeneratedProtocolMessageType('Asset', (_message.Message,), {
 _sym_db.RegisterMessage(Asset)
 
 
+_CONFIG.fields_by_name['DEPRECATED_transaction_links']._options = None
+_CONFIG.fields_by_name['DEPRECATED_order_links']._options = None
 # @@protoc_insertion_point(module_scope)

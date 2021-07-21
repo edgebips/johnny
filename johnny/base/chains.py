@@ -52,9 +52,7 @@ def Group(transactions: Table,
           by_order=True,
           by_time=True,
           explicit_transactions_chain_map=None,
-          explicit_orders_chain_map=None,
-          transaction_links=None,
-          order_links=None) -> Table:
+          explicit_orders_chain_map=None) -> Table:
     """Aggregate transaction rows by options chain.
 
     Args:
@@ -64,8 +62,6 @@ def Group(transactions: Table,
       by_time: A flag, indicating that transactions overlapping over time should be chained.
       explicit_transactions_chain_map: A mapping of (transaction-id, unique-chain-id).
       explicit_orders_chain_map: A mapping of (order-id, unique-chain-id).
-      transaction_links: A list of [transaction-id, ...] lists of explicit linkage.
-      order_links: A list of [order-id, ...] lists of explicit linkage.
     Returns:
       A modified table with an extra "chain" column, identifying groups of
       related transactions, by episode, or chain.
@@ -75,8 +71,7 @@ def Group(transactions: Table,
 
     # Create the graph.
     graph = CreateGraph(transactions, by_match, by_order, by_time,
-                        explicit_transactions_chain_map, explicit_orders_chain_map,
-                        transaction_links, order_links)
+                        explicit_transactions_chain_map, explicit_orders_chain_map)
 
     # Process each connected component to an individual trade.
     # Note: This includes rolls if they were carried one as a single order.
@@ -109,9 +104,7 @@ def CreateGraph(transactions: Table,
                 by_order=True,
                 by_time=True,
                 explicit_transactions_chain_map=None,
-                explicit_orders_chain_map=None,
-                transaction_links=None,
-                order_links=None) -> nx.Graph:
+                explicit_orders_chain_map=None) -> nx.Graph:
     """Create a graph to link together related transactions."""
 
     AssertColumns(transactions,
@@ -122,6 +115,8 @@ def CreateGraph(transactions: Table,
                   ('expiration', {None, datetime.date}),
                   ('account', str),
                   ('underlying', str))
+    explicit_transactions_chain_map = explicit_transactions_chain_map or {}
+    explicit_orders_chain_map = explicit_orders_chain_map or {}
 
     # Extract out transactions that are explicitly chained.
     explicit_transactions, implicit_transactions = transactions.biselect(
@@ -156,20 +151,6 @@ def CreateGraph(transactions: Table,
             if rec.match_id:
                 graph.add_node(rec.match_id, type='match')
                 graph.add_edge(rec.transaction_id, rec.match_id)
-
-    # Add explicit linkage between chains (e.g. for pairs).
-    if transaction_links:
-        for index, transaction_ids in enumerate(transaction_links):
-            link_id = 'txnlink{}'.format(index)
-            graph.add_node(link_id, type='txnlink')
-            for transaction_id in transaction_ids:
-                graph.add_edge(transaction_id, link_id, type='explink')
-    if order_links:
-        for index, order_ids in enumerate(order_links):
-            link_id = 'ordlink{}'.format(index)
-            graph.add_node(link_id, type='ordlink')
-            for order_id in order_ids:
-                graph.add_edge(order_id, link_id, type='explink')
 
     # Link together matches that overlap in underlying and time.
     if by_time:
