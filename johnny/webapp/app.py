@@ -414,13 +414,13 @@ def stats():
     chains = FilterChains(STATE.chains)
 
     def PctCr(rec: Record):
-        return 0 if rec.init == 0 else rec.chain_pnl / rec.init
+        return 0 if rec.init == 0 else rec.pnl_chain / rec.init
 
     chains = chains.addfield('pct_cr', PctCr)
-    win, los = chains.biselect(lambda r: r.chain_pnl > 0)
-    pnl = np.array(chains.values('chain_pnl'))
-    pnl_win = np.array(win.values('chain_pnl'))
-    pnl_los = np.array(los.values('chain_pnl'))
+    win, los = chains.biselect(lambda r: r.pnl_chain > 0)
+    pnl = np.array(chains.values('pnl_chain'))
+    pnl_win = np.array(win.values('pnl_chain'))
+    pnl_los = np.array(los.values('pnl_chain'))
     init_cr = np.array(chains.values('init'))
 
     pct_cr = np.array(chains.values('pct_cr'))

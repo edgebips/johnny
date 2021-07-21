@@ -372,6 +372,7 @@ def TransactionsToChains(transactions: Table, config: configlib.Config) -> Table
     price_map = mark.GetPriceMap(transactions, config)
     transactions = mark.Mark(transactions, price_map)
 
+    type_map = {chain.chain_id: chain.trade_type for chain in config.chains}
     agg = {
         'account': ('account', first),
         'mindate': ('datetime', lambda g: min(g).date()),
@@ -383,6 +384,7 @@ def TransactionsToChains(transactions: Table, config: configlib.Config) -> Table
         'commissions': ('commissions', sum),
         'fees': ('fees', sum),
         'status': ('rowtype', _GetStatus),
+        'trade_type': ('chain_id', lambda cids: type_map.get(next(cids), '')),
     }
     chains = (
         transactions
@@ -391,8 +393,10 @@ def TransactionsToChains(transactions: Table, config: configlib.Config) -> Table
         .replace('fees', None, ZERO)
 
         .aggregate('chain_id', agg)
+        .addfield('days', lambda r: (r.maxdate - r.mindate).days + 1)
         .sort('maxdate')
-        .cut('chain_id', 'account', 'underlying', 'status', 'mindate', 'maxdate',
-             'init', 'pnl_chain', 'net_liq', 'commissions', 'fees'))
+        .cut('chain_id', 'account', 'underlying', 'status',
+             'mindate', 'maxdate', 'days',
+             'init', 'pnl_chain', 'net_liq', 'commissions', 'fees', 'trade_type'))
 
     return chains
