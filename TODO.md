@@ -54,18 +54,6 @@
 
 Reduce the following loops and dependencies on positions to a single loop at all:
 
-    /home/blais/p/johnny/johnny/base/match.py:114:    invs = collections.defaultdict(FifoInventory)
-
-      _CreateMatchMappings()
-
-    /home/blais/p/johnny/johnny/base/opening.py:40:    inventory = collections.defaultdict(Decimal)
-
-      Open()
-
-    /home/blais/p/johnny/johnny/sources/thinkorswim_csv/transactions.py:827:    inventory = collections.defaultdict(match.MinInventory)
-
-      _AddMissingExpirations()
-
     /home/blais/p/johnny/johnny/sources/tastyworks_csv/transactions.py:202:    inventory = collections.defaultdict(Decimal)
 
       GetExpirationSigns()

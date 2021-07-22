@@ -37,9 +37,9 @@ You will need both a positions file and a transactions log downloads.
 ### Tastyworks
 
 - **Positions** Go to the `Positions` tab, click on `CSV`, save file to a
-  directory. Make sure you have the following columns in your position tab: 
+  directory. Make sure you have the following columns in your position tab:
   `price, mark, cost, net_liq, delta per quantity`.
-  
+
 
 - **Transactions** Go to the `History` tab, click on `CSV`, select a date range
   up to a point where you had no positions, scroll all the way to the bottom (to
