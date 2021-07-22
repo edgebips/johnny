@@ -52,6 +52,7 @@ class State(NamedTuple):
     positions: Table
     chains: Table
     chains_map: Mapping[str, configlib.Chain]
+    config: configlib.Config
 
 
 def Initialize():
@@ -62,7 +63,9 @@ def Initialize():
                       "your .pbtxt file with a text-formatted config.proto.")
         raise SystemExit
 
-    # TODO(blais): Restore usage of the ledger.
+    # TODO(blais): Restore usage of the ledger. TODO(blais): Use a field from
+    # the config file, centralize processing with the data preparation, from the
+    # config.
     ledger: str = os.getenv("JOHNNY_LEDGER")
 
     global STATE
@@ -73,14 +76,17 @@ def Initialize():
             # Get the imported transactions.
             config = configlib.ParseFile(config_filename)
             transactions = petl.frompickle(config.output.imported_filename)
-            chains = chainslib.TransactionsToChains(transactions, config)
-            chains_map = {c.chain_id: c for c in config.chains}
+
+            # Compute chains, clean up configuration.
+            chains_table = chainslib.TransactionsToChains(transactions, config)
+            clean_config = chainslib.CleanConfig(config, chains_table)
+            chains_map = {c.chain_id: c for c in clean_config.chains}
 
             # Extract current positions from marks.
             positions = (transactions
                          .selecteq('rowtype', 'Mark'))
 
-            STATE = State(transactions, positions, chains, chains_map)
+            STATE = State(transactions, positions, chains_table, chains_map, clean_config)
             app.logger.info("Done.")
 
     return STATE
@@ -222,6 +228,17 @@ def chain_proto(chain_id: str):
 
     config = configlib.Config()
     config.chains.add().CopyFrom(chain_obj)
+    response = flask.make_response(configlib.ToText(config), 200)
+    response.mimetype = "text/plain"
+    return response
+
+
+@app.route('/chain_protos')
+def chain_protos():
+    chains_table = FilterChains(STATE.chains)
+    config = configlib.Config()
+    for rec in chains_table.records():
+        config.chains.add().CopyFrom(STATE.chains_map.get(rec.chain_id))
     response = flask.make_response(configlib.ToText(config), 200)
     response.mimetype = "text/plain"
     return response
@@ -504,7 +521,7 @@ def stats():
 @app.route('/stats/pnlhist.png')
 def stats_pnlhist():
     chains = FilterChains(STATE.chains)
-    pnl = np.array(chains.values('chain_pnl'))
+    pnl = np.array(chains.values('pnl_chain'))
     pnl = [v for v in pnl if -10000 < v < 10000]
     image = RenderHistogram(pnl, "P/L ($)")
     return flask.Response(image, mimetype='image/png')
@@ -513,7 +530,7 @@ def stats_pnlhist():
 @app.route('/stats/pnlpctinit.png')
 def stats_pnlpctinit():
     chains = FilterChains(STATE.chains)
-    pnl = np.array(chains.values('chain_pnl')).astype(float)
+    pnl = np.array(chains.values('pnl_chain')).astype(float)
     creds = np.array(chains.values('init')).astype(float)
     data = RatioDistribution(pnl, creds)
     image = RenderHistogram(data, "P/L (%/Initial Credits)")
@@ -539,13 +556,13 @@ def monitor():
 def share():
     # Filter down the list of chains.
     chains = (FilterChains(STATE.chains)
-              .cut('underlying', 'mindate', 'days', 'init', 'chain_pnl'))
+              .cut('underlying', 'mindate', 'days', 'init', 'pnl_chain'))
 
     # Add bottom line totals.
     totals = (chains
-              .cut('init', 'chain_pnl')
+              .cut('init', 'pnl_chain')
               .aggregate(None, {'init': ('init', sum),
-                                'chain_pnl': ('chain_pnl', sum)})
+                                'pnl_chain': ('pnl_chain', sum)})
               .addfield('underlying', '__TOTAL__'))
     chains = petl.cat(chains, totals)
 

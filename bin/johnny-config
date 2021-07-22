@@ -23,39 +23,15 @@ from johnny.base import chains as chainslib
 
 @click.command()
 @click.argument('config_filename', type=click.Path(exists=True))
-@click.option('--ledger', '-l', type=click.Path(exists=False),
-              help="Remove transactions from Ledger. Requires order ids.")
-def chains(config_filename: str,
-           ledger: Optional[str]):
+def chains(config_filename: str):
     "Find, process and print positions."
 
     config = configlib.ParseFile(config_filename)
     transactions = petl.frompickle(config.output.imported_filename)
     chains = chainslib.TransactionsToChains(transactions, config)
 
-    # A copy of the original proto, to be cleaned up.
-    chain_map = {chain.chain_id: chain for chain in config.chains}
-    chain_ids = set(chains.values('chain_id'))
-
-    # Produce a clean output proto with existing chains.
-    clean = copy.copy(config)
-    clean.ClearField('chains')
-    for chain_id in sorted(chain_ids):
-        new_chain = clean.chains.add()
-        chain = chain_map.pop(chain_id, None)
-        if chain is None:
-            # Create a new chain that wasn't present in the original list.
-            new_chain.chain_id = chain_id
-        else:
-            new_chain.MergeFrom(chain)
-
-    # Add residual chains.
-    clean.ClearField('residual_chains')
-    for chain in chain_map.values():
-        new_chain = clean.chains.add()
-        new_chain.MergeFrom(chain)
-
-    print(clean)
+    clean_config = chainslib.CleanConfig(config, chains)
+    print(clean_config)
 
 
 if __name__ == '__main__':

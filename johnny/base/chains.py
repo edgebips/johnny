@@ -26,9 +26,9 @@ Vanguard and Tastyworks.
 __copyright__ = "Copyright (C) 2021  Martin Blais"
 __license__ = "GNU GPLv2"
 
-
+from functools import partial
 from decimal import Decimal
-from typing import Iterator, List, Mapping, Tuple
+from typing import Any, Iterator, List, Mapping, Tuple
 import hashlib
 import collections
 import datetime
@@ -347,8 +347,16 @@ def _CalculateNetLiq(pairs: Iterator[Tuple[str, Decimal]]):
 
 
 def _GetInstruments(symbols: Iterator[str]) -> List[str]:
-    return set(instrument.FromString(symbol).underlying
-               for symbol in symbols)
+    return ",".join(sorted(set(instrument.FromString(symbol).underlying
+                               for symbol in symbols)))
+
+
+def _GetChainAttribute(chain_map, attrname, chain_id) -> Any:
+    """Get a chain attribute."""
+    chain = chain_map.get(next(chain_id), None)
+    if chain is None:
+        return ''
+    return getattr(chain, attrname)
 
 
 def TransactionsToChains(transactions: Table, config: configlib.Config) -> Table:
@@ -358,7 +366,7 @@ def TransactionsToChains(transactions: Table, config: configlib.Config) -> Table
     price_map = mark.GetPriceMap(transactions, config)
     transactions = mark.Mark(transactions, price_map)
 
-    type_map = {chain.chain_id: chain.trade_type for chain in config.chains}
+    chain_map = {chain.chain_id: chain for chain in config.chains}
     agg = {
         'account': ('account', first),
         'mindate': ('datetime', lambda g: min(g).date()),
@@ -370,7 +378,8 @@ def TransactionsToChains(transactions: Table, config: configlib.Config) -> Table
         'commissions': ('commissions', sum),
         'fees': ('fees', sum),
         'status': ('rowtype', _GetStatus),
-        'trade_type': ('chain_id', lambda cids: type_map.get(next(cids), '')),
+        'trade_type': ('chain_id', partial(_GetChainAttribute, chain_map, 'trade_type')),
+        'strategy': ('chain_id', partial(_GetChainAttribute, chain_map, 'strategy')),
         'instruments': ('symbol', _GetInstruments),
     }
     chains = (
@@ -385,6 +394,43 @@ def TransactionsToChains(transactions: Table, config: configlib.Config) -> Table
         .cut('chain_id', 'account', 'underlying', 'status',
              'mindate', 'maxdate', 'days',
              'init', 'pnl_chain', 'net_liq', 'commissions', 'fees',
-             'trade_type', 'instruments'))
+             'trade_type', 'strategy', 'instruments'))
 
     return chains
+
+
+def CleanConfig(config: configlib.Config, chains_table: Table) -> configlib.Config:
+    """Create configuration objects and a clean config from the processed chains table."""
+    new_config = configlib.Config()
+    new_config.CopyFrom(config)
+    new_config.ClearField('chains')
+
+    # Copy the original chains in the same order as in the input file. We do
+    # this to be able to compare the output with the original file while
+    # minimizing diffs.
+    rec_map = {rec.chain_id: rec for rec in chains_table.records()}
+    inserted = set()
+    for old_chain in config.chains:
+        rec = rec_map.get(old_chain.chain_id, None)
+        field = new_config.chains if rec is not None else new_config.residual_chains
+        new_chain = field.add()
+        new_chain.CopyFrom(old_chain)
+        if rec is not None:
+            new_chain.trade_type = rec.trade_type
+            if rec.strategy:
+                new_chain.strategy = rec.strategy
+        inserted.add(old_chain.chain_id)
+
+    # Copy all the other chains from the table into the list.
+    for rec in chains_table.records():
+        if rec.chain_id in inserted:
+            continue
+        new_chain = new_config.chains.add()
+        new_chain.chain_id = rec.chain_id
+        new_chain.trade_type = rec.trade_type
+        if rec.strategy:
+            new_chain.strategy = rec.strategy
+
+    # TODO(blais): Check or create the corresponding order ids for all the chains.
+
+    return new_config

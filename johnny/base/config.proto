@@ -21,28 +21,28 @@ message Config {
   // Output configuration.
   optional Outputs output = 2;
 
+  // Mapping of futures options months to their corresponding underlying options
+  // months. This is a temporary mapping we use until we code up the rules from
+  // the CME contracts.
+  optional FutOptMonthMapping futures_option_month_mapping = 3;
+
   // A list of manually disambiguated trades and their annotations.
-  repeated Chain chains = 3;
+  repeated Chain chains = 4;
 
   // A list of chains that aren't in use; these are produced by the
   // configuration cleaner, to avoid losing chain data that isn't matched by the
   // chains processing.
-  repeated Chain residual_chains = 7;
-
-  // Mapping of futures options months to their corresponding underlying options
-  // months. This is a temporary mapping we use until we code up the rules from
-  // the CME contracts.
-  optional FutOptMonthMapping futures_option_month_mapping = 6;
-
-  // Deprecated. Use explicit chains instead.
-  repeated Link DEPRECATED_transaction_links = 4 [deprecated = true];
-  repeated Link DEPRECATED_order_links = 5 [deprecated = true];
+  repeated Chain residual_chains = 5;
 }
 
 // Configuration for inputs to be imported.
 message Inputs {
   // A list of account sources to pull data from.
   repeated Account accounts = 1;
+
+  // TODO(blais): Add a field for the Ledger to be processed to exclude a set of
+  // order ids.
+  // optional string ledger = 2;
 }
 
 // Configuration for outputs and databases.
@@ -142,8 +142,15 @@ message Chain {
   // The chain id of a trade. This is a unique string computed in the front end.
   optional string chain_id = 1;
 
-  // User-associated trade type.
+  // User-associated trade group or line of business. This can be used to split
+  // up your trades in different groups, e.g. "MemeStocks", "ShortPremium",
+  // "LongStock".
   optional string trade_type = 2;
+
+  // Initial strategy used, e.g. "Strangle", "BrokenWingButterfly", etc. The
+  // software may attempt to set a value for this, but you can override it in
+  // the configuration file.
+  optional string strategy = 6;
 
   // User-provided description. Free-form, may span multiple lines (include
   // newlines).

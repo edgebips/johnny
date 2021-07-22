@@ -3,6 +3,7 @@
 DOWNLOADS=$(HOME)/trading/downloads
 #CONFIG=$(JOHNNY_CONFIG)
 CONFIG=$(HOME)/r/q/office/accounting/trading/johnny.pbtxt
+CONFIG_NEW=$(HOME)/r/q/office/accounting/trading/johnny.pbtxt.new
 
 move-files:
 	-mv -f $(HOME)/tasty* $(HOME)/*Statement.csv $(DOWNLOADS)
@@ -11,13 +12,10 @@ serve: move-files
 	johnny-web $(DOWNLOADS)
 
 config:
-	johnny-config $(DOWNLOADS) $(DOWNLOADS)/johnny_clean.pbtxt $(DOWNLOADS)/johnny_residual.pbtxt
+	johnny-config $(CONFIG) | tee $(CONFIG_NEW)
 
 config-diff:
-	xxdiff -B $(DOWNLOADS)/johnny.pbtxt $(DOWNLOADS)/johnny_clean.pbtxt
-
-config-clobber:
-	mv $(DOWNLOADS)/johnny_clean.pbtxt $(shell readlink $(DOWNLOADS)/johnny.pbtxt)
+	xxdiff -B $(CONFIG) $(CONFIG_NEW)
 
 update:
 	tastyworks-update $(DOWNLOADS)/tastyworks-individual.db -a Individual
