@@ -53,7 +53,10 @@ def Group(transactions: Table,
           by_time=True,
           explicit_transactions_chain_map=None,
           explicit_orders_chain_map=None) -> Table:
-    """Aggregate transaction rows by options chain.
+    """Cluster transactions to create options chains.
+
+    This function inserts the `chain_id` column to the table and returns a
+    modified transactions table.
 
     Args:
       transactions: A normalized transactions log with a 'match' column.
@@ -65,6 +68,7 @@ def Group(transactions: Table,
     Returns:
       A modified table with an extra "chain" column, identifying groups of
       related transactions, by episode, or chain.
+
     """
     explicit_transactions_chain_map = explicit_transactions_chain_map or {}
     explicit_orders_chain_map = explicit_orders_chain_map or {}
@@ -130,7 +134,7 @@ def CreateGraph(transactions: Table,
 
         # Extract explicit chains to their own components and don't link them
         # with others.
-        explicit_chain = (explicit_transactions_chain_map.get(rec.transaction_id)  or
+        explicit_chain = (explicit_transactions_chain_map.get(rec.transaction_id) or
                           explicit_orders_chain_map.get(rec.order_id))
         if explicit_chain:
             graph.add_node(explicit_chain, type='expchain')
@@ -167,59 +171,6 @@ def CreateGraph(transactions: Table,
     return graph
 
 
-def _LinkByOverlappingMatch(transactions: Table,
-                            unused_explicit_chains=None) -> List[Tuple[str, str]]:
-    """Return pairs of linked matches, matched strictly by common expiration."""
-
-    AssertColumns(transactions,
-                  ('match_id', str),
-                  ('datetime', datetime.datetime),
-                  ('expiration', {None, datetime.date}),
-                  ('account', str),
-                  ('underlying', str))
-
-    # Gather min and max time for each trade match into a changelist.
-    spans = []
-    def GatherMatchSpans(grouper):
-        rows = list(grouper)
-        min_datetime = datetime.datetime(2100, 1, 1)
-        max_datetime = datetime.datetime(1970, 1, 1)
-        for rec in sorted(rows, key=lambda r: r.datetime):
-            min_datetime = min(min_datetime, rec.datetime)
-            max_datetime = max(max_datetime, rec.datetime)
-        expiration = rec.expiration if rec.expiration else datetime.date(1970, 1, 1)
-        assert rec.underlying is not None
-        assert rec.match_id is not None
-        spans.append((min_datetime, rec.account, rec.underlying, expiration, rec.match_id))
-        spans.append((max_datetime, rec.account, rec.underlying, expiration, rec.match_id))
-        return 0
-    # Note: we do not match if the expiration is different; if there is an order
-    # id rolling the position to the next month (from the previous function),
-    # this is sufficient to connect them.
-    list(transactions.aggregate(('underlying', 'expiration', 'match_id'), GatherMatchSpans)
-         .records())
-
-    # Process the spans in the order of time and allocate a new span id whenever
-    # there's a gap without a position/match within one underlying.
-    under_map = {(account, underlying, expiration): set()
-                 for _, account, underlying, expiration, __ in spans}
-    linked_matches = []
-    for _, account, underlying, expiration, match_id in sorted(spans):
-        # Update the set of active matches, removing or adding.
-        active_set = under_map[(account, underlying, expiration)]
-        if match_id in active_set:
-            active_set.remove(match_id)
-        else:
-            if active_set:
-                # Link the current match-id to any other match id.
-                other_match_id = next(iter(active_set))
-                linked_matches.append((match_id, other_match_id))
-            active_set.add(match_id)
-    assert all(not active for active in under_map.values())
-
-    return set(linked_matches), set()
-
-
 def _LinkByOverlapping(transactions: Table) -> List[Tuple[str, str]]:
     """Return pairs of linked matches, linking all transactions where either of (a)
     an outright position exists in that underlying and/or (b) a common
@@ -227,61 +178,76 @@ def _LinkByOverlapping(transactions: Table) -> List[Tuple[str, str]]:
     match_id at all. This is a bit more general and correct than
     _LinkByOverlappingMatch().
     """
-
     AssertColumns(transactions,
                   ('instruction', str),
                   ('quantity', Decimal),
                   ('account', str),
                   ('underlying', str),
-                  ('expiration', {None, datetime.date}),
-                  ('expcode', {None, str}),
-                  ('putcall', {None, str}),
-                  ('strike', {None, Decimal}))
+                  ('expiration', {None, datetime.date}))
+
+    class Term:
+        """All the positions associated with an expiration term.
+        A unique id is associated with each of the terms."""
+
+        def __init__(self, term_id):
+            self.id = term_id
+            # A mapping of option name to outstanding quantity for that name.
+            self.quantities = collections.defaultdict(Decimal)
+
+        def __repr__(self):
+            return "<Term {} {}>".format(self.id, self.quantities)
 
     # Run through matching in order to figure out overlaps.
-    idgen = iter("overlap{}".format(x) for x in itertools.count(start=1))
-    class Pos:
-        def __init__(self):
-            self.id = next(idgen)
-            self.quanmap = collections.defaultdict(Decimal)
-        def __repr__(self):
-            return "<Pos {} {}>".format(self.id, self.quanmap)
-
-    inventory = collections.defaultdict(lambda: collections.defaultdict(Pos))
+    # This is a mapping of (account, underlying) to a mapping of (expiration, Term).
+    # A Term object contains all the options positions for that expiration in
+    # the `quantities` attribue.
+    # `expiration` can be `None` in order to track positions in the underlying.
+    inventory = collections.defaultdict(dict)
     links = []
     transaction_links = []
+    idgen = iter(itertools.count(start=1))
     for rec in transactions.records():
         # Get a mapping for each underlying. In that submapping, the special key
         # 'None' refers to the position of the underlying outright.
         undermap = inventory[(rec.account, rec.underlying)]
 
-        # Potentially allocate a new position for the expiration (or lack thereof).
+        # Potentially allocate a new position for the expiration (or lack
+        # thereof). (Note that undermap is mutating if the key is new.) Also
+        # note that in order to open separate positions in the same terms, we
+        # need to insert a unique id.
         isnew = rec.expiration not in undermap
-        pos = undermap[rec.expiration]
+        term_id = "{}/{}/{}/{}".format(rec.account, rec.underlying,
+                                       rec.expiration, next(idgen))
+        term = undermap.get(rec.expiration, None)
+        if term is None:
+            term = undermap[rec.expiration] = Term(term_id)
 
-        if rec.expiration is None:
-            if isnew:
-                # Link it to all the active expirations for that underlying.
-                for expiration, exppos in undermap.items():
+        if isnew:
+            if rec.expiration is None:
+                # This is an underlying, not an option on one.
+                # Link it to all the currently active expirations.
+                for expiration, expterm in undermap.items():
                     if expiration is None:
                         continue
-                    links.append((pos.id, exppos.id))
-        else:
-            if isnew:
+                    links.append((term.id, expterm.id))
+            else:
+                # This is an option.
                 # Link it to the underlying if it is active.
                 if None in undermap:
-                    outpos = undermap[None]
-                    links.append((pos.id, outpos.id))
+                    outterm = undermap[None]
+                    links.append((term.id, outterm.id))
 
         sign = -1 if rec.instruction == 'SELL' else +1
-        pos.quanmap[rec.symbol] += sign * rec.quantity
-        transaction_links.append((pos.id, rec.transaction_id))
-        if pos.quanmap[rec.symbol] == ZERO:
-            del pos.quanmap[rec.symbol]
-        if not pos.quanmap:
+        term.quantities[rec.symbol] += sign * rec.quantity
+        transaction_links.append((term.id, rec.transaction_id))
+        if term.quantities[rec.symbol] == ZERO:
+            del term.quantities[rec.symbol]
+        if not term.quantities:
             del undermap[rec.expiration]
 
-    # Clean up zeros.
+    # Sanity check. All positions should have been closed (`Mark` rows close
+    # outstanding positions) and the resulting inventory should be completely
+    # empty.
     inventory = {key: undermap
                  for key, undermap in undermap.items()
                  if undermap}
