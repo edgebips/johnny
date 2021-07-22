@@ -44,7 +44,7 @@ def debug(config_filename: str):
     """Parse the configuration, the sources, transform, and save."""
     config = configlib.ParseFile(config_filename)
     transactions = petl.frompickle(config.output.imported_filename)
-    chains = chainslib.TransactionsToChains(transactions, config)
+    chains = chainslib.TransactionsTableToChainsTable(transactions, config)
     print(chains
           #.selecteq('underlying', '')
           .lookallstr())

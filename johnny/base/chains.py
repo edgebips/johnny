@@ -359,8 +359,9 @@ def _GetChainAttribute(chain_map, attrname, chain_id) -> Any:
     return getattr(chain, attrname)
 
 
-def TransactionsToChains(transactions: Table, config: configlib.Config) -> Table:
-    """Aggregate already chained transactions to aggregated chains."""
+def TransactionsTableToChainsTable(transactions: Table, config: configlib.Config) -> Table:
+    """Aggregate a table of already identified transactions row (with a `chain_id` column)
+    to a table of aggregated chains."""
 
     # Mark the transactions.
     price_map = mark.GetPriceMap(transactions, config)

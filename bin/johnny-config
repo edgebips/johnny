@@ -28,7 +28,7 @@ def chains(config_filename: str):
 
     config = configlib.ParseFile(config_filename)
     transactions = petl.frompickle(config.output.imported_filename)
-    chains = chainslib.TransactionsToChains(transactions, config)
+    chains = chainslib.TransactionsTableToChainsTable(transactions, config)
 
     clean_config = chainslib.CleanConfig(config, chains)
     print(clean_config)

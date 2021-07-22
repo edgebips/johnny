@@ -54,16 +54,9 @@
 
 Reduce the following loops and dependencies on positions to a single loop at all:
 
-    /home/blais/p/johnny/johnny/sources/tastyworks_csv/transactions.py:202:    inventory = collections.defaultdict(Decimal)
-
-      GetExpirationSigns()
-
     /home/blais/p/johnny/johnny/base/chains.py:281:    inventory = collections.defaultdict(lambda: collections.defaultdict(Pos))
 
       _LinkByOverlapping()
-
-
-
 
 
 We want to centralize the processing *after* the transactional log and relax the

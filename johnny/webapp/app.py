@@ -78,7 +78,7 @@ def Initialize():
             transactions = petl.frompickle(config.output.imported_filename)
 
             # Compute chains, clean up configuration.
-            chains_table = chainslib.TransactionsToChains(transactions, config)
+            chains_table = chainslib.TransactionsTableToChainsTable(transactions, config)
             clean_config = chainslib.CleanConfig(config, chains_table)
             chains_map = {c.chain_id: c for c in clean_config.chains}
 

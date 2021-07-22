@@ -189,48 +189,6 @@ _INSTYPES = {
 }
 
 
-def GetExpirationSigns(txns: Table) -> Dict[str, Decimal]:
-    """Compute a mapping of (transaction-id, signed-quantity).
-
-    The expirations from TW do not include the signs, which forces us to use
-    stateful computations when processing the log. The normalized log format
-    requires a valid `instruction` field which produces the sign. In this
-    function, we process the log - hopefully enough of it is present - and
-    compute what the instructions should be. The resulting mapping is later used
-    to fix up the log. {e80fcd889943}
-    """
-    mapping = {}
-    inventory = collections.defaultdict(Decimal)
-    for rec in txns.records():
-        key = (rec.account, rec.symbol)
-        if rec.rowtype == 'Expire':
-            # Ignore the sign and quantity here. Pick up the accumulated one.
-            accumulated = inventory[key]
-            assert accumulated != ZERO
-            inventory[key] = ZERO
-            mapping[rec.transaction_id] = -accumulated
-        else:
-            sign = 1 if rec.instruction == 'BUY' else -1
-            inventory[key] += sign * rec.quantity
-    return mapping
-
-
-def FixExpirationSigns(table: Table) -> Table:
-    """Find and set the expiration signs."""
-    mapping = GetExpirationSigns(table)
-
-    def FixExpirationInstruction(value: str, rec: Record) -> str:
-        signed_quantity = mapping.get(rec.transaction_id, None)
-        if signed_quantity is None:
-            return value
-        else:
-            assert value == 'EXPI'
-            return 'SELL' if signed_quantity < ZERO else 'BUY'
-
-    return (table
-            .convert('instruction', FixExpirationInstruction, pass_row=True))
-
-
 def GetFuturesCost(rec: Record) -> Decimal:
     """Override the cost if the field is a Future instrument."""
     if rec.instype == 'Future':
@@ -337,8 +295,7 @@ def NormalizeTrades(table: petl.Table, account: str) -> petl.Table:
 
     # Note: The sign of the expirations isn't provided by the input file. It
     # gets inferred here.
-    return FixExpirationSigns(table
-                              .sort(['datetime', 'order_id']))
+    return table.sort(['datetime', 'order_id'])
 
 
 def SplitTables(table: Table) -> Tuple[Table, Table]:
