@@ -179,7 +179,9 @@ def _LinkByOverlapping(transactions: Table) -> List[Tuple[str, str]]:
     _LinkByOverlappingMatch().
     """
     AssertColumns(transactions,
+                  ('transaction_id', str),
                   ('instruction', str),
+                  ('symbol', str),
                   ('quantity', Decimal),
                   ('account', str),
                   ('underlying', str),
