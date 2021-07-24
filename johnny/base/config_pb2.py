@@ -19,7 +19,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   syntax='proto2',
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_pb=b'\n\x0c\x63onfig.proto\x12\x06johnny\"\xd1\x01\n\x06\x43onfig\x12\x1d\n\x05input\x18\x01 \x01(\x0b\x32\x0e.johnny.Inputs\x12\x1f\n\x06output\x18\x02 \x01(\x0b\x32\x0f.johnny.Outputs\x12@\n\x1c\x66utures_option_month_mapping\x18\x03 \x01(\x0b\x32\x1a.johnny.FutOptMonthMapping\x12\x1d\n\x06\x63hains\x18\x04 \x03(\x0b\x32\r.johnny.Chain\x12&\n\x0fresidual_chains\x18\x05 \x03(\x0b\x32\r.johnny.Chain\"+\n\x06Inputs\x12!\n\x08\x61\x63\x63ounts\x18\x01 \x03(\x0b\x32\x0f.johnny.Account\"$\n\x07Outputs\x12\x19\n\x11imported_filename\x18\x01 \x01(\t\"\xa9\x01\n\x12\x46utOptMonthMapping\x12/\n\x06months\x18\x01 \x03(\x0b\x32\x1f.johnny.FutOptMonthMapping.Item\x1a\x62\n\x04Item\x12\x16\n\x0eoption_product\x18\x01 \x01(\t\x12\x14\n\x0coption_month\x18\x02 \x01(\t\x12\x16\n\x0e\x66uture_product\x18\x03 \x01(\t\x12\x14\n\x0c\x66uture_month\x18\x04 \x01(\t\"\xa2\x01\n\x07\x41\x63\x63ount\x12\x10\n\x08nickname\x18\x01 \x01(\t\x12(\n\x07logtype\x18\x02 \x01(\x0e\x32\x17.johnny.Account.LogType\x12\x0e\n\x06module\x18\x03 \x01(\t\x12\x0e\n\x06source\x18\x04 \x01(\t\x12\x0f\n\x07initial\x18\x05 \x01(\t\"*\n\x07LogType\x12\x10\n\x0cTRANSACTIONS\x10\x01\x12\r\n\tPOSITIONS\x10\x02\"$\n\x04Link\x12\x0f\n\x07\x63omment\x18\x01 \x01(\t\x12\x0b\n\x03ids\x18\x02 \x03(\t\"|\n\x05\x43hain\x12\x10\n\x08\x63hain_id\x18\x01 \x01(\t\x12\x12\n\ntrade_type\x18\x02 \x01(\t\x12\x10\n\x08strategy\x18\x06 \x01(\t\x12\x0f\n\x07\x63omment\x18\x03 \x01(\t\x12\x17\n\x0ftransaction_ids\x18\x04 \x03(\t\x12\x11\n\torder_ids\x18\x05 \x03(\t\":\n\x05\x41sset\x12\x12\n\ninstrument\x18\x01 \x01(\t\x12\r\n\x05\x63lass\x18\x02 \x01(\t\x12\x0e\n\x06\x66\x61\x63tor\x18\x03 \x01(\t'
+  serialized_pb=b'\n\x0c\x63onfig.proto\x12\x06johnny\"\xd1\x01\n\x06\x43onfig\x12\x1d\n\x05input\x18\x01 \x01(\x0b\x32\x0e.johnny.Inputs\x12\x1f\n\x06output\x18\x02 \x01(\x0b\x32\x0f.johnny.Outputs\x12@\n\x1c\x66utures_option_month_mapping\x18\x03 \x01(\x0b\x32\x1a.johnny.FutOptMonthMapping\x12\x1d\n\x06\x63hains\x18\x04 \x03(\x0b\x32\r.johnny.Chain\x12&\n\x0fresidual_chains\x18\x05 \x03(\x0b\x32\r.johnny.Chain\"+\n\x06Inputs\x12!\n\x08\x61\x63\x63ounts\x18\x01 \x03(\x0b\x32\x0f.johnny.Account\"$\n\x07Outputs\x12\x19\n\x11imported_filename\x18\x01 \x01(\t\"\xa9\x01\n\x12\x46utOptMonthMapping\x12/\n\x06months\x18\x01 \x03(\x0b\x32\x1f.johnny.FutOptMonthMapping.Item\x1a\x62\n\x04Item\x12\x16\n\x0eoption_product\x18\x01 \x01(\t\x12\x14\n\x0coption_month\x18\x02 \x01(\t\x12\x16\n\x0e\x66uture_product\x18\x03 \x01(\t\x12\x14\n\x0c\x66uture_month\x18\x04 \x01(\t\"\xa2\x01\n\x07\x41\x63\x63ount\x12\x10\n\x08nickname\x18\x01 \x01(\t\x12(\n\x07logtype\x18\x02 \x01(\x0e\x32\x17.johnny.Account.LogType\x12\x0e\n\x06module\x18\x03 \x01(\t\x12\x0e\n\x06source\x18\x04 \x01(\t\x12\x0f\n\x07initial\x18\x05 \x01(\t\"*\n\x07LogType\x12\x10\n\x0cTRANSACTIONS\x10\x01\x12\r\n\tPOSITIONS\x10\x02\"|\n\x05\x43hain\x12\x10\n\x08\x63hain_id\x18\x01 \x01(\t\x12\x12\n\ntrade_type\x18\x02 \x01(\t\x12\x10\n\x08strategy\x18\x06 \x01(\t\x12\x0f\n\x07\x63omment\x18\x03 \x01(\t\x12\x17\n\x0ftransaction_ids\x18\x04 \x03(\t\x12\x11\n\torder_ids\x18\x05 \x03(\t\":\n\x05\x41sset\x12\x12\n\ninstrument\x18\x01 \x01(\t\x12\r\n\x05\x63lass\x18\x02 \x01(\t\x12\x0e\n\x06\x66\x61\x63tor\x18\x03 \x01(\t'
 )
 
 
@@ -319,45 +319,6 @@ _ACCOUNT = _descriptor.Descriptor(
 )
 
 
-_LINK = _descriptor.Descriptor(
-  name='Link',
-  full_name='johnny.Link',
-  filename=None,
-  file=DESCRIPTOR,
-  containing_type=None,
-  create_key=_descriptor._internal_create_key,
-  fields=[
-    _descriptor.FieldDescriptor(
-      name='comment', full_name='johnny.Link.comment', index=0,
-      number=1, type=9, cpp_type=9, label=1,
-      has_default_value=False, default_value=b"".decode('utf-8'),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-    _descriptor.FieldDescriptor(
-      name='ids', full_name='johnny.Link.ids', index=1,
-      number=2, type=9, cpp_type=9, label=3,
-      has_default_value=False, default_value=[],
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-  ],
-  extensions=[
-  ],
-  nested_types=[],
-  enum_types=[
-  ],
-  serialized_options=None,
-  is_extendable=False,
-  syntax='proto2',
-  extension_ranges=[],
-  oneofs=[
-  ],
-  serialized_start=656,
-  serialized_end=692,
-)
-
-
 _CHAIN = _descriptor.Descriptor(
   name='Chain',
   full_name='johnny.Chain',
@@ -420,8 +381,8 @@ _CHAIN = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=694,
-  serialized_end=818,
+  serialized_start=656,
+  serialized_end=780,
 )
 
 
@@ -466,8 +427,8 @@ _ASSET = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=820,
-  serialized_end=878,
+  serialized_start=782,
+  serialized_end=840,
 )
 
 _CONFIG.fields_by_name['input'].message_type = _INPUTS
@@ -485,7 +446,6 @@ DESCRIPTOR.message_types_by_name['Inputs'] = _INPUTS
 DESCRIPTOR.message_types_by_name['Outputs'] = _OUTPUTS
 DESCRIPTOR.message_types_by_name['FutOptMonthMapping'] = _FUTOPTMONTHMAPPING
 DESCRIPTOR.message_types_by_name['Account'] = _ACCOUNT
-DESCRIPTOR.message_types_by_name['Link'] = _LINK
 DESCRIPTOR.message_types_by_name['Chain'] = _CHAIN
 DESCRIPTOR.message_types_by_name['Asset'] = _ASSET
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
@@ -532,13 +492,6 @@ Account = _reflection.GeneratedProtocolMessageType('Account', (_message.Message,
   # @@protoc_insertion_point(class_scope:johnny.Account)
   })
 _sym_db.RegisterMessage(Account)
-
-Link = _reflection.GeneratedProtocolMessageType('Link', (_message.Message,), {
-  'DESCRIPTOR' : _LINK,
-  '__module__' : 'config_pb2'
-  # @@protoc_insertion_point(class_scope:johnny.Link)
-  })
-_sym_db.RegisterMessage(Link)
 
 Chain = _reflection.GeneratedProtocolMessageType('Chain', (_message.Message,), {
   'DESCRIPTOR' : _CHAIN,

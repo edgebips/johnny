@@ -131,12 +131,6 @@ message Account {
   optional string initial = 5;
 }
 
-// An explicit linkage between multiple transactions.
-message Link {
-  optional string comment = 1;
-  repeated string ids = 2;
-}
-
 // A trade chain.
 message Chain {
   // The chain id of a trade. This is a unique string computed in the front end.
