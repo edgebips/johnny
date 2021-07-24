@@ -3,6 +3,8 @@ __license__ = "GNU GPLv2"
 
 import unittest
 
+from johnny.base import futures
+from johnny.base import config_pb2
 from johnny.sources.thinkorswim_csv import positions
 
 
@@ -72,8 +74,18 @@ _EXAMPLE_INSTRUMENTS = [
 
 
 def test_ParseInstrumentDescription():
+    mapping = config_pb2.FutOptMonthMapping()
+    for op, om, fp, fm in [('/OG', 'N','/GC', 'Q'),
+                           ('/EUU', 'M', '/6E', 'M'),
+                           ('/OZC', 'N', '/ZC', 'N'),
+                           ('/OZS', 'N', '/ZS', 'N'),
+                           ('/SO', 'M', '/SI', 'N')]:
+        item = mapping.months.add(option_product=op, option_month=om,
+                                  future_product=fp, future_month=fm)
+    mapper = futures.FutOptMonthMapper(mapping)
+
     for (description, root), expected in _EXAMPLE_INSTRUMENTS:
-        inst = positions.ParseInstrumentDescription(description, root)
+        inst = positions.ParseInstrumentDescription(description, root, mapper)
         assert expected == str(inst)
 
 
