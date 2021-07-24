@@ -153,7 +153,7 @@ def MatchTable(table: Table,
 
     # Accumulator for new rows.
     new_rows = []
-    def accum(rec):
+    def accum(rec, _):
         new_rows.append(rec)
 
     # Run through the input table.
@@ -168,7 +168,7 @@ def MatchTable(table: Table,
                     inv.closing(rec, accum)
                     continue
                 assert not rec.effect
-            inv.match(rec, accum, debug=debug)
+            inv.match(rec, accum)
         elif rec.rowtype == 'Expire':
             inv.expire(rec, accum)
         else:
@@ -380,7 +380,7 @@ class TestOpenCloseFifoInventory(unittest.TestCase):
         ]
         with self.assertRaises(MatchError) as econtext:
             MatchTable(TestTable(rows))
-        self.assertRegex(str(econtext.exception), 'Invalid opening position closing')
+        self.assertRegex(str(econtext.exception), 'Invalid opening position matching')
 
     def test_add_invalid_closing(self):
         rows = [
@@ -388,7 +388,7 @@ class TestOpenCloseFifoInventory(unittest.TestCase):
         ]
         with self.assertRaises(MatchError) as econtext:
             MatchTable(TestTable(rows))
-        self.assertRegex(str(econtext.exception), 'Invalid closing position opening')
+        self.assertRegex(str(econtext.exception), 'Invalid closing position matching')
 
     def test_expire_zero(self):
         rows = [

@@ -24,5 +24,8 @@ update:
 import:
 	johnny-import $(CONFIG)
 
+test:
+	python3 -m pytest johnny
+
 debug:
 	python3 ./experiments/johnny-debug $(CONFIG)
