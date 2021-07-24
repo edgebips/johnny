@@ -44,13 +44,6 @@ def Validate(config: config_pb2.Config):
             raise ConfigError("Log type is not set")
 
 
-def MapAccount(config: config_pb2.Config, table: Table, field: str) -> Table:
-    """Convert a table's raw account id to an alias from the configuration."""
-    accounts_map = {acc.number: acc.nickname
-                    for acc in config.accounts}
-    return petl.convert(table, field, accounts_map)
-
-
 def GetExplicitChains(config: Config) -> Tuple[Mapping[str, str], Mapping[str, str]]:
     """Extract a mapping of transaction-id to some unique chain-id."""
     transactions_map = {tid: chain.chain_id

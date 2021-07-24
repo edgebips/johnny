@@ -10,25 +10,11 @@ from johnny.base.etl import petl
 
 class TestConfig(unittest.TestCase):
 
-    def test_MapAccount(self):
+    def test_basic(self):
         cfg = config_pb2.Config()
-        account = cfg.accounts.add()
-        account.number = '1234567'
+        account = cfg.input.accounts.add()
         account.nickname = 'etrade'
-
-        account = cfg.accounts.add()
-        account.number = '5555555'
-        account.nickname = 'bbroker'
-
-        table = petl.wrap([
-            ('account', 'date'),
-            ('7654321', '2021-05-14'),
-            ('1234567', '2021-05-14'),
-            ('1234567', '2021-05-15'),
-        ])
-
-        actual = config.MapAccount(cfg, table, 'account')
-        self.assertSetEqual(set(actual.values('account')), {'7654321', 'etrade'})
+        account.logtype = config_pb2.Account.LogType.TRANSACTIONS
 
 
 if __name__ == '__main__':
