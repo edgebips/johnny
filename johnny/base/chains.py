@@ -30,6 +30,7 @@ from functools import partial
 from decimal import Decimal
 from typing import Any, Iterator, List, Mapping, Tuple
 import hashlib
+import sys
 import collections
 import datetime
 import itertools
@@ -367,30 +368,52 @@ def TransactionsTableToChainsTable(transactions: Table, config: configlib.Config
     return chains
 
 
-def CleanConfig(config: configlib.Config, chains_table: Table) -> configlib.Config:
+def CheckTransactionsVsOrders(config: configlib.Config):
+    """Check that the matched transaction ids match that from the orders.
+    This function is used to check conversions between transaction id lists and
+    order id lists. I'm still not 100% convinced which one we should favor yet.
+    """
+    for chain in new_config.chains:
+        if chain.transaction_ids:
+            tids = set(chain.transaction_ids)
+            oids = set(chain.order_ids) | set(chain.auto_order_ids)
+            t_table = transactions.selectin('transaction_id', tids)
+            o_table = transactions.selectin('order_id', oids)
+            if t_table.nrows() != o_table.nrows():
+                print(t_table.lookallstr(), file=sys.stderr)
+                print(o_table.lookallstr(), file=sys.stderr)
+                print(file=sys.stderr)
+                raise chain
+
+
+def CleanConfig(config: configlib.Config,
+                chains_table: Table,
+                transactions: Table) -> configlib.Config:
+
     """Create configuration objects and a clean config from the processed chains table."""
     new_config = configlib.Config()
     new_config.CopyFrom(config)
     new_config.ClearField('chains')
 
-    # Copy the original chains in the same order as in the input file. We do
-    # this to be able to compare the output with the original file while
-    # minimizing diffs.
+    # Copy the original chains in the same order as in the input file. We
+    # produce the otuput in this order in order to be able to compare (diff) the
+    # output with the original file while minimizing the differences.
     rec_map = {rec.chain_id: rec for rec in chains_table.records()}
     inserted = set()
     for old_chain in config.chains:
         new_chain = new_config.chains.add()
         rec = rec_map.get(old_chain.chain_id, None)
         if rec is None:
-            new_chain.status = configlib.ChainStatus.INVALID
+            new_chain.status = configlib.ChainStatus.IGNORE
         new_chain.CopyFrom(old_chain)
+        new_chain.ClearField('auto_order_ids')
         if rec is not None:
             new_chain.trade_type = rec.trade_type
             if rec.strategy:
                 new_chain.strategy = rec.strategy
         inserted.add(old_chain.chain_id)
 
-    # Copy all the other chains from the table into the list.
+    # Copy all the other chains from the table into the list of chains.
     for rec in chains_table.records():
         if rec.chain_id in inserted:
             continue
@@ -400,6 +423,19 @@ def CleanConfig(config: configlib.Config, chains_table: Table) -> configlib.Conf
         if rec.strategy:
             new_chain.strategy = rec.strategy
 
-    # TODO(blais): Check or create the corresponding order ids for all the chains.
+    # Add the order ids to all the chains, where they weren't already included.
+    chain_map = {c.chain_id: c for c in new_config.chains}
+    for rec in transactions.records():
+        if rec.rowtype == 'Mark':
+            continue
+        chain = chain_map.get(rec.chain_id, None)
+        if rec.order_id in chain.order_ids:
+            continue
+        if rec.transaction_id in chain.transaction_ids:
+            continue
+        assert(rec.order_id is not None)
+        if rec.order_id in chain.auto_order_ids:
+            continue
+        chain.auto_order_ids.append(rec.order_id)
 
     return new_config

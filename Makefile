@@ -1,9 +1,8 @@
 #!/bin/bash
 
+# Set JOHNNY_CONFIG in order for this to work.
 DOWNLOADS=$(HOME)/trading/downloads
-#CONFIG=$(JOHNNY_CONFIG)
-CONFIG=$(HOME)/r/q/office/accounting/trading/johnny.pbtxt
-CONFIG_NEW=$(HOME)/r/q/office/accounting/trading/johnny.pbtxt.new
+JOHNNY_CONFIG_NEW=$(JOHNNY_CONFIG).new
 
 move-files:
 	-mv -f $(HOME)/tasty* $(HOME)/*Statement.csv $(DOWNLOADS)
@@ -11,21 +10,23 @@ move-files:
 serve: move-files
 	johnny-web
 
-config:
-	johnny-config $(CONFIG) | tee $(CONFIG_NEW)
+config: config-gen config-diff
+
+config-gen:
+	johnny-config > $(JOHNNY_CONFIG_NEW)
 
 config-diff:
-	xxdiff -B $(CONFIG) $(CONFIG_NEW)
+	-xxdiff -B $(JOHNNY_CONFIG) $(JOHNNY_CONFIG_NEW)
 
 update:
-	tastyworks-update $(DOWNLOADS)/tastyworks-individual.db -a Individual
-	tastyworks-update $(DOWNLOADS)/tastyworks-roth.db -a Roth
+	tastyworks-update -a Individual $(DOWNLOADS)/tastyworks-individual.db
+	tastyworks-update -a Roth       $(DOWNLOADS)/tastyworks-roth.db
 
 import:
-	johnny-import -c $(CONFIG)
+	johnny-import
 
 test:
 	python3 -m pytest -x johnny
 
 debug:
-	python3 ./experiments/johnny-debug $(CONFIG)
+	python3 ./experiments/johnny-debug
