@@ -40,7 +40,6 @@ def ImportTransactions(config: configlib.Config, force: bool) -> Table:
 
     # Check that the imports are sound before we process them.
     try:
-        txnlib.ValidateFieldNames(transactions)
         for rec in transactions.records():
             txnlib.ValidateTransactionRecord(rec)
     except Exception as exc:
