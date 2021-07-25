@@ -43,6 +43,7 @@ def ReadInitialPositions(filename: str) -> Table:
             .cut('datetime', 'symbol', 'instruction', 'quantity', 'cost')
 
             .addfield('transaction_id', lambda r: 'open-{}'.format(r.symbol))
+            .addfield('order_id', lambda r: 'openord-{}'.format(r.symbol))
             .addfield('account', '')
             .convert('datetime', lambda v: parser.parse(v))
             .addfield('rowtype', 'Open')
@@ -53,7 +54,6 @@ def ReadInitialPositions(filename: str) -> Table:
             .addfield('commissions', ZERO)
             .addfield('fees', ZERO)
             .addfield('description', lambda r: "Opening balance for {}".format(r.symbol))
-            .addfield('order_id', '')
 
             .cut(txnlib.FIELDS))
 

@@ -154,6 +154,13 @@ def _GetMarkTime() -> datetime.datetime:
     return datetime.datetime.now().replace(microsecond=0)
 
 
+def _GetOrderIdFromSymbol(symbol: str, digest_size: int) -> str:
+    """Make up a unique order id for an expiration."""
+    md5 = hashlib.blake2s(digest_size=digest_size)
+    md5.update(symbol.encode('ascii'))
+    return md5.hexdigest()
+
+
 def _AddMissingExpirations(invs: Mapping[str, Decimal],
                            mark_time: datetime.datetime,
                            accum: inventories.TxnAccumFn,
@@ -170,6 +177,8 @@ def _AddMissingExpirations(invs: Mapping[str, Decimal],
                 inst.expiration + datetime.timedelta(days=1),
                 datetime.time(0, 0, 0))
             rec = prototype_row._replace(
+                transaction_id=_GetOrderIdFromSymbol(key.symbol, 6),
+                 order_id=_GetOrderIdFromSymbol(key.symbol, 4),
                 account=key.account,
                 symbol=key.symbol,
                 datetime=expiration_time,

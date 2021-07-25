@@ -146,9 +146,8 @@ def CreateGraph(transactions: Table,
 
         # Link together by order id.
         if by_order:
-            if rec.order_id:
-                graph.add_node(rec.order_id, type='order')
-                graph.add_edge(rec.transaction_id, rec.order_id)
+            graph.add_node(rec.order_id, type='order')
+            graph.add_edge(rec.transaction_id, rec.order_id)
 
         # Link together by match id.
         if by_match:

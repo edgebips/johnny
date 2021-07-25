@@ -220,8 +220,16 @@ def _CreateInstrument(r: Record) -> str:
                                   r.multiplier)
 
 
+def GetOrderIdFromSymbol(rec: Record) -> str:
+    """Make up a unique order id for an expiration."""
+    md5 = hashlib.blake2s(digest_size=4)
+    md5.update(rec.symbol.encode('ascii'))
+    return md5.hexdigest()
+
+
 def ProcessExpirationsToTransactions(cash_table: Table) -> Table:
     """Look at cash table and extract and normalize expirations from it."""
+
     expirations = (
         cash_table
         .selecteq('type', 'RAD')
@@ -244,7 +252,7 @@ def ProcessExpirationsToTransactions(cash_table: Table) -> Table:
         .addfield('symbol', lambda r: str(_CreateInstrument(r)))
 
         # Fix up the remaining fields.
-        .addfield('order_id', None)
+        .addfield('order_id', GetOrderIdFromSymbol)
         .addfield('effect', 'CLOSING')
         .addfield('rowtype', 'Expire')
         .addfield('instype', None)

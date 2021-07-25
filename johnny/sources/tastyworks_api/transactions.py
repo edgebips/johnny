@@ -193,6 +193,15 @@ def CalculatePrice(value: str, rec: Record) -> Decimal:
     return Decimal(value)
 
 
+def GetOrderId(order_id: Optional[int], rec: Record) -> str:
+    """Make up a unique order id; include expirations."""
+    if order_id and isinstance(order_id, int):
+        return str(order_id)
+    else:
+        assert rec.transaction_id
+        return 'w{}'.format(rec.transaction_id)
+
+
 def GetTransactions(filename: str) -> Tuple[Table, Table]:
     """Open a local database of Tastyworks API transactions and normalize it."""
 
@@ -221,7 +230,7 @@ def GetTransactions(filename: str) -> Tuple[Table, Table]:
 
              # Reuse the original order ids.
              .rename('order-id', 'order_id')
-             .convert('order_id', lambda v: str(v) if isinstance(v, int) else '')
+             .convert('order_id', GetOrderId, pass_row=True)
 
              # Parse the symbol.
              .rename('symbol', 'symbol-orig')
