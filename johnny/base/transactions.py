@@ -46,7 +46,7 @@ def IsZoneAware(d: datetime.datetime) -> bool:
 ROW_TYPES = {'Trade', 'Expire', 'Open', 'Mark'}
 
 # Valid effect types. The empty string is used to indicate "unknown".
-EFFECT = {'OPENING', 'CLOSING', '?'}
+EFFECT = {'OPENING', 'CLOSING', ''}
 
 # Valid instructions.
 INSTRUCTION = {'BUY', 'SELL'}
@@ -59,19 +59,21 @@ def ValidateFieldNames(table: Table):
 
 
 def ValidateTransactionRecord(r: Record):
-    """Validate the transactions log for datatypes and conformance.
+    """Validate the transactions log from a source for datatypes and conformance.
     See `transactions.md` file for details on the specification and expectations
     from the converters."""
 
     assert r.account and isinstance(r.account, str)
+
     assert r.transaction_id and isinstance(r.transaction_id, str)
+    assert r.order_id and isinstance(r.order_id, str)
+    assert r.transaction_id != r.order_id
+
     assert isinstance(r.datetime, datetime.datetime)
     assert not IsZoneAware(r.datetime)
     assert r.rowtype in ROW_TYPES
-    assert r.order_id is None or (isinstance(r.order_id, str) and r.order_id)
-
-    assert r.effect in EFFECT
-    assert r.instruction in INSTRUCTION
+    assert r.effect in EFFECT or r.effect == '', r
+    assert r.instruction in INSTRUCTION or r.instruction == '', r
 
     # Check the normalized symbol.
     assert r.symbol and isinstance(r.symbol, str)

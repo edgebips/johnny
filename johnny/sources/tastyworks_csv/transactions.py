@@ -166,7 +166,7 @@ def GetPosEffect(rec: Record) -> Optional[str]:
     elif rec.rowtype == 'Expire':
         return 'CLOSING'
     else:
-        return '?'
+        return ''
 
 
 def ParseStrikePrice(string: str) -> Decimal:

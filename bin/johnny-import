@@ -13,6 +13,7 @@ __copyright__ = "Copyright (C) 2021  Martin Blais"
 __license__ = "GNU GPLv2"
 
 import logging
+import traceback
 from typing import List, Optional
 
 import click
@@ -23,10 +24,11 @@ from johnny.base import config as configlib
 from johnny.base import discovery
 from johnny.base import instrument
 from johnny.base import match
+from johnny.base import transactions as txnlib
 from johnny.base.etl import Table
 
 
-def ImportTransactions(config: configlib.Config) -> Table:
+def ImportTransactions(config: configlib.Config, force: bool) -> Table:
     """Read transactions, and do all necessary processing."""
 
     # Extract the explicit chains.
@@ -35,6 +37,17 @@ def ImportTransactions(config: configlib.Config) -> Table:
     # Read the inputs.
     logtables = discovery.ReadConfiguredInputs(config)
     transactions = logtables[configlib.Account.LogType.TRANSACTIONS]
+
+    # Check that the imports are sound before we process them.
+    try:
+        txnlib.ValidateFieldNames(transactions)
+        for rec in transactions.records():
+            txnlib.ValidateTransactionRecord(rec)
+    except Exception as exc:
+        if force:
+            traceback.print_exc(exc)
+        else:
+            raise
 
     # Synthesize opening balances. We need to temporarily expand the instrument
     # fields, as they are needed by the match and chains modules.
@@ -56,11 +69,13 @@ def ImportTransactions(config: configlib.Config) -> Table:
 @click.command()
 @click.option('--config', '-c', type=click.Path(exists=True),
               help="Configuration filename. Default to $JOHNNY_CONFIG")
-def import_(config: Optional[str]):
+@click.option('--force', '-f', is_flag=True,
+              help="For import even if validation fails.")
+def import_(config: Optional[str], force: bool):
     """Parse the configuration, the sources, transform, and save."""
     filename = configlib.GetConfigFilenameWithDefaults(config)
     config = configlib.ParseFile(filename)
-    imported = ImportTransactions(config)
+    imported = ImportTransactions(config, force)
     imported.topickle(config.output.imported_filename)
 
 
