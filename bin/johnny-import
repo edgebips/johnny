@@ -44,7 +44,7 @@ def ImportTransactions(config: configlib.Config, force: bool) -> Table:
             txnlib.ValidateTransactionRecord(rec)
     except Exception as exc:
         if force:
-            traceback.print_exc(exc)
+            traceback.print_last()
         else:
             raise
 

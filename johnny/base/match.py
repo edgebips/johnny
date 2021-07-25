@@ -178,7 +178,7 @@ def _AddMissingExpirations(invs: Mapping[str, Decimal],
                 datetime.time(0, 0, 0))
             rec = prototype_row._replace(
                 transaction_id=_GetOrderIdFromSymbol(key.symbol, 6),
-                 order_id=_GetOrderIdFromSymbol(key.symbol, 4),
+                order_id=_GetOrderIdFromSymbol(key.symbol, 4),
                 account=key.account,
                 symbol=key.symbol,
                 datetime=expiration_time,
