@@ -28,11 +28,6 @@ message Config {
 
   // A list of manually disambiguated trades and their annotations.
   repeated Chain chains = 4;
-
-  // A list of chains that aren't in use; these are produced by the
-  // configuration cleaner, to avoid losing chain data that isn't matched by the
-  // chains processing.
-  repeated Chain residual_chains = 5;
 }
 
 // Configuration for inputs to be imported.
@@ -131,36 +126,99 @@ message Account {
   optional string initial = 5;
 }
 
+// The status of a chain. This is produced in the output configuration after an
+// import, and is intended for the user to review and update on a chain. This is
+// essentially the market which allows you to confirm the current state of a
+// chain's definition, and whether it is use in the algorithm as input.
+//
+// A chain begins its life as AUTO, automatically identified and produced by the
+// heuristics. From there, it may be manually moved to PENDING, especially if
+// some merging of chains needs to occur (e.g. in a pairs or cross-account
+// trade). When the chain is complete, it can be marked FINAL by the user (in
+// which case it will never change). Previously automatically identified chains
+// that become invalid due to changes in the input and/or database are saved as
+// IGNORE in order to avoid losing their contents (you should delete them
+// manually).
+enum ChainStatus {
+  // Automatically identified and created chain. Those chain information will
+  // not be read by the software, not be used at all in creating the chains.
+  // They will be recreated from scratch automatically on a further run. They
+  // are effectively ignored from the input, and are produced in order for you
+  // to inspect them and upgrade their status to PENDING or FINAL. If the
+  // algorithm changes, the definitions of those trades may change, e.g., they
+  // could be split.
+  AUTO = 1;
+
+  // Automatically identified, created, and closed chain. The chain is "closed"
+  // in that the resulting inventory has no residual position (all opened
+  // positions in the chain have been closed). Those should be verified and
+  // marked FINAL manually, or marked PENDING if it is desired for the chain to
+  // be extended further.
+  CLOSED = 2;
+
+  // An active chain, which has been manually verified by the user but which
+  // still needs to be matched against further trades. The algorithm will read
+  // and create those chains, but also match new transactions against them, as
+  // for automatic chains, so they can keep evolving over time. Use this in
+  // order to initialize complex trades that may not otherwise be initialized
+  // automatically, e.g. for pairs trades, or cross-account trades, or trades
+  // that were legged in over multiple expirations and which may not be
+  // identified automatically correctly.
+  PENDING = 3;
+
+  // An automatically finalized chain. Those are automatically pulling out the
+  // corresponding transactions and never matched against any other transaction
+  // rows in the log. Make your chain final when it has been completed and need
+  // never be add or removed any more trades. Those chains should always be
+  // completed matches, that is, all the opened positions should be closed by
+  // the end of the chain. (The software may verify this invariant.)
+  FINAL = 4;
+
+  // For residual automatic chains that were read in the input but which aren't
+  // identified by the algorithm anymore. We use the IGNORE type for those
+  // chains which we want to keep in the output (we don't want to automatically
+  // throw away this work) but which the algorithm believes aren't valid trades
+  // anymore. This is essentially residual data you might salvage (if it was
+  // useful and for some reason that chain name has changed, or if it has been
+  // rendered not valid anymore - due to different chain identification after
+  // more transactions were inserted in the log). You should be removing those
+  // manually from your input file after review.
+  IGNORE = 5;
+}
+
 // A trade chain.
 message Chain {
   // The chain id of a trade. This is a unique string computed in the front end.
   optional string chain_id = 1;
 
+  // Status of the chain. If not set, this is equivalent to AUTO.
+  optional ChainStatus status = 2;
+
   // User-associated trade group or line of business. This can be used to split
   // up your trades in different groups, e.g. "MemeStocks", "ShortPremium",
   // "LongStock".
-  optional string trade_type = 2;
+  optional string trade_type = 3;
 
   // Initial strategy used, e.g. "Strangle", "BrokenWingButterfly", etc. The
   // software may attempt to set a value for this, but you can override it in
   // the configuration file.
-  optional string strategy = 6;
+  optional string strategy = 4;
 
   // User-provided description. Free-form, may span multiple lines (include
   // newlines).
-  optional string comment = 3;
+  optional string comment = 5;
 
   // If this is present, an explicit list of transaction ids that are part of
   // the trade. All the rows matching these transactions will be automatically
   // removed from the table and extracted as a unique chain. Make sure that
   // matches without these trades can resolve.
-  repeated string transaction_ids = 4;
+  repeated string transaction_ids = 6;
 
   // If this is present, an explicit list of order ids that are part of the
   // trade. All the rows matching these transactions will be automatically
   // removed from the table and extracted as a unique chain. Make sure that
   // matches without these trades can resolve.
-  repeated string order_ids = 5;
+  repeated string order_ids = 7;
 }
 
 // Declaration of asset vs. asset-class mapping.

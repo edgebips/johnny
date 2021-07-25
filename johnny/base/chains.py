@@ -380,9 +380,10 @@ def CleanConfig(config: configlib.Config, chains_table: Table) -> configlib.Conf
     rec_map = {rec.chain_id: rec for rec in chains_table.records()}
     inserted = set()
     for old_chain in config.chains:
+        new_chain = new_config.chains.add()
         rec = rec_map.get(old_chain.chain_id, None)
-        field = new_config.chains if rec is not None else new_config.residual_chains
-        new_chain = field.add()
+        if rec is None:
+            new_chain.status = configlib.ChainStatus.INVALID
         new_chain.CopyFrom(old_chain)
         if rec is not None:
             new_chain.trade_type = rec.trade_type
