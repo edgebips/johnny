@@ -54,10 +54,12 @@ def ImportTransactions(config: configlib.Config) -> Table:
 
 
 @click.command()
-@click.argument('config_filename', type=click.Path(exists=True))
-def import_(config_filename: str):
+@click.option('--config', '-c', type=click.Path(exists=True),
+              help="Configuration filename. Default to $JOHNNY_CONFIG")
+def import_(config: Optional[str]):
     """Parse the configuration, the sources, transform, and save."""
-    config = configlib.ParseFile(config_filename)
+    filename = configlib.GetConfigFilenameWithDefaults(config)
+    config = configlib.ParseFile(filename)
     imported = ImportTransactions(config)
     imported.topickle(config.output.imported_filename)
 

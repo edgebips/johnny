@@ -3,7 +3,8 @@
 __copyright__ = "Copyright (C) 2021  Martin Blais"
 __license__ = "GNU GPLv2"
 
-from typing import Mapping, Tuple
+import os
+from typing import Mapping, Optional, Tuple
 
 # pylint: disable=unused-import
 from johnny.base.config_pb2 import Config, Chain, ChainStatus, Account
@@ -17,6 +18,15 @@ from google.protobuf import text_format
 def ToText(message) -> str:
     """Convert a proto message to pretty-printed text."""
     return text_format.MessageToString(message)
+
+
+def GetConfigFilenameWithDefaults(filename: Optional[str]) -> str:
+    """Get the configuration filename, handling defaults."""
+    if not filename:
+        filename = os.getenv("JOHNNY_CONFIG")
+    if not filename:
+        raise RuntimeError("No value for JOHNNY_CONFIG is provided.")
+    return filename
 
 
 def ParseFile(filename: str) -> config_pb2.Config:

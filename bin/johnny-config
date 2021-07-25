@@ -22,11 +22,13 @@ from johnny.base import chains as chainslib
 
 
 @click.command()
-@click.argument('config_filename', type=click.Path(exists=True))
-def chains(config_filename: str):
+@click.option('--config', '-c', type=click.Path(exists=True),
+              help="Configuration filename. Default to $JOHNNY_CONFIG")
+def chains(config: Optional[str]):
     "Find, process and print positions."
 
-    config = configlib.ParseFile(config_filename)
+    filename = configlib.GetConfigFilenameWithDefaults(config)
+    config = configlib.ParseFile(filename)
     transactions = petl.frompickle(config.output.imported_filename)
     chains = chainslib.TransactionsTableToChainsTable(transactions, config)
 

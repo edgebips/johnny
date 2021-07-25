@@ -25,6 +25,7 @@ __copyright__ = "Copyright (C) 2021  Martin Blais"
 __license__ = "GNU GPLv2"
 
 import logging
+import os
 from typing import List, Optional
 
 import click
@@ -38,37 +39,38 @@ from johnny.base.etl import petl, Table
 
 
 @click.group()
+@click.option('--config', '-c',
+              help="Configuration filename. Default to $JOHNNY_CONFIG")
 @click.option('--expand', '-e', is_flag=True,
               help="Expand instrument symbol before output")
 @click.pass_context
-def cli(ctx: click.Context, expand: bool):
+def cli(ctx: click.Context, config: Optional[str], expand: bool):
     "General purpose command-line printer tool."
     logging.basicConfig(level=logging.INFO, format='%(levelname)-8s: %(message)s')
     ctx.obj['expand'] = expand
+    filename = configlib.GetConfigFilenameWithDefaults(config)
+    ctx.obj['config'] = configlib.ParseFile(filename)
 
 
-def GetLogTables(config_filename: str, logtype: int) -> Table:
+def GetLogTables(config: configlib.Config, logtype: int) -> Table:
     """Process the log tables."""
-    config = configlib.ParseFile(config_filename)
     logtables = discovery.ReadConfiguredInputs(config)
     return logtables[logtype]
 
 
 @cli.command()
-@click.argument('config_filename')
 @click.pass_context
-def rawtxns(ctx: click.Context, config_filename: str):
+def rawtxns(ctx: click.Context):
     "Find, process and print transactions."
-    table = GetLogTables(config_filename, configlib.Account.LogType.TRANSACTIONS)
+    table = GetLogTables(ctx.obj['config'], configlib.Account.LogType.TRANSACTIONS)
     print_table(table, ctx.obj['expand'])
 
 
 @cli.command()
-@click.argument('config_filename')
 @click.pass_context
-def rawpos(ctx: click.Context, config_filename: str):
+def rawpos(ctx: click.Context):
     "Find, process and print positions."
-    table = GetLogTables(config_filename, configlib.Account.LogType.POSITIONS)
+    table = GetLogTables(ctx.obj['config'], configlib.Account.LogType.POSITIONS)
     print_table(table, ctx.obj['expand'])
 
 
@@ -80,27 +82,23 @@ def print_table(table: Table, expand: bool):
 
 
 @cli.command()
-@click.argument('config_filename')
-def imported(config_filename: str):
+@click.pass_context
+def imported(ctx: click.Context):
     "Find, process and print positions."
-
-    config = configlib.ParseFile(config_filename)
+    config = ctx.obj['config']
     imported = petl.frompickle(config.output.imported_filename)
     print(imported.lookallstr())
 
 
 @cli.command()
-@click.argument('config_filename')
-def marks(config_filename: str):
+@click.pass_context
+def marks(ctx: click.Context):
     "Print out marks."
-
-    config = configlib.ParseFile(config_filename)
+    config = ctx.obj['config']
     transactions = petl.frompickle(config.output.imported_filename)
-
     # Mark the transactions.
     price_map = mark.GetPriceMap(transactions, config)
     transactions = mark.Mark(transactions, price_map)
-
     # Print out the marks.
     marks = (transactions
              .selecteq('rowtype', 'Mark'))
@@ -108,11 +106,10 @@ def marks(config_filename: str):
 
 
 @cli.command()
-@click.argument('config_filename')
-def chains(config_filename: str):
+@click.pass_context
+def chains(ctx: click.Context):
     "Print out marked chains."
-
-    config = configlib.ParseFile(config_filename)
+    config = ctx.obj['config']
     transactions = petl.frompickle(config.output.imported_filename)
     chains = chainslib.TransactionsTableToChainsTable(transactions, config)
     print(chains.lookallstr())

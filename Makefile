@@ -9,7 +9,7 @@ move-files:
 	-mv -f $(HOME)/tasty* $(HOME)/*Statement.csv $(DOWNLOADS)
 
 serve: move-files
-	johnny-web $(DOWNLOADS)
+	johnny-web
 
 config:
 	johnny-config $(CONFIG) | tee $(CONFIG_NEW)
@@ -22,7 +22,7 @@ update:
 	tastyworks-update $(DOWNLOADS)/tastyworks-roth.db -a Roth
 
 import:
-	johnny-import $(CONFIG)
+	johnny-import -c $(CONFIG)
 
 test:
 	python3 -m pytest -x johnny
