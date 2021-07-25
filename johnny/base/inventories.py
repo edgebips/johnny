@@ -461,7 +461,7 @@ class OpenCloseFifoInventory:
         squantity = SignedQuantity(rec)
         if pquantity * squantity < ZERO:
             raise MatchError(
-                f"Invalid opening position matching {squantity} over {pquantity}.")
+                f"Invalid opening position matching {squantity} over {pquantity}: {rec}")
 
         # Match the new opening position.
         return self.match(rec, accumfn)
@@ -478,7 +478,7 @@ class OpenCloseFifoInventory:
         squantity = SignedQuantity(rec)
         if pquantity * squantity >= ZERO:
             raise MatchError(
-                f"Invalid closing position matching {squantity} over {pquantity}.")
+                f"Invalid closing position matching {squantity} over {pquantity}: {rec}")
 
         # Match the closing position against the inventory.
         return self.match(rec, accumfn)
@@ -490,7 +490,7 @@ class OpenCloseFifoInventory:
         Return the signed matched size and match id to apply.
         """
         if not self.lots:
-            raise MatchError(f"Invalid expiration with no lots.")
+            raise MatchError(f"Invalid expiration with no lots: {rec}")
 
         pquantity = self.quantity()
         instruction = 'SELL' if pquantity >= 0 else 'BUY'
