@@ -55,12 +55,9 @@ def Validate(config: config_pb2.Config):
             raise ConfigError("Log type is not set")
 
 
-def GetExplicitChains(config: Config) -> Tuple[Mapping[str, str], Mapping[str, str]]:
+def GetExplicitChains(config: Config) -> Mapping[str, str]:
     """Extract a mapping of transaction-id to some unique chain-id."""
     transactions_map = {tid: chain.chain_id
                         for chain in config.chains
                         for tid in chain.transaction_ids}
-    orders_map = {oid: chain.chain_id
-                  for chain in config.chains
-                  for oid in chain.order_ids}
-    return (transactions_map, orders_map)
+    return transactions_map

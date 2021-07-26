@@ -54,8 +54,7 @@ def Group(transactions: Table,
           by_match=True,
           by_order=True,
           by_time=True,
-          explicit_transactions_chain_map=None,
-          explicit_orders_chain_map=None) -> Table:
+          explicit_chain_map=None) -> Table:
     """Cluster transactions to create options chains.
 
     This function inserts the `chain_id` column to the table and returns a
@@ -66,19 +65,17 @@ def Group(transactions: Table,
       by_match: A flag, indicating that matching transactions should be chained.
       by_order: A flag, indicating that transactions from the same order should be chained.
       by_time: A flag, indicating that transactions overlapping over time should be chained.
-      explicit_transactions_chain_map: A mapping of (transaction-id, unique-chain-id).
-      explicit_orders_chain_map: A mapping of (order-id, unique-chain-id).
+      explicit_chain_map: A mapping of (transaction-id, unique-chain-id).
     Returns:
       A modified table with an extra "chain" column, identifying groups of
       related transactions, by episode, or chain.
 
     """
-    explicit_transactions_chain_map = explicit_transactions_chain_map or {}
-    explicit_orders_chain_map = explicit_orders_chain_map or {}
+    explicit_chain_map = explicit_chain_map or {}
 
     # Create the graph.
     graph = CreateGraph(transactions, by_match, by_order, by_time,
-                        explicit_transactions_chain_map, explicit_orders_chain_map)
+                        explicit_chain_map)
 
     # Process each connected component to an individual trade.
     # Note: This includes rolls if they were carried one as a single order.
@@ -96,9 +93,7 @@ def Group(transactions: Table,
                 chain_txns.append(node['rec'])
 
         assert chain_txns, "Invalid empty chain: {}".format(chain_txns)
-        chain_id = ChainName(chain_txns,
-                             explicit_transactions_chain_map,
-                             explicit_orders_chain_map)
+        chain_id = ChainName(chain_txns, explicit_chain_map)
         for rec in chain_txns:
             chain_map[rec.transaction_id] = chain_id
 
@@ -110,8 +105,7 @@ def CreateGraph(transactions: Table,
                 by_match=True,
                 by_order=True,
                 by_time=True,
-                explicit_transactions_chain_map=None,
-                explicit_orders_chain_map=None) -> nx.Graph:
+                explicit_chain_map=None) -> nx.Graph:
     """Create a graph to link together related transactions."""
 
     AssertColumns(transactions,
@@ -122,15 +116,16 @@ def CreateGraph(transactions: Table,
                   ('expiration', {None, datetime.date}),
                   ('account', str),
                   ('underlying', str))
-    explicit_transactions_chain_map = (
-        copy.copy(explicit_transactions_chain_map) or {})
-    explicit_orders_chain_map = (
-        copy.copy(explicit_orders_chain_map) or {})
+    explicit_chain_map = copy.copy(explicit_chain_map) or {}
 
     # Extract out transactions that are explicitly chained.
     explicit_transactions, implicit_transactions = transactions.biselect(
-        lambda rec: (rec.transaction_id in explicit_transactions_chain_map or
-                     rec.order_id in explicit_orders_chain_map))
+        lambda rec: rec.transaction_id in explicit_chain_map)
+
+    def is_explicit(rec):
+        return rec.transaction_id in explicit_chain_map
+    explicit_transactions, implicit_transactions = transactions.biselect(is_explicit)
+    remain_chain_map = copy.copy(explicit_chain_map)
 
     # Process explicitly specified chains.
     graph = nx.Graph()
@@ -139,8 +134,7 @@ def CreateGraph(transactions: Table,
 
         # Extract explicit chains to their own components and don't link them
         # with others.
-        explicit_chain = (explicit_transactions_chain_map.pop(rec.transaction_id, None) or
-                          explicit_orders_chain_map.pop(rec.order_id, None))
+        explicit_chain = remain_chain_map.pop(rec.transaction_id, None)
         if explicit_chain:
             graph.add_node(explicit_chain, type='expchain')
             graph.add_edge(rec.transaction_id, explicit_chain)
@@ -172,9 +166,7 @@ def CreateGraph(transactions: Table,
         for id1, id2 in itertools.chain(links, transaction_links):
             graph.add_edge(id1, id2)
 
-    for item in explicit_transactions_chain_map.items():
-        logging.warning(f"Remaining transaction id: {item}")
-    for item in explicit_orders_chain_map.items():
+    for item in remain_chain_map.items():
         logging.warning(f"Remaining transaction id: {item}")
 
     return graph
@@ -277,18 +269,13 @@ def _CreateChainId(transaction_id: str, _: datetime.datetime) -> str:
 
 # TODO(blais): Assign chain names after grouping so that this isn't necessary.
 def ChainName(txns: List[Record],
-              explicit_transactions_chain_map: Mapping[str, str],
-              explicit_orders_chain_map: Mapping[str, str]):
+              explicit_chain_map: Mapping[str, str]):
     """Generate a unique chain name. This assumes 'account', 'mindate' and
     'underlying' columns."""
 
     # Look for an explicit chain id.
     for txn in txns:
-        explicit_chain_id = explicit_transactions_chain_map.get(txn.transaction_id, None)
-        if explicit_chain_id is not None:
-            return explicit_chain_id
-    for txn in txns:
-        explicit_chain_id = explicit_orders_chain_map.get(txn.order_id, None)
+        explicit_chain_id = explicit_chain_map.get(txn.transaction_id, None)
         if explicit_chain_id is not None:
             return explicit_chain_id
 
@@ -424,6 +411,6 @@ def CleanConfig(config: configlib.Config,
             continue
         if rec.transaction_id in chain.auto_ids:
             continue
-        chain.auto_ids.append(rec.transaction_id)
+        chain.transaction_ids.append(rec.transaction_id)
 
     return new_config

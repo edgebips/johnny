@@ -32,21 +32,26 @@ def ImportTransactions(config: configlib.Config, force: bool) -> Table:
     """Read transactions, and do all necessary processing."""
 
     # Extract the explicit chains.
-    transactions_chain_map, orders_chain_map = configlib.GetExplicitChains(config)
+    explicit_chain_map = configlib.GetExplicitChains(config)
 
     # Read the inputs.
     logtables = discovery.ReadConfiguredInputs(config)
     transactions = logtables[configlib.Account.LogType.TRANSACTIONS]
 
-    # Check that the imports are sound before we process them.
+    # Check that the imports are sound before we process them and ensure that
+    # the transaction ids are unique.
+    unique_ids = set()
     try:
         for rec in transactions.records():
+            unique_ids.add(rec.transaction_id)
             txnlib.ValidateTransactionRecord(rec)
     except Exception as exc:
         if force:
             traceback.print_last()
         else:
             raise
+    num_txns = transactions.nrows()
+    assert num_txns == len(unique_ids)
 
     # Synthesize opening balances. We need to temporarily expand the instrument
     # fields, as they are needed by the match and chains modules.
@@ -58,8 +63,7 @@ def ImportTransactions(config: configlib.Config, force: bool) -> Table:
                     # Run the chains heuristic.
                     .applyfn(instrument.Expand, 'symbol')
                     .applyfn(chains.Group,
-                             explicit_transactions_chain_map=transactions_chain_map,
-                             explicit_orders_chain_map=orders_chain_map)
+                             explicit_chain_map=explicit_chain_map)
                     .applyfn(instrument.Shrink))
 
     return transactions

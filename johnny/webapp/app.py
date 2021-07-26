@@ -220,12 +220,6 @@ def chain_proto(chain_id: str):
         chain_obj = configlib.Chain()
         chain_obj.chain_id = chain_id
 
-    # Update the order ids.
-    txns = (STATE.transactions
-            .selecteq('chain_id', chain_id))
-    chain_obj.ClearField('order_ids')
-    chain_obj.order_ids.extend(txns.values('order_id'))
-
     config = configlib.Config()
     config.chains.add().CopyFrom(chain_obj)
     response = flask.make_response(configlib.ToText(config), 200)
