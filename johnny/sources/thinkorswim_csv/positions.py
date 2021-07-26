@@ -41,6 +41,7 @@ from typing import List, Tuple, Optional, NamedTuple
 
 from dateutil.parser import parse
 import click
+from more_itertools import first
 
 from johnny.base import config as configlib
 from johnny.base import discovery
@@ -289,9 +290,19 @@ def ReduceFragmentedPositions(table: Table) -> Table:
 
     # In TOS, multiple purchases with different costs will show multiple lines.
     # We need to reduce these to a single position with a single average cost in
-    # order to join it to the transactions.
-
-    agg = {key: (key, sum) for key in table.header()[1:]}
+    # order to join it to the transactions. Here's an example (see /ZFU)
+    #
+    # symbol              quantity  price         mark          cost          net_liq  pnl_open  pnl_day
+    # /ZBU21_OZBU21_C170  -1        0.59375       0.40625       593.75000     -406.25  179.69    -46.88
+    # /ZBU21_OZBU21_P157  -1        0.328125      0.140625      328.125000    -140.63  187.50    31.25
+    # /ZFU21              -1        123.6953125   124.390625    123.6953125   -101.57  -695.31   -101.57
+    # /ZFU21              -1        123.7734375   124.390625    123.7734375   -101.57  -617.19   -101.57
+    # /ZTU21              -2        110.36328125  110.28515625  220.72656250  -40.63   312.50    -40.63
+    #
+    agg = {}
+    for key in table.header()[1:]:
+        func = first if key in {'price', 'mark'} else sum
+        agg[key] = (key, func)
     return table.aggregate('symbol', agg)
 
 
@@ -313,6 +324,7 @@ def GetPositions(filename: str, month_mapper: FutOptMonthMapper) -> Table:
 
         gtable = (FoldInstrument(x.table, month_mapper)
                   .addfield('group', x.name, index=0))
+
         tables.append(gtable)
 
     # Add the account number.
