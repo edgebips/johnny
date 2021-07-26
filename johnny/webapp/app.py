@@ -77,6 +77,10 @@ def Initialize():
             config = configlib.ParseFile(config_filename)
             transactions = petl.frompickle(config.output.imported_filename)
 
+            # Mark the transactions.
+            price_map = mark.GetPriceMap(transactions, config)
+            transactions = mark.Mark(transactions, price_map)
+
             # Compute chains, clean up configuration.
             chains_table = chainslib.TransactionsTableToChainsTable(transactions, config)
             clean_config = chainslib.CleanConfig(config, chains_table, transactions)

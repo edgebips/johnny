@@ -328,10 +328,6 @@ def TransactionsTableToChainsTable(transactions: Table, config: configlib.Config
     """Aggregate a table of already identified transactions row (with a `chain_id` column)
     to a table of aggregated chains."""
 
-    # Mark the transactions.
-    price_map = mark.GetPriceMap(transactions, config)
-    transactions = mark.Mark(transactions, price_map)
-
     chain_map = {chain.chain_id: chain for chain in config.chains}
     agg = {
         'account': ('account', first),

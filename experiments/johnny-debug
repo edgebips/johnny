@@ -32,6 +32,7 @@ import ameritrade as td
 
 from johnny.base import config as configlib
 from johnny.base import chains as chainslib
+from johnny.base import mark
 from johnny.base.etl import petl
 
 
@@ -44,6 +45,8 @@ def debug(config_filename: str):
     """Parse the configuration, the sources, transform, and save."""
     config = configlib.ParseFile(config_filename)
     transactions = petl.frompickle(config.output.imported_filename)
+    price_map = mark.GetPriceMap(transactions, config)
+    transactions = mark.Mark(transactions, price_map)
     chains = chainslib.TransactionsTableToChainsTable(transactions, config)
     print(chains
           #.selecteq('underlying', '')

@@ -111,6 +111,8 @@ def chains(ctx: click.Context):
     "Print out marked chains."
     config = ctx.obj['config']
     transactions = petl.frompickle(config.output.imported_filename)
+    price_map = mark.GetPriceMap(transactions, config)
+    transactions = mark.Mark(transactions, price_map)
     chains = chainslib.TransactionsTableToChainsTable(transactions, config)
     print(chains.lookallstr())
 

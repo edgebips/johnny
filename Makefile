@@ -4,10 +4,23 @@
 DOWNLOADS=$(HOME)/trading/downloads
 JOHNNY_CONFIG_NEW=$(JOHNNY_CONFIG).new
 
+test:
+	python3 -m pytest -x johnny
+
+debug:
+	python3 ./experiments/johnny-debug
+
 move-files:
 	-mv -f $(HOME)/tasty* $(HOME)/*Statement.csv $(DOWNLOADS)
 
-serve: move-files
+update:
+	tastyworks-update -a Individual $(DOWNLOADS)/tastyworks-individual.db
+	tastyworks-update -a Roth       $(DOWNLOADS)/tastyworks-roth.db
+
+import: move-files
+	johnny-import
+
+serve:
 	johnny-web
 
 config: config-gen config-diff
@@ -17,16 +30,3 @@ config-gen:
 
 config-diff:
 	-xxdiff -B $(JOHNNY_CONFIG) $(JOHNNY_CONFIG_NEW)
-
-update:
-	tastyworks-update -a Individual $(DOWNLOADS)/tastyworks-individual.db
-	tastyworks-update -a Roth       $(DOWNLOADS)/tastyworks-roth.db
-
-import:
-	johnny-import
-
-test:
-	python3 -m pytest -x johnny
-
-debug:
-	python3 ./experiments/johnny-debug
