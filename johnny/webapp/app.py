@@ -79,7 +79,7 @@ def Initialize():
 
             # Compute chains, clean up configuration.
             chains_table = chainslib.TransactionsTableToChainsTable(transactions, config)
-            clean_config = chainslib.CleanConfig(config, chains_table)
+            clean_config = chainslib.CleanConfig(config, chains_table, transactions)
             chains_map = {c.chain_id: c for c in clean_config.chains}
 
             # Extract current positions from marks.
