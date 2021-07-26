@@ -67,7 +67,10 @@ def ValidateTransactionRecord(r: Record):
 
     assert r.transaction_id and isinstance(r.transaction_id, str), r
     assert r.order_id and isinstance(r.order_id, str), r
-    assert r.transaction_id != r.order_id, r
+
+    # We could tighten the constraints further and require unique transactions
+    # vs. order ids mutually, but it's probably not necessary.
+    # assert r.transaction_id != r.order_id, r
 
     assert isinstance(r.datetime, datetime.datetime)
     assert not IsZoneAware(r.datetime)
