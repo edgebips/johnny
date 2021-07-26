@@ -59,5 +59,5 @@ def GetExplicitChains(config: Config) -> Mapping[str, str]:
     """Extract a mapping of transaction-id to some unique chain-id."""
     transactions_map = {tid: chain.chain_id
                         for chain in config.chains
-                        for tid in chain.transaction_ids}
+                        for tid in chain.ids}
     return transactions_map

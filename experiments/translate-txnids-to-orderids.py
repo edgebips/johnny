@@ -40,7 +40,7 @@ def main(config_filename: str):
             if id not in order_ids:
                 print(f"Missing order: {id}")
                 missing = True
-        for id in chain.transaction_ids:
+        for id in chain.ids:
             if id not in txn_ids:
                 print(f"Missing txn: {id}")
                 missing = True

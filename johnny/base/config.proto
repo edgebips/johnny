@@ -212,11 +212,11 @@ message Chain {
   // the trade. All the rows matching these transactions will be automatically
   // removed from the table and extracted as a unique chain. Make sure that
   // matches without these trades can resolve.
-  repeated string transaction_ids = 6;
+  repeated string ids = 6;
 
-  // Fields for `transaction_ids` but which were filled automatically. Remove
+  // Fields for `ids` but which were filled automatically. Remove
   // the `auto_` prefix in order to make these permanent.
-  repeated string auto_ids = 8;
+  repeated string auto_ids = 7;
 }
 
 // Declaration of asset vs. asset-class mapping.

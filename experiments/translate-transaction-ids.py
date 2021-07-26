@@ -42,19 +42,19 @@ def main(config: Optional[str]):
                .lookup('transaction_id', 'transaction_new_id'))
 
     for chain in config.chains:
-        if not chain.transaction_ids:
+        if not chain.ids:
             continue
-        ids = list(chain.transaction_ids)
-        chain.ClearField('transaction_ids')
+        ids = list(chain.ids)
+        chain.ClearField('ids')
         for id in ids:
             try:
                 mapped = mapping[id]
                 for newid in mapped:
                     if newid is None:
                         continue
-                    chain.transaction_ids.append(newid)
+                    chain.ids.append(newid)
             except KeyError:
-                chain.transaction_ids.append(id)
+                chain.ids.append(id)
 
     print(config)
     #pp(mapping)

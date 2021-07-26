@@ -407,10 +407,10 @@ def CleanConfig(config: configlib.Config,
         if rec.rowtype == 'Mark':
             continue
         chain = chain_map.get(rec.chain_id, None)
-        if rec.transaction_id in chain.transaction_ids:
+        if rec.transaction_id in chain.ids:
             continue
         if rec.transaction_id in chain.auto_ids:
             continue
-        chain.transaction_ids.append(rec.transaction_id)
+        chain.ids.append(rec.transaction_id)
 
     return new_config
