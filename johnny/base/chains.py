@@ -343,7 +343,7 @@ def TransactionsTableToChainsTable(transactions: Table, config: configlib.Config
         'commissions': ('commissions', sum),
         'fees': ('fees', sum),
         'status': ('rowtype', _GetStatus),
-        'trade_type': ('chain_id', partial(_GetChainAttribute, chain_map, 'trade_type')),
+        'group': ('chain_id', partial(_GetChainAttribute, chain_map, 'group')),
         'strategy': ('chain_id', partial(_GetChainAttribute, chain_map, 'strategy')),
         'instruments': ('symbol', _GetInstruments),
     }
@@ -359,7 +359,7 @@ def TransactionsTableToChainsTable(transactions: Table, config: configlib.Config
         .cut('chain_id', 'account', 'underlying', 'status',
              'mindate', 'maxdate', 'days',
              'init', 'pnl_chain', 'net_liq', 'commissions', 'fees',
-             'trade_type', 'strategy', 'instruments'))
+             'group', 'strategy', 'instruments'))
 
     return chains
 
@@ -386,7 +386,7 @@ def CleanConfig(config: configlib.Config,
         new_chain.CopyFrom(old_chain)
         new_chain.ClearField('auto_ids')
         if rec is not None:
-            new_chain.trade_type = rec.trade_type
+            new_chain.group = rec.group
             if rec.strategy:
                 new_chain.strategy = rec.strategy
         inserted.add(old_chain.chain_id)
@@ -397,7 +397,7 @@ def CleanConfig(config: configlib.Config,
             continue
         new_chain = new_config.chains.add()
         new_chain.chain_id = rec.chain_id
-        new_chain.trade_type = rec.trade_type
+        new_chain.group = rec.group
         if rec.strategy:
             new_chain.strategy = rec.strategy
 

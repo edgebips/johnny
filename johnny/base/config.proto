@@ -197,7 +197,7 @@ message Chain {
   // User-associated trade group or line of business. This can be used to split
   // up your trades in different groups, e.g. "MemeStocks", "ShortPremium",
   // "LongStock".
-  optional string trade_type = 3;
+  optional string group = 3;
 
   // Initial strategy used, e.g. "Strangle", "BrokenWingButterfly", etc. The
   // software may attempt to set a value for this, but you can override it in
