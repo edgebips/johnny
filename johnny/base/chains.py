@@ -31,6 +31,7 @@ from decimal import Decimal
 from typing import Any, Iterator, List, Mapping, Tuple
 import functools
 import hashlib
+import copy
 import sys
 import collections
 import datetime
@@ -121,8 +122,10 @@ def CreateGraph(transactions: Table,
                   ('expiration', {None, datetime.date}),
                   ('account', str),
                   ('underlying', str))
-    explicit_transactions_chain_map = explicit_transactions_chain_map or {}
-    explicit_orders_chain_map = explicit_orders_chain_map or {}
+    explicit_transactions_chain_map = (
+        copy.copy(explicit_transactions_chain_map) or {})
+    explicit_orders_chain_map = (
+        copy.copy(explicit_orders_chain_map) or {})
 
     # Extract out transactions that are explicitly chained.
     explicit_transactions, implicit_transactions = transactions.biselect(
@@ -136,8 +139,8 @@ def CreateGraph(transactions: Table,
 
         # Extract explicit chains to their own components and don't link them
         # with others.
-        explicit_chain = (explicit_transactions_chain_map.get(rec.transaction_id) or
-                          explicit_orders_chain_map.get(rec.order_id))
+        explicit_chain = (explicit_transactions_chain_map.pop(rec.transaction_id, None) or
+                          explicit_orders_chain_map.pop(rec.order_id, None))
         if explicit_chain:
             graph.add_node(explicit_chain, type='expchain')
             graph.add_edge(rec.transaction_id, explicit_chain)
@@ -168,6 +171,11 @@ def CreateGraph(transactions: Table,
             graph.add_node(idx, type='time')
         for id1, id2 in itertools.chain(links, transaction_links):
             graph.add_edge(id1, id2)
+
+    for item in explicit_transactions_chain_map.items():
+        logging.warning(f"Remaining transaction id: {item}")
+    for item in explicit_orders_chain_map.items():
+        logging.warning(f"Remaining transaction id: {item}")
 
     return graph
 
