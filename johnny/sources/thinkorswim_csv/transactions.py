@@ -830,20 +830,23 @@ def GetTransactions(filename: str) -> Tuple[Table, Table]:
 
     # Add some more missing columns.
     txns = (txns
+            #.sort(('order_id', 'description'))
+
             # Add the account number to the table.
             .addfield('account', utils.GetAccountNumber(filename), index=0)
 
             # Make up a transaction id. It's a real bummer that the one that's
             # available in the API does not show up anywhere in this file.
+            # .addfieldusingcontext('order_sequence', OrderSequence)
             .addfield('transaction_id', GetTransactionId)
+            # .cutout('order_sequence')
+
+            # Convert the order ids to match those from the API.
+            .convert('order_id', lambda oid: 'T{}'.format(oid) if oid else oid)
 
             # Add a cost row.
             .addfield('cost', Cost)
             )
-
-    # Convert the order ids to match those from the API.
-    txns = (txns
-            .convert('order_id', lambda oid: 'T{}'.format(oid) if oid else oid))
 
     # Make the final ordering correct and finalize the columns.
     txns = txns.cut(txnlib.FIELDS)
@@ -853,16 +856,37 @@ def GetTransactions(filename: str) -> Tuple[Table, Table]:
     return txns, cash_accounts
 
 
+def OrderSequence(prv: Optional[int], cur: Optional[int], nxt: Optional[int]) -> int:
+    """Return a sequence number for order ids."""
+    if ((prv is not None and cur.order_id == prv.order_id) or
+        (nxt is not None and cur.order_id == nxt.order_id)):
+        if prv is None or prv.order_sequence is None or prv.order_id != cur.order_id:
+            sequence = 1
+        else:
+            sequence = prv.order_sequence + 1
+        return sequence
+    else:
+        return None
+
+
 def GetTransactionId(rec: Record) -> str:
     """Make up a unique transaction id."""
-    md5 = hashlib.blake2s(digest_size=6)
-    # Note: You could use the sequenced order id instead. That's what we do in
-    # some of the other importers.
-    #
-    # TODO(blais): What about if there is no order id, .e.g None?
-    md5.update(str(rec['order_id']).encode('ascii'))
-    md5.update(rec['description'].encode('ascii'))
-    return md5.hexdigest()
+    if 0:
+        # We use the order id + sequence, if not unique.
+        if rec.order_sequence is None:
+            return rec.order_id
+        else:
+            return "{}.{}".format(rec.order_id, rec.order_sequence)
+
+    else:
+        md5 = hashlib.blake2s(digest_size=6)
+        # Note: You could use the sequenced order id instead. That's what we do in
+        # some of the other importers.
+        #
+        # TODO(blais): What about if there is no order id, .e.g None?
+        md5.update(str(rec['order_id']).encode('ascii'))
+        md5.update(rec['description'].encode('ascii'))
+        return md5.hexdigest()
 
 
 def PrepareTables(filename: str) -> Dict[str, Table]:
