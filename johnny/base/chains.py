@@ -377,29 +377,6 @@ def TransactionsTableToChainsTable(transactions: Table, config: configlib.Config
     return chains
 
 
-def CheckTransactionsVsOrders(config: configlib.Config,
-                              transactions: Table):
-    """Check that the matched transaction ids match that from the orders.
-    This function is used to check conversions between transaction id lists and
-    order id lists. I'm still not 100% convinced which one we should favor yet.
-    """
-    for chain in config.chains:
-        if not chain.transaction_ids:
-            continue
-        tids = set(chain.transaction_ids)
-        oids = set(chain.order_ids) | set(chain.auto_order_ids)
-        t_table = transactions.selectin('transaction_id', tids)
-        o_table = transactions.selectin('order_id', oids)
-        if t_table.nrows() != o_table.nrows():
-            pr = functools.partial(print, file=sys.stderr)
-            pr(chain)
-            pr(t_table.lookallstr())
-            pr('@@@', oids)
-            pr(o_table.lookallstr(), file=sys.stderr)
-            pr()
-            raise ValueError(f"Invalid chain: {chain}")
-
-
 def CleanConfig(config: configlib.Config,
                 chains_table: Table,
                 transactions: Table) -> configlib.Config:
@@ -410,7 +387,7 @@ def CleanConfig(config: configlib.Config,
     new_config.ClearField('chains')
 
     # Copy the original chains in the same order as in the input file. We
-    # produce the otuput in this order in order to be able to compare (diff) the
+    # produce the output in this order in order to be able to compare (diff) the
     # output with the original file while minimizing the differences.
     rec_map = {rec.chain_id: rec for rec in chains_table.records()}
     inserted = set()
@@ -420,7 +397,7 @@ def CleanConfig(config: configlib.Config,
         if rec is None:
             new_chain.status = configlib.ChainStatus.IGNORE
         new_chain.CopyFrom(old_chain)
-        new_chain.ClearField('auto_order_ids')
+        new_chain.ClearField('auto_ids')
         if rec is not None:
             new_chain.trade_type = rec.trade_type
             if rec.strategy:
@@ -443,15 +420,10 @@ def CleanConfig(config: configlib.Config,
         if rec.rowtype == 'Mark':
             continue
         chain = chain_map.get(rec.chain_id, None)
-        if rec.order_id in chain.order_ids:
-            continue
         if rec.transaction_id in chain.transaction_ids:
             continue
-        assert(rec.order_id is not None)
-        if rec.order_id in chain.auto_order_ids:
+        if rec.transaction_id in chain.auto_ids:
             continue
-        chain.auto_order_ids.append(rec.order_id)
-
-    CheckTransactionsVsOrders(new_config, transactions)
+        chain.auto_ids.append(rec.transaction_id)
 
     return new_config

@@ -220,9 +220,9 @@ message Chain {
   // matches without these trades can resolve.
   repeated string order_ids = 7;
 
-  // Fields for `order_ids` but which were filled automatically. Remove the
-  // `auto_` prefix in order to make these permanent.
-  repeated string auto_order_ids = 8;
+  // Fields for `transaction_ids` but which were filled automatically. Remove
+  // the `auto_` prefix in order to make these permanent.
+  repeated string auto_ids = 8;
 }
 
 // Declaration of asset vs. asset-class mapping.
