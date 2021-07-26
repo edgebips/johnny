@@ -36,10 +36,9 @@ class MatchError(ValueError):
 
 def _CreateMatchId(transaction_id: str) -> str:
     """Create a unique match id from the given transaction id."""
-    assert transaction_id is not None
-    md5 = hashlib.blake2s(digest_size=4)
-    md5.update(transaction_id.encode('ascii'))
-    return "&{}".format(md5.hexdigest())
+    # Just return the transaction id itself as the match id.
+    # After all, it is guaranteed to be unique.
+    return "&{}".format(transaction_id)
 
 
 class MinInventory:
