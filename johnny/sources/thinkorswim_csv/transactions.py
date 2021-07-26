@@ -830,16 +830,16 @@ def GetTransactions(filename: str) -> Tuple[Table, Table]:
 
     # Add some more missing columns.
     txns = (txns
-            #.sort(('order_id', 'description'))
+            .sort('order_id')
 
             # Add the account number to the table.
             .addfield('account', utils.GetAccountNumber(filename), index=0)
 
             # Make up a transaction id. It's a real bummer that the one that's
             # available in the API does not show up anywhere in this file.
-            # .addfieldusingcontext('order_sequence', OrderSequence)
+            .addfieldusingcontext('order_sequence', OrderSequence)
             .addfield('transaction_id', GetTransactionId)
-            # .cutout('order_sequence')
+            .cutout('order_sequence')
 
             # Convert the order ids to match those from the API.
             .convert('order_id', lambda oid: 'T{}'.format(oid) if oid else oid)
@@ -871,22 +871,11 @@ def OrderSequence(prv: Optional[int], cur: Optional[int], nxt: Optional[int]) ->
 
 def GetTransactionId(rec: Record) -> str:
     """Make up a unique transaction id."""
-    if 0:
-        # We use the order id + sequence, if not unique.
-        if rec.order_sequence is None:
-            return rec.order_id
-        else:
-            return "{}.{}".format(rec.order_id, rec.order_sequence)
-
+    # We use the order id + sequence, if not unique.
+    if rec.order_sequence is None:
+        return str(rec.order_id)
     else:
-        md5 = hashlib.blake2s(digest_size=6)
-        # Note: You could use the sequenced order id instead. That's what we do in
-        # some of the other importers.
-        #
-        # TODO(blais): What about if there is no order id, .e.g None?
-        md5.update(str(rec['order_id']).encode('ascii'))
-        md5.update(rec['description'].encode('ascii'))
-        return md5.hexdigest()
+        return "{}.{}".format(rec.order_id, rec.order_sequence)
 
 
 def PrepareTables(filename: str) -> Dict[str, Table]:
