@@ -29,6 +29,7 @@ __license__ = "GNU GPLv2"
 from functools import partial
 from decimal import Decimal
 from typing import Any, Iterator, List, Mapping, Tuple
+import functools
 import hashlib
 import sys
 import collections
@@ -368,22 +369,27 @@ def TransactionsTableToChainsTable(transactions: Table, config: configlib.Config
     return chains
 
 
-def CheckTransactionsVsOrders(config: configlib.Config):
+def CheckTransactionsVsOrders(config: configlib.Config,
+                              transactions: Table):
     """Check that the matched transaction ids match that from the orders.
     This function is used to check conversions between transaction id lists and
     order id lists. I'm still not 100% convinced which one we should favor yet.
     """
-    for chain in new_config.chains:
-        if chain.transaction_ids:
-            tids = set(chain.transaction_ids)
-            oids = set(chain.order_ids) | set(chain.auto_order_ids)
-            t_table = transactions.selectin('transaction_id', tids)
-            o_table = transactions.selectin('order_id', oids)
-            if t_table.nrows() != o_table.nrows():
-                print(t_table.lookallstr(), file=sys.stderr)
-                print(o_table.lookallstr(), file=sys.stderr)
-                print(file=sys.stderr)
-                raise chain
+    for chain in config.chains:
+        if not chain.transaction_ids:
+            continue
+        tids = set(chain.transaction_ids)
+        oids = set(chain.order_ids) | set(chain.auto_order_ids)
+        t_table = transactions.selectin('transaction_id', tids)
+        o_table = transactions.selectin('order_id', oids)
+        if t_table.nrows() != o_table.nrows():
+            pr = functools.partial(print, file=sys.stderr)
+            pr(chain)
+            pr(t_table.lookallstr())
+            pr('@@@', oids)
+            pr(o_table.lookallstr(), file=sys.stderr)
+            pr()
+            raise ValueError(f"Invalid chain: {chain}")
 
 
 def CleanConfig(config: configlib.Config,
@@ -437,5 +443,7 @@ def CleanConfig(config: configlib.Config,
         if rec.order_id in chain.auto_order_ids:
             continue
         chain.auto_order_ids.append(rec.order_id)
+
+    CheckTransactionsVsOrders(new_config, transactions)
 
     return new_config
