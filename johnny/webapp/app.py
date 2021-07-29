@@ -242,6 +242,19 @@ def chain_protos():
     return response
 
 
+@app.route('/chain_names')
+def chain_names():
+    chains_table = FilterChains(STATE.chains)
+    buf = io.StringIO()
+    pr = functools.partial(print, file=buf)
+    print(chains_table.lookallstr())
+    for rec in chains_table.sort('underlying').records():
+        pr(rec.chain_id)
+    response = flask.make_response(buf.getvalue(), 200)
+    response.mimetype = "text/plain"
+    return response
+
+
 def RenderHistoryText(txns: Table) -> str:
     """Render trade history to text."""
     buf = io.StringIO()
@@ -337,7 +350,7 @@ def chain_graph(chain_id: str):
     txns = (STATE.transactions
             .selecteq('chain_id', chain_id))
     txns = instrument.Expand(txns, 'symbol')
-    graph = chainslib.CreateGraph(txns)
+    graph = chainslib.CreateGraph(txns, [STATE.chains_map[chain_id]])
 
     for name in graph.nodes:
         node = graph.nodes[name]
