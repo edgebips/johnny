@@ -52,12 +52,7 @@ def main(config: Optional[str], group: str, chain_ids: list[str]):
             logging.warning(f"Finalizing chain with state '{chain_id}'")
 
         # Apply the modifications.
-        chain.status = configlib.ChainStatus.FINAL
-        if group is not None:
-            chain.group = group
-        for iid in chain.auto_ids:
-            chain.ids.append(iid)
-        chain.ClearField('auto_ids')
+        chainslib.FinalizeChain(chain, group)
 
     print(configlib.ToText(config))
 

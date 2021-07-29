@@ -11,7 +11,9 @@ debug:
 	python3 ./experiments/johnny-debug
 
 move-files:
+	@echo
 	-mv -f $(HOME)/tasty* $(HOME)/*Statement.csv $(DOWNLOADS)
+	@echo
 
 update:
 	tastyworks-update -a Individual $(DOWNLOADS)/tastyworks-individual.db
@@ -24,15 +26,16 @@ serve:
 	johnny-web
 
 config: config-gen config-diff
+earnings: config-earnings config-diff
 
 config-gen:
 	johnny-config > $(JOHNNY_CONFIG_NEW)
 
 config-earnings:
-	./experiments/finalize-earnings.py -g Overnight > $(JOHNNY_CONFIG_NEW)
+	./experiments/finalize-earnings.py -g Earnings > $(JOHNNY_CONFIG_NEW)
 
-config-diff:
-	-xxdiff -B $(JOHNNY_CONFIG) $(JOHNNY_CONFIG_NEW)
+config-diff diff:
+	-xxdiff -D -B $(JOHNNY_CONFIG) $(JOHNNY_CONFIG_NEW)
 
-clobber-config:
+config-clobber clobber:
 	cp $(JOHNNY_CONFIG_NEW) $(JOHNNY_CONFIG)
