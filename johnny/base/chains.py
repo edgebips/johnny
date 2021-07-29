@@ -51,10 +51,10 @@ ZERO = Decimal(0)
 
 
 def Group(transactions: Table,
+          chains: List[configlib.Chain],
           by_match=True,
           by_order=True,
-          by_time=True,
-          explicit_chain_map=None) -> Table:
+          by_time=True) -> Table:
     """Cluster transactions to create options chains.
 
     This function inserts the `chain_id` column to the table and returns a
@@ -62,6 +62,8 @@ def Group(transactions: Table,
 
     Args:
       transactions: A normalized transactions log with a 'match' column.
+      chains: A list of pre-existing chains from the input. This is used to extract out
+        finalized chains, and partially settled ones (i.e., with `ids` set).
       by_match: A flag, indicating that matching transactions should be chained.
       by_order: A flag, indicating that transactions from the same order should be chained.
       by_time: A flag, indicating that transactions overlapping over time should be chained.
@@ -71,15 +73,27 @@ def Group(transactions: Table,
       related transactions, by episode, or chain.
 
     """
-    explicit_chain_map = explicit_chain_map or {}
+    # Extract finalized chains explicitly. They don't have to be part of the graph.
+    final_chains, match_chains = [], []
+    for chain in chains:
+        (final_chains
+         if chain.status == configlib.ChainStatus.FINAL
+         else match_chains).append(chain)
 
-    # Create the graph.
-    graph = CreateGraph(transactions, by_match, by_order, by_time,
-                        explicit_chain_map)
+    # Start with final chains.
+    chain_map = {iid: chain.chain_id
+                 for chain in final_chains
+                 for iid in chain.ids}
 
-    # Process each connected component to an individual trade.
-    # Note: This includes rolls if they were carried one as a single order.
-    chain_map = {}
+    # Select remaining transactions.
+    match_transactions = (transactions
+                          .selectnotin('transaction_id', chain_map))
+    match_chain_map = {iid: chain.chain_id
+                       for chain in final_chains
+                       for iid in chain.ids}
+
+    # Create a graph and process each connected component to an individual trade.
+    graph = CreateGraph(match_transactions, match_chains, by_match, by_order, by_time)
     for cc in nx.connected_components(graph):
         chain_txns = []
         for transaction_id in cc:
@@ -93,7 +107,8 @@ def Group(transactions: Table,
                 chain_txns.append(node['rec'])
 
         assert chain_txns, "Invalid empty chain: {}".format(chain_txns)
-        chain_id = ChainName(chain_txns, explicit_chain_map)
+
+        chain_id = ChainName(chain_txns, match_chain_map)
         for rec in chain_txns:
             chain_map[rec.transaction_id] = chain_id
 
@@ -102,6 +117,7 @@ def Group(transactions: Table,
 
 
 def CreateGraph(transactions: Table,
+                chains: List[configlib.Chain],
                 by_match=True,
                 by_order=True,
                 by_time=True,
@@ -116,32 +132,21 @@ def CreateGraph(transactions: Table,
                   ('expiration', {None, datetime.date}),
                   ('account', str),
                   ('underlying', str))
-    explicit_chain_map = copy.copy(explicit_chain_map) or {}
 
-    # Extract out transactions that are explicitly chained.
-    explicit_transactions, implicit_transactions = transactions.biselect(
-        lambda rec: rec.transaction_id in explicit_chain_map)
+    # Create a mapping of transaction id to their chain id.
+    chain_map = {iid: chain.chain_id
+                 for chain in chains
+                 for iid in chain.ids}
 
-    def is_explicit(rec):
-        return rec.transaction_id in explicit_chain_map
-    explicit_transactions, implicit_transactions = transactions.biselect(is_explicit)
-    remain_chain_map = copy.copy(explicit_chain_map)
-
-    # Process explicitly specified chains.
     graph = nx.Graph()
-    for rec in explicit_transactions.records():
+    for rec in transactions.records():
         graph.add_node(rec.transaction_id, type='txn', rec=rec)
 
-        # Extract explicit chains to their own components and don't link them
-        # with others.
-        explicit_chain = remain_chain_map.pop(rec.transaction_id, None)
+        # Link together explicit chains that aren't finalized.
+        explicit_chain = chain_map.pop(rec.transaction_id, None)
         if explicit_chain:
             graph.add_node(explicit_chain, type='expchain')
             graph.add_edge(rec.transaction_id, explicit_chain)
-
-    # Process implicitly defined chains.
-    for rec in implicit_transactions.records():
-        graph.add_node(rec.transaction_id, type='txn', rec=rec)
 
         # Link together by order id.
         if by_order:
@@ -157,7 +162,7 @@ def CreateGraph(transactions: Table,
 
     # Link together matches that overlap in underlying and time.
     if by_time:
-        links, transaction_links = _LinkByOverlapping(implicit_transactions)
+        links, transaction_links = _LinkByOverlapping(transactions)
 
         ids = set(id1 for id1, _ in links)
         ids.update(id2 for _, id2 in links)
@@ -167,8 +172,8 @@ def CreateGraph(transactions: Table,
         for id1, id2 in itertools.chain(links, transaction_links):
             graph.add_edge(id1, id2)
 
-    for item in remain_chain_map.items():
-        logging.warning(f"Remaining transaction id: {item}")
+    for item in chain_map.items():
+        logging.warning(f"Explicit transaction id from chains not seen in log: {item}")
 
     return graph
 
@@ -268,21 +273,20 @@ def _CreateChainId(transaction_id: str, _: datetime.datetime) -> str:
     return "{}".format(md5.hexdigest())
 
 
-# TODO(blais): Assign chain names after grouping so that this isn't necessary.
 def ChainName(txns: List[Record],
-              explicit_chain_map: Mapping[str, str]):
-    """Generate a unique chain name. This assumes 'account', 'mindate' and
-    'underlying' columns."""
+              chain_map: Mapping[str, str]):
+    """Generate a unique chain name."""
 
     # Look for an explicit chain id.
-    for txn in txns:
-        explicit_chain_id = explicit_chain_map.get(txn.transaction_id, None)
+    sorted_txns = sorted(txns, key=lambda r: (r.datetime, r.underlying))
+    for txn in sorted_txns:
+        explicit_chain_id = chain_map.get(txn.transaction_id, None)
         if explicit_chain_id is not None:
             return explicit_chain_id
 
     # Note: We don't know the max date, so we stick with the front date only in
     # the readable chain name.
-    first_txn = next(iter(sorted(txns, key=lambda r: (r.datetime, r.underlying))))
+    first_txn = next(iter(sorted_txns))
     return ".".join([first_txn.account,
                      "{:%y%m%d_%H%M%S}".format(first_txn.datetime),
                      first_txn.underlying.lstrip('/')])
@@ -302,7 +306,7 @@ def InitialCredits(pairs: Iterator[Tuple[str, Decimal]]) -> Decimal:
 
 
 def _GetStatus(rowtypes):
-    return 'ACTIVE' if any(rowtype == 'Mark' for rowtype in rowtypes) else 'DONE'
+    return 'ACTIVE' if any(rowtype == 'Mark' for rowtype in rowtypes) else 'CLOSED'
 
 
 def _CalculateNetLiq(pairs: Iterator[Tuple[str, Decimal]]):
@@ -404,10 +408,23 @@ def CleanConfig(config: configlib.Config,
         if rec.rowtype == 'Mark':
             continue
         chain = chain_map.get(rec.chain_id, None)
-        if rec.transaction_id in chain.ids:
+        if rec.transaction_id in chain.ids or rec.transaction_id in chain.auto_ids:
             continue
-        if rec.transaction_id in chain.auto_ids:
+        chain.auto_ids.append(rec.transaction_id)
+
+    # Override the status of some chain to computed ones.
+    for chain in new_config.chains:
+        # Preserve finalized and ignored chains, don't override the status on those.
+        # We only recalculate status on ACTIVE and CLOSED chains.
+        if chain.status in {configlib.ChainStatus.FINAL, configlib.ChainStatus.IGNORE}:
             continue
-        chain.ids.append(rec.transaction_id)
+        chain_row = rec_map.get(chain.chain_id, None)
+        if chain_row is None:
+            continue
+        if chain_row.status == 'CLOSED':
+            chain.status = configlib.ChainStatus.CLOSED
+
+    # TODO(blais): Use the enum in th status of the chains in the table.
+    # The row should be the same as that from the enum.
 
     return new_config

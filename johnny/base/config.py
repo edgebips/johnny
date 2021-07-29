@@ -4,6 +4,8 @@ __copyright__ = "Copyright (C) 2021  Martin Blais"
 __license__ = "GNU GPLv2"
 
 import os
+import re
+import logging
 from typing import Mapping, Optional, Tuple
 
 # pylint: disable=unused-import
@@ -17,7 +19,8 @@ from google.protobuf import text_format
 
 def ToText(message) -> str:
     """Convert a proto message to pretty-printed text."""
-    return text_format.MessageToString(message)
+    string = text_format.MessageToString(message)
+    return re.sub("^}$", "}\n", string, flags=re.MULTILINE)
 
 
 def GetConfigFilenameWithDefaults(filename: Optional[str]) -> str:
@@ -54,10 +57,10 @@ def Validate(config: config_pb2.Config):
         if not a.HasField('logtype'):
             raise ConfigError("Log type is not set")
 
-
-def GetExplicitChains(config: Config) -> Mapping[str, str]:
-    """Extract a mapping of transaction-id to some unique chain-id."""
-    transactions_map = {tid: chain.chain_id
-                        for chain in config.chains
-                        for tid in chain.ids}
-    return transactions_map
+    # Make sure that finalized chains don't have any `auto_ids` set.
+    for chain in config.chains:
+        if chain.status == ChainStatus.FINAL:
+            if chain.auto_ids:
+                logging.warning(f"Finalized chain '{chain.chain_id}' still has `auto_id`")
+            if not chain.ids:
+                logging.error(f"Finalized chain '{chain.chain_id}' has no `ids`")

@@ -33,7 +33,7 @@ def chains(config: Optional[str]):
     chains = chainslib.TransactionsTableToChainsTable(transactions, config)
 
     clean_config = chainslib.CleanConfig(config, chains, transactions)
-    print(clean_config)
+    print(configlib.ToText(clean_config))
 
 
 if __name__ == '__main__':

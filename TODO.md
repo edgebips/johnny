@@ -1,6 +1,6 @@
 # General
 
-- TODO(blais): Make a page to ease creating
+- Report P/L from equity and options separately (for covered calls)
 
 - 'maxdate' on an Active position should be set to today. Somehow it isn't.
   Urgent.

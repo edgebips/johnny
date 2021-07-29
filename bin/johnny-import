@@ -31,9 +31,6 @@ from johnny.base.etl import Table
 def ImportTransactions(config: configlib.Config, force: bool) -> Table:
     """Read transactions, and do all necessary processing."""
 
-    # Extract the explicit chains.
-    explicit_chain_map = configlib.GetExplicitChains(config)
-
     # Read the inputs.
     logtables = discovery.ReadConfiguredInputs(config)
     transactions = logtables[configlib.Account.LogType.TRANSACTIONS]
@@ -62,8 +59,7 @@ def ImportTransactions(config: configlib.Config, force: bool) -> Table:
 
                     # Run the chains heuristic.
                     .applyfn(instrument.Expand, 'symbol')
-                    .applyfn(chains.Group,
-                             explicit_chain_map=explicit_chain_map)
+                    .applyfn(chains.Group, config.chains)
                     .applyfn(instrument.Shrink))
 
     return transactions

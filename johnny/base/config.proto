@@ -127,63 +127,50 @@ message Account {
 }
 
 // The status of a chain. This is produced in the output configuration after an
-// import, and is intended for the user to review and update on a chain. This is
-// essentially the market which allows you to confirm the current state of a
-// chain's definition, and whether it is use in the algorithm as input.
+// import, and is intended for the user to review and update, to confirm the
+// current state of a chain's definition.
 //
-// A chain begins its life as AUTO, automatically identified and produced by the
-// heuristics. From there, it may be manually moved to PENDING, especially if
-// some merging of chains needs to occur (e.g. in a pairs or cross-account
-// trade). When the chain is complete, it can be marked FINAL by the user (in
-// which case it will never change). Previously automatically identified chains
-// that become invalid due to changes in the input and/or database are saved as
-// IGNORE in order to avoid losing their contents (you should delete them
-// manually).
+// A chain begins its life as `ACTIVE`, automatically identified and produced by
+// heuristics. From there, if you close the position, it may move to `CLOSED`.
+// When the chain is complete, it should be marked `FINAL` by the user (in which
+// case it will never change or be matched against any new trades). Previously
+// defined chains that have become invalid, due to, e.g. changes in the code, or
+// otherwise, will be marked `IGNORE` in order to avoid deleting their dta.
+//
+// The chains list is used as input but also as output. Efforts are made to
+// minimize diffs between them.
 enum ChainStatus {
-  // Automatically identified and created chain. Those chain information will
-  // not be read by the software, not be used at all in creating the chains.
-  // They will be recreated from scratch automatically on a further run. They
-  // are effectively ignored from the input, and are produced in order for you
-  // to inspect them and upgrade their status to PENDING or FINAL. If the
-  // algorithm changes, the definitions of those trades may change, e.g., they
-  // could be split.
-  AUTO = 1;
+  // An automatically identified and updated chain. This is the default value.
+  // The `ids` from those chains will be pulled out but new transactions may be
+  // matched against them. `auto_ids` will be ignored from the input, but it
+  // will be updated in the output for the user to inspect, recreated from
+  // scratch automatically on all further runs. These are produced for you to
+  // look at and upgrade their status to `FINAL`. These are considered active
+  // chains.
+  ACTIVE = 0;
 
-  // Automatically identified, created, and closed chain. The chain is "closed"
-  // in that the resulting inventory has no residual position (all opened
-  // positions in the chain have been closed). Those should be verified and
-  // marked FINAL manually, or marked PENDING if it is desired for the chain to
-  // be extended further.
-  CLOSED = 2;
+  // An automatically identified, and closed chain, similar to `ACTIVE`, but
+  // whose position at the end of the trade is empty. The difference with
+  // `ACTIVE` is that the resulting inventory has no residual position (all
+  // positions opened in the chain have been closed). Those should be verified
+  // by the user and marked `FINAL` manually.
+  CLOSED = 1;
 
-  // An active chain, which has been manually verified by the user but which
-  // still needs to be matched against further trades. The algorithm will read
-  // and create those chains, but also match new transactions against them, as
-  // for automatic chains, so they can keep evolving over time. Use this in
-  // order to initialize complex trades that may not otherwise be initialized
-  // automatically, e.g. for pairs trades, or cross-account trades, or trades
-  // that were legged in over multiple expirations and which may not be
-  // identified automatically correctly.
-  PENDING = 3;
+  // A manually verified and finalized chain. Those are marked by you, the user,
+  // and the corresponding transactions are pulled out as they are defined from
+  // `ids` and never matched against any other transaction rows in the log.
+  // `auto_ids` are ignored (and cleared from the output). Make your chain final
+  // when it has been completed and need never be added or removed any more
+  // trades ever again. All the opened positions should be closed by the end of
+  // those chain, defining `FINAL` chains with open position is an error (the
+  // software may verify this invariant.)
+  FINAL = 2;
 
-  // An automatically finalized chain. Those are automatically pulling out the
-  // corresponding transactions and never matched against any other transaction
-  // rows in the log. Make your chain final when it has been completed and need
-  // never be add or removed any more trades. Those chains should always be
-  // completed matches, that is, all the opened positions should be closed by
-  // the end of the chain. (The software may verify this invariant.)
-  FINAL = 4;
-
-  // For residual automatic chains that were read in the input but which aren't
-  // identified by the algorithm anymore. We use the IGNORE type for those
-  // chains which we want to keep in the output (we don't want to automatically
-  // throw away this work) but which the algorithm believes aren't valid trades
-  // anymore. This is essentially residual data you might salvage (if it was
-  // useful and for some reason that chain name has changed, or if it has been
-  // rendered not valid anymore - due to different chain identification after
-  // more transactions were inserted in the log). You should be removing those
-  // manually from your input file after review.
-  IGNORE = 5;
+  // For chains that were read from the input but which aren't identified by the
+  // algorithm anymore. We use the `IGNORE` type just to avoid deleting
+  // potentially useful data. Technically, all the `ids` probably fail. This
+  // type of chain may get removed eventually, as we refine the workflow.
+  IGNORE = 3;
 }
 
 // A trade chain.

@@ -28,5 +28,11 @@ config: config-gen config-diff
 config-gen:
 	johnny-config > $(JOHNNY_CONFIG_NEW)
 
+config-earnings:
+	./experiments/finalize-earnings.py -g Overnight > $(JOHNNY_CONFIG_NEW)
+
 config-diff:
 	-xxdiff -B $(JOHNNY_CONFIG) $(JOHNNY_CONFIG_NEW)
+
+clobber-config:
+	cp $(JOHNNY_CONFIG_NEW) $(JOHNNY_CONFIG)
