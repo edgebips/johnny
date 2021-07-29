@@ -28,7 +28,7 @@ __license__ = "GNU GPLv2"
 
 from functools import partial
 from decimal import Decimal
-from typing import Any, Iterator, List, Mapping, Tuple
+from typing import Any, Iterator, List, Mapping, Optional, Tuple
 import functools
 import hashlib
 import copy
@@ -48,6 +48,7 @@ from johnny.base.etl import AssertColumns, Record, Table
 
 
 ZERO = Decimal(0)
+Q = Decimal('0.01')
 
 
 def Group(transactions: Table,
@@ -292,17 +293,32 @@ def ChainName(txns: List[Record],
                      first_txn.underlying.lstrip('/')])
 
 
-def InitialCredits(pairs: Iterator[Tuple[str, Decimal]]) -> Decimal:
+# Initial threshold within which we consider the orders a part of the initial
+# order. This allows us some time flexibility to leg in orders.
+INITIAL_ORDER_THRESHOLD = datetime.timedelta(seconds=300)
+
+
+def InitialOrder(pairs: Iterator[Tuple[str, str, datetime.datetime, str]]) -> Decimal:
+    """Extract the transaction ids for the initial order."""
+    init_order_id = None
+    init_txns = []
+    init_dt = None
+    for order_id, transaction_id, dt, effect in sorted(pairs, key=lambda r: (r[2], r[0])):
+        if effect == 'CLOSING':
+            continue
+        if (init_order_id is not None and
+            order_id != init_order_id and
+            (dt - init_dt) > INITIAL_ORDER_THRESHOLD):
+            break
+        init_order_id = order_id
+        init_dt = dt
+        init_txns.append(transaction_id)
+    return init_txns
+
+
+def InitialCredits(rec: Record) -> Decimal:
     """Compute the initial credits from a group of chain rows."""
-    first_order_id = None
-    first_order_sum = ZERO
-    for order_id, cost in pairs:
-        if first_order_id is None or order_id is None or order_id < first_order_id:
-            first_order_id = order_id
-            first_order_sum = cost
-        elif order_id == first_order_id:
-            first_order_sum += cost
-    return first_order_sum
+    return sum(rec.cost for rec in rec.init_txns)
 
 
 def _GetStatus(rowtypes):
@@ -338,8 +354,8 @@ def TransactionsTableToChainsTable(transactions: Table, config: configlib.Config
         'mindate': ('datetime', lambda g: min(g).date()),
         'maxdate': ('datetime', lambda g: max(g).date()),
         'underlying': ('underlying', first),
-        'pnl_chain': ('cost', sum),
-        'init': (('order_id', 'cost'), InitialCredits),
+        'pnl_chain': ('cost', lambda vlist: sum(vlist).quantize(Q)),
+        'init_txns': (('order_id', 'transaction_id', 'datetime', 'effect'), InitialOrder),
         'net_liq': (('rowtype', 'cost'), _CalculateNetLiq),
         'commissions': ('commissions', sum),
         'fees': ('fees', sum),
@@ -348,18 +364,32 @@ def TransactionsTableToChainsTable(transactions: Table, config: configlib.Config
         'strategy': ('chain_id', partial(_GetChainAttribute, chain_map, 'strategy')),
         'instruments': ('symbol', _GetInstruments),
     }
+
+    txn_map = transactions.recordlookupone('transaction_id')
     chains = (
         transactions
+
+        # Add the underlying.
         .addfield('underlying', lambda r: instrument.ParseUnderlying(r.symbol))
+
+        # TODO(blais): Can we remove this? Assume it from the input.
         .replace('commissions', None, ZERO)
         .replace('fees', None, ZERO)
 
+        # Aggregate over the chain id.
         .aggregate('chain_id', agg)
+
+        # Add calculations off the initial position records.
+        .convert('init_txns', lambda txns: list(map(txn_map.__getitem__, txns)))
+        .addfield('init', InitialCredits)
+        .addfield('init_legs', lambda r: len(r.init_txns))
+        # TODO(blais): Infer the strategy here.
+
         .addfield('days', lambda r: (r.maxdate - r.mindate).days + 1)
         .sort('maxdate')
         .cut('chain_id', 'account', 'underlying', 'status',
              'mindate', 'maxdate', 'days',
-             'init', 'pnl_chain', 'net_liq', 'commissions', 'fees',
+             'init', 'init_legs', 'pnl_chain', 'net_liq', 'commissions', 'fees',
              'group', 'strategy', 'instruments'))
 
     return chains
@@ -428,3 +458,13 @@ def CleanConfig(config: configlib.Config,
     # The row should be the same as that from the enum.
 
     return new_config
+
+
+def FinalizeChain(chain: configlib.Chain, group: Optional[str]):
+    """Mutate the given chain to finalize it."""
+    chain.status = configlib.ChainStatus.FINAL
+    if group:
+        chain.group = group
+    for iid in chain.auto_ids:
+        chain.ids.append(iid)
+    chain.ClearField('auto_ids')
