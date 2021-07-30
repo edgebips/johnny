@@ -22,11 +22,20 @@ from johnny.base.etl import petl, Table
 @click.command()
 @click.option('--config', '-c', type=click.Path(exists=True),
               help="Configuration filename. Default to $JOHNNY_CONFIG")
+@click.option('--status', '-s', default=None, type=configlib.ChainStatus.Value,
+              help="Set the status on the given chains.")
 @click.option('--group', '-g', default=None,
               help="Group to assign to chains.")
 @click.argument('chain_ids', nargs=-1)  # Chain ids to set group
-def main(config: Optional[str], group: str, chain_ids: list[str]):
+def main(config: Optional[str],
+         status: Optional[int],
+         group: Optional[str],
+         chain_ids: list[str]):
     "Find, process and print transactions."
+
+    if not chain_ids:
+        chain_ids = map(str.strip, sys.stdin.readlines())
+        sys.stdin.close()
 
     filename = configlib.GetConfigFilenameWithDefaults(config)
     config = configlib.ParseFile(filename)
@@ -43,16 +52,8 @@ def main(config: Optional[str], group: str, chain_ids: list[str]):
             logging.error(f"Chain id '{chain_id}' not found.")
             continue
 
-        # Check status for errors or warnings.warn
-        if chain.status == configlib.ChainStatus.FINAL:
-            logging.error(f"Invalid attempt to finalize already finalized "
-                          f"chain '{chain_id}'.")
-            continue
-        if chain.status != configlib.ChainStatus.CLOSED:
-            logging.warning(f"Finalizing chain with state '{chain_id}'")
-
         # Apply the modifications.
-        chainslib.FinalizeChain(chain, group)
+        chainslib.AcceptChain(chain, group, status)
 
     print(configlib.ToText(config))
 

@@ -20,7 +20,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   syntax='proto2',
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_pb=b'\n\x0c\x63onfig.proto\x12\x06johnny\"\xa9\x01\n\x06\x43onfig\x12\x1d\n\x05input\x18\x01 \x01(\x0b\x32\x0e.johnny.Inputs\x12\x1f\n\x06output\x18\x02 \x01(\x0b\x32\x0f.johnny.Outputs\x12@\n\x1c\x66utures_option_month_mapping\x18\x03 \x01(\x0b\x32\x1a.johnny.FutOptMonthMapping\x12\x1d\n\x06\x63hains\x18\x04 \x03(\x0b\x32\r.johnny.Chain\"+\n\x06Inputs\x12!\n\x08\x61\x63\x63ounts\x18\x01 \x03(\x0b\x32\x0f.johnny.Account\"$\n\x07Outputs\x12\x19\n\x11imported_filename\x18\x01 \x01(\t\"\xa9\x01\n\x12\x46utOptMonthMapping\x12/\n\x06months\x18\x01 \x03(\x0b\x32\x1f.johnny.FutOptMonthMapping.Item\x1a\x62\n\x04Item\x12\x16\n\x0eoption_product\x18\x01 \x01(\t\x12\x14\n\x0coption_month\x18\x02 \x01(\t\x12\x16\n\x0e\x66uture_product\x18\x03 \x01(\t\x12\x14\n\x0c\x66uture_month\x18\x04 \x01(\t\"\xa2\x01\n\x07\x41\x63\x63ount\x12\x10\n\x08nickname\x18\x01 \x01(\t\x12(\n\x07logtype\x18\x02 \x01(\x0e\x32\x17.johnny.Account.LogType\x12\x0e\n\x06module\x18\x03 \x01(\t\x12\x0e\n\x06source\x18\x04 \x01(\t\x12\x0f\n\x07initial\x18\x05 \x01(\t\"*\n\x07LogType\x12\x10\n\x0cTRANSACTIONS\x10\x01\x12\r\n\tPOSITIONS\x10\x02\"\x8f\x01\n\x05\x43hain\x12\x10\n\x08\x63hain_id\x18\x01 \x01(\t\x12#\n\x06status\x18\x02 \x01(\x0e\x32\x13.johnny.ChainStatus\x12\r\n\x05group\x18\x03 \x01(\t\x12\x10\n\x08strategy\x18\x04 \x01(\t\x12\x0f\n\x07\x63omment\x18\x05 \x01(\t\x12\x0b\n\x03ids\x18\x06 \x03(\t\x12\x10\n\x08\x61uto_ids\x18\x07 \x03(\t\":\n\x05\x41sset\x12\x12\n\ninstrument\x18\x01 \x01(\t\x12\r\n\x05\x63lass\x18\x02 \x01(\t\x12\x0e\n\x06\x66\x61\x63tor\x18\x03 \x01(\t*<\n\x0b\x43hainStatus\x12\n\n\x06\x41\x43TIVE\x10\x00\x12\n\n\x06\x43LOSED\x10\x01\x12\t\n\x05\x46INAL\x10\x02\x12\n\n\x06IGNORE\x10\x03'
+  serialized_pb=b'\n\x0c\x63onfig.proto\x12\x06johnny\"\xa9\x01\n\x06\x43onfig\x12\x1d\n\x05input\x18\x01 \x01(\x0b\x32\x0e.johnny.Inputs\x12\x1f\n\x06output\x18\x02 \x01(\x0b\x32\x0f.johnny.Outputs\x12@\n\x1c\x66utures_option_month_mapping\x18\x03 \x01(\x0b\x32\x1a.johnny.FutOptMonthMapping\x12\x1d\n\x06\x63hains\x18\x04 \x03(\x0b\x32\r.johnny.Chain\"+\n\x06Inputs\x12!\n\x08\x61\x63\x63ounts\x18\x01 \x03(\x0b\x32\x0f.johnny.Account\"$\n\x07Outputs\x12\x19\n\x11imported_filename\x18\x01 \x01(\t\"\xa9\x01\n\x12\x46utOptMonthMapping\x12/\n\x06months\x18\x01 \x03(\x0b\x32\x1f.johnny.FutOptMonthMapping.Item\x1a\x62\n\x04Item\x12\x16\n\x0eoption_product\x18\x01 \x01(\t\x12\x14\n\x0coption_month\x18\x02 \x01(\t\x12\x16\n\x0e\x66uture_product\x18\x03 \x01(\t\x12\x14\n\x0c\x66uture_month\x18\x04 \x01(\t\"\xa2\x01\n\x07\x41\x63\x63ount\x12\x10\n\x08nickname\x18\x01 \x01(\t\x12(\n\x07logtype\x18\x02 \x01(\x0e\x32\x17.johnny.Account.LogType\x12\x0e\n\x06module\x18\x03 \x01(\t\x12\x0e\n\x06source\x18\x04 \x01(\t\x12\x0f\n\x07initial\x18\x05 \x01(\t\"*\n\x07LogType\x12\x10\n\x0cTRANSACTIONS\x10\x01\x12\r\n\tPOSITIONS\x10\x02\"\xa6\x01\n\x05\x43hain\x12\x10\n\x08\x63hain_id\x18\x01 \x01(\t\x12#\n\x06status\x18\x02 \x01(\x0e\x32\x13.johnny.ChainStatus\x12\r\n\x05group\x18\x03 \x01(\t\x12\x0f\n\x07\x63omment\x18\x06 \x01(\t\x12\x10\n\x08strategy\x18\x04 \x01(\t\x12\x15\n\rauto_strategy\x18\x05 \x01(\t\x12\x0b\n\x03ids\x18\x07 \x03(\t\x12\x10\n\x08\x61uto_ids\x18\x08 \x03(\t\":\n\x05\x41sset\x12\x12\n\ninstrument\x18\x01 \x01(\t\x12\r\n\x05\x63lass\x18\x02 \x01(\t\x12\x0e\n\x06\x66\x61\x63tor\x18\x03 \x01(\t*<\n\x0b\x43hainStatus\x12\n\n\x06\x41\x43TIVE\x10\x00\x12\n\n\x06\x43LOSED\x10\x01\x12\t\n\x05\x46INAL\x10\x02\x12\n\n\x06IGNORE\x10\x03'
 )
 
 _CHAINSTATUS = _descriptor.EnumDescriptor(
@@ -53,8 +53,8 @@ _CHAINSTATUS = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   serialized_options=None,
-  serialized_start=822,
-  serialized_end=882,
+  serialized_start=845,
+  serialized_end=905,
 )
 _sym_db.RegisterEnumDescriptor(_CHAINSTATUS)
 
@@ -383,29 +383,36 @@ _CHAIN = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
-      name='strategy', full_name='johnny.Chain.strategy', index=3,
+      name='comment', full_name='johnny.Chain.comment', index=3,
+      number=6, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='strategy', full_name='johnny.Chain.strategy', index=4,
       number=4, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=b"".decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
-      name='comment', full_name='johnny.Chain.comment', index=4,
+      name='auto_strategy', full_name='johnny.Chain.auto_strategy', index=5,
       number=5, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=b"".decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
-      name='ids', full_name='johnny.Chain.ids', index=5,
-      number=6, type=9, cpp_type=9, label=3,
+      name='ids', full_name='johnny.Chain.ids', index=6,
+      number=7, type=9, cpp_type=9, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
-      name='auto_ids', full_name='johnny.Chain.auto_ids', index=6,
-      number=7, type=9, cpp_type=9, label=3,
+      name='auto_ids', full_name='johnny.Chain.auto_ids', index=7,
+      number=8, type=9, cpp_type=9, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
@@ -423,7 +430,7 @@ _CHAIN = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=617,
-  serialized_end=760,
+  serialized_end=783,
 )
 
 
@@ -468,8 +475,8 @@ _ASSET = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=762,
-  serialized_end=820,
+  serialized_start=785,
+  serialized_end=843,
 )
 
 _CONFIG.fields_by_name['input'].message_type = _INPUTS

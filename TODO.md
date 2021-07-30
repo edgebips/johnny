@@ -49,6 +49,8 @@
 
 - Factor out ZERO in petl
 
+- Add best and worst chains in stats, for stocks, for sharing.
+
 
 # Simplify and make State-based Processing more Robust
 

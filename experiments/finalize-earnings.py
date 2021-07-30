@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 """Mark overnight closed trades as earnings trades for review.
+
+Note: this only works after the fact.
+It doesn't work super well yet, selecting the names manually works better.
 """
 __copyright__ = "Copyright (C) 2021  Martin Blais"
 __license__ = "GNU GPLv2"
@@ -26,7 +29,7 @@ from johnny.base.etl import petl, Table
               help="Configuration filename. Default to $JOHNNY_CONFIG")
 @click.option('--date', '-d', default=str(datetime.date.today()),
               type=click.DateTime(formats=["%Y-%m-%d"]),
-              help="End date of the 1 day trade.")
+              help="Ending date for the 1 day trade.")
 @click.option('--group', '-g', default="Earnings",
               help="Group to assign to closed one-day trades.")
 def main(config: Optional[str], group: str, date: datetime.date):
@@ -36,7 +39,7 @@ def main(config: Optional[str], group: str, date: datetime.date):
     filename = configlib.GetConfigFilenameWithDefaults(config)
     config = configlib.ParseFile(filename)
     transactions = petl.frompickle(config.output.imported_filename)
-    chain_table = chainslib.TransactionsTableToChainsTable(transactions, config)
+    chain_table, config = chainslib.TransactionsTableToChainsTable(transactions, config)
     chain_map = chain_table.recordlookupone('chain_id')
 
     finalized = []
@@ -51,17 +54,14 @@ def main(config: Optional[str], group: str, date: datetime.date):
             continue
 
         # We only tag one-day trades.
-        if (chain_row.maxdate - chain_row.mindate).days != 1:
+        num_days = (chain_row.maxdate - chain_row.mindate).days
+        if not (num_days == 1 and chain_row.maxdate == date):
             continue
 
-        # We only tag trades ending at the given date.
-        if chain_row.maxdate != date:
-            continue
-
-        chainslib.FinalizeChain(chain, group)
+        chainslib.AcceptChain(chain, group, status=None)
         finalized.append(chain.chain_id)
 
-    for chain_id in sorted(finalized, key=lambda s: re.search('.*\.([A-Z]+)', s).group(1)):
+    for chain_id in sorted(finalized, key=lambda s: re.search('.*\.([A-Z0-9.]+)$', s).group(1)):
         print(chain_id, file=sys.stderr)
 
     print(configlib.ToText(config))

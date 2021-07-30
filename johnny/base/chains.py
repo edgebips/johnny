@@ -45,6 +45,7 @@ from johnny.base import config as configlib
 from johnny.base import instrument
 from johnny.base import mark
 from johnny.base.etl import AssertColumns, Record, Table
+ChainStatus = configlib.ChainStatus
 
 
 ZERO = Decimal(0)
@@ -78,7 +79,7 @@ def Group(transactions: Table,
     final_chains, match_chains = [], []
     for chain in chains:
         (final_chains
-         if chain.status == configlib.ChainStatus.FINAL
+         if chain.status == ChainStatus.FINAL
          else match_chains).append(chain)
 
     # Start with final chains.
@@ -298,7 +299,7 @@ def ChainName(txns: List[Record],
 INITIAL_ORDER_THRESHOLD = datetime.timedelta(seconds=300)
 
 
-def InitialOrder(pairs: Iterator[Tuple[str, str, datetime.datetime, str]]) -> Decimal:
+def InitialTransactions(pairs: Iterator[Tuple[str, str, datetime.datetime, str]]) -> Decimal:
     """Extract the transaction ids for the initial order."""
     init_order_id = None
     init_txns = []
@@ -316,13 +317,16 @@ def InitialOrder(pairs: Iterator[Tuple[str, str, datetime.datetime, str]]) -> De
     return init_txns
 
 
+def MarkTransactions(pairs: Iterator[Tuple[str, str]]) -> Decimal:
+    """Extract the active positions transactions."""
+    return [transaction_id
+            for transaction_id, rowtype in pairs
+            if rowtype == 'Mark']
+
+
 def InitialCredits(rec: Record) -> Decimal:
     """Compute the initial credits from a group of chain rows."""
     return sum(rec.cost for rec in rec.init_txns)
-
-
-def _GetStatus(rowtypes):
-    return 'ACTIVE' if any(rowtype == 'Mark' for rowtype in rowtypes) else 'CLOSED'
 
 
 def _CalculateNetLiq(pairs: Iterator[Tuple[str, Decimal]]):
@@ -336,133 +340,161 @@ def _GetInstruments(symbols: Iterator[str]) -> List[str]:
                                for symbol in symbols)))
 
 
-def _GetChainAttribute(chain_map, attrname, chain_id) -> Any:
+def _GetChainAttribute(chain_map, attrname, rec: Record) -> Any:
     """Get a chain attribute."""
-    chain = chain_map.get(next(chain_id), None)
+    chain = chain_map.get(rec.chain_id, None)
     if chain is None:
         return ''
     return getattr(chain, attrname)
 
 
-def TransactionsTableToChainsTable(transactions: Table, config: configlib.Config) -> Table:
+def TransactionsTableToChainsTable(
+        transactions: Table,
+        config: configlib.Config) -> Tuple[Table, configlib.Config]:
     """Aggregate a table of already identified transactions row (with a `chain_id` column)
     to a table of aggregated chains."""
 
-    chain_map = {chain.chain_id: chain for chain in config.chains}
     agg = {
+        'txns': ('transaction_id', list),
+        'init_txns': (('order_id', 'transaction_id', 'datetime', 'effect'), InitialTransactions),
+        'mark_txns': (('transaction_id', 'rowtype'), MarkTransactions),
+
         'account': ('account', first),
         'mindate': ('datetime', lambda g: min(g).date()),
         'maxdate': ('datetime', lambda g: max(g).date()),
         'underlying': ('underlying', first),
         'pnl_chain': ('cost', lambda vlist: sum(vlist).quantize(Q)),
-        'init_txns': (('order_id', 'transaction_id', 'datetime', 'effect'), InitialOrder),
         'net_liq': (('rowtype', 'cost'), _CalculateNetLiq),
         'commissions': ('commissions', sum),
         'fees': ('fees', sum),
-        'status': ('rowtype', _GetStatus),
-        'group': ('chain_id', partial(_GetChainAttribute, chain_map, 'group')),
-        'strategy': ('chain_id', partial(_GetChainAttribute, chain_map, 'strategy')),
         'instruments': ('symbol', _GetInstruments),
     }
 
     txn_map = transactions.recordlookupone('transaction_id')
-    chains = (
+    chains_table = (
         transactions
 
         # Add the underlying.
         .addfield('underlying', lambda r: instrument.ParseUnderlying(r.symbol))
 
+
+
+
         # TODO(blais): Can we remove this? Assume it from the input.
         .replace('commissions', None, ZERO)
         .replace('fees', None, ZERO)
 
+
+
         # Aggregate over the chain id.
         .aggregate('chain_id', agg)
+        .convert('txns', lambda txns: list(map(txn_map.__getitem__, txns)))
+        .convert('init_txns', lambda txns: list(map(txn_map.__getitem__, txns)))
+        .convert('mark_txns', lambda txns: list(map(txn_map.__getitem__, txns)))
 
         # Add calculations off the initial position records.
-        .convert('init_txns', lambda txns: list(map(txn_map.__getitem__, txns)))
         .addfield('init', InitialCredits)
         .addfield('init_legs', lambda r: len(r.init_txns))
         # TODO(blais): Infer the strategy here.
 
-        .addfield('days', lambda r: (r.maxdate - r.mindate).days + 1)
+        .addfield('days', lambda r: (r.maxdate - r.mindate).days + 1))
+
+    new_config = CleanConfig(transactions, chains_table, config)
+
+    # Add updated fields to the chains tbale.
+    chain_map = {chain.chain_id: chain for chain in config.chains}
+    chains_table = (
+        chains_table
+        .addfield('status', partial(_GetChainAttribute, chain_map, 'status'))
+        .convert('status', lambda e: ChainStatus.Name(e))
+        .addfield('group', partial(_GetChainAttribute, chain_map, 'group'))
+        .addfield('strategy', partial(_GetChainAttribute, chain_map, 'strategy'))
+
         .sort('maxdate')
         .cut('chain_id', 'account', 'underlying', 'status',
              'mindate', 'maxdate', 'days',
              'init', 'init_legs', 'pnl_chain', 'net_liq', 'commissions', 'fees',
              'group', 'strategy', 'instruments'))
 
-    return chains
+    return chains_table, new_config
 
 
-def CleanConfig(config: configlib.Config,
+def CleanConfig(transactions: Table,
                 chains_table: Table,
-                transactions: Table) -> configlib.Config:
-
+                config: configlib.Config) -> configlib.Config:
     """Create configuration objects and a clean config from the processed chains table."""
+
     new_config = configlib.Config()
     new_config.CopyFrom(config)
     new_config.ClearField('chains')
 
-    # Copy the original chains in the same order as in the input file. We
-    # produce the output in this order in order to be able to compare (diff) the
-    # output with the original file while minimizing the differences.
-    rec_map = {rec.chain_id: rec for rec in chains_table.records()}
+    # Copy the original chains. Note that we copy them in the same order as in
+    # the input file. We produce the output in this order in order to be able to
+    # compare (diff) the output with the original file while minimizing the
+    # differences.
+    chain_row_map = chains_table.recordlookupone('chain_id')
     inserted = set()
     for old_chain in config.chains:
+        # Copy the old chain. Note that this automatically preserves the `ids`
+        # and other chain fields, like `group` and `strategy`.
         new_chain = new_config.chains.add()
-        rec = rec_map.get(old_chain.chain_id, None)
-        if rec is None:
-            new_chain.status = configlib.ChainStatus.IGNORE
         new_chain.CopyFrom(old_chain)
-        new_chain.ClearField('auto_ids')
-        if rec is not None:
-            new_chain.group = rec.group
-            if rec.strategy:
-                new_chain.strategy = rec.strategy
-        inserted.add(old_chain.chain_id)
+        inserted.add(new_chain.chain_id)
 
-    # Copy all the other chains from the table into the list of chains.
-    for rec in chains_table.records():
-        if rec.chain_id in inserted:
+    # Create new Chain objects for all the chain rows from the table that
+    # weren't in the original file.
+    for chain_row in chains_table.records():
+        if chain_row.chain_id in inserted:
             continue
         new_chain = new_config.chains.add()
-        new_chain.chain_id = rec.chain_id
-        new_chain.group = rec.group
-        if rec.strategy:
-            new_chain.strategy = rec.strategy
+        new_chain.chain_id = chain_row.chain_id
 
-    # Add the order ids to all the chains, where they weren't already included.
-    chain_map = {c.chain_id: c for c in new_config.chains}
-    for rec in transactions.records():
-        if rec.rowtype == 'Mark':
-            continue
-        chain = chain_map.get(rec.chain_id, None)
-        if rec.transaction_id in chain.ids or rec.transaction_id in chain.auto_ids:
-            continue
-        chain.auto_ids.append(rec.transaction_id)
-
-    # Override the status of some chain to computed ones.
+    # Clear the `auto_ids` field on all the chains.
     for chain in new_config.chains:
-        # Preserve finalized and ignored chains, don't override the status on those.
-        # We only recalculate status on ACTIVE and CLOSED chains.
-        if chain.status in {configlib.ChainStatus.FINAL, configlib.ChainStatus.IGNORE}:
-            continue
-        chain_row = rec_map.get(chain.chain_id, None)
-        if chain_row is None:
-            continue
-        if chain_row.status == 'CLOSED':
-            chain.status = configlib.ChainStatus.CLOSED
+        chain.ClearField('auto_ids')
 
-    # TODO(blais): Use the enum in th status of the chains in the table.
-    # The row should be the same as that from the enum.
+    # Add the `auto_ids` to all the chains, where they weren't already included
+    # in `ids`.
+    chain_map = {c.chain_id: c for c in new_config.chains}
+
+    for txn in transactions.records():
+        if txn.rowtype == 'Mark':
+            continue
+        chain = chain_map[txn.chain_id]
+        if txn.transaction_id in chain.ids or txn.transaction_id in chain.auto_ids:
+            continue
+        chain.auto_ids.append(txn.transaction_id)
+
+    # Infer the status of each chain.
+    for chain in new_config.chains:
+
+        # Preserve finalized and ignored chains, don't override the status on
+        # those. We only recalculate and update the status on ACTIVE and CLOSED
+        # chains.
+        if chain.status in {ChainStatus.FINAL,
+                            ChainStatus.IGNORE}:
+            continue
+
+        # If the chain is now absent from the update table of chains, mark it as
+        # ignored. Don't remove the chain from the output in order to preserve
+        # it and avoid deleting costly user input work.
+        chain_row = chain_row_map.get(chain.chain_id, None)
+        if chain_row is None:
+            chain.status = ChainStatus.IGNORE
+            continue
+
+        # We update the active status of the chain.
+        chain.status = ChainStatus.ACTIVE if chain_row.mark_txns else ChainStatus.CLOSED
 
     return new_config
 
 
-def FinalizeChain(chain: configlib.Chain, group: Optional[str]):
+def AcceptChain(chain: configlib.Chain,
+                group: Optional[str],
+                status: Optional[int]=ChainStatus.FINAL):
     """Mutate the given chain to finalize it."""
-    chain.status = configlib.ChainStatus.FINAL
+    if status is not None:
+        chain.status = status
     if group:
         chain.group = group
     for iid in chain.auto_ids:

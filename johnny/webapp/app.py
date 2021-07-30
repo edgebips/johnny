@@ -82,8 +82,8 @@ def Initialize():
             transactions = mark.Mark(transactions, price_map)
 
             # Compute chains, clean up configuration.
-            chains_table = chainslib.TransactionsTableToChainsTable(transactions, config)
-            clean_config = chainslib.CleanConfig(config, chains_table, transactions)
+            chains_table, clean_config = chainslib.TransactionsTableToChainsTable(
+                transactions, config)
             chains_map = {c.chain_id: c for c in clean_config.chains}
 
             # Extract current positions from marks.

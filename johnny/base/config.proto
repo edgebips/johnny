@@ -186,24 +186,24 @@ message Chain {
   // "LongStock".
   optional string group = 3;
 
+  // User-provided description. Free-form, may span multiple lines (include
+  // newlines).
+  optional string comment = 6;
+
   // Initial strategy used, e.g. "Strangle", "BrokenWingButterfly", etc. The
   // software may attempt to set a value for this, but you can override it in
   // the configuration file.
   optional string strategy = 4;
-
-  // User-provided description. Free-form, may span multiple lines (include
-  // newlines).
-  optional string comment = 5;
+  optional string auto_strategy = 5;
 
   // If this is present, an explicit list of transaction ids that are part of
   // the trade. All the rows matching these transactions will be automatically
   // removed from the table and extracted as a unique chain. Make sure that
-  // matches without these trades can resolve.
-  repeated string ids = 6;
-
-  // Fields for `ids` but which were filled automatically. Remove
-  // the `auto_` prefix in order to make these permanent.
-  repeated string auto_ids = 7;
+  // matches without these trades can resolve. `auto_ids` are fields for `ids`
+  // but which were filled automatically. Remove the `auto_` prefix in order to
+  // make these permanent.
+  repeated string ids = 7;
+  repeated string auto_ids = 8;
 }
 
 // Declaration of asset vs. asset-class mapping.
