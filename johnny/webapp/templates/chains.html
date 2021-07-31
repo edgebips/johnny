@@ -6,6 +6,9 @@
 <head>
 <script>
 
+  function sumFloat(a, b) { return (parseFloat(a) + parseFloat(b)).toFixed(2); }
+  function sumInt(a, b) { return parseInt(a) + parseInt(b); }
+
   $(document).ready(function() {
       var config = {
           pageLength: 200,
@@ -17,14 +20,16 @@
               // These are the column indices with numbers, to right-align.
               targets: [6,7,8,9,10,11],
               className: 'dt-body-right'
-          }]
+          }],
+
+          // This gets called once when the table is drawn.
+          ///footerCallback: function (row, data, start, end, display) {}
       };
       var table = $('#chains').DataTable(config);
       InstallDataTableFocus(table);
 
       // Emphasize some columns of the table.
-      $(table.column(':contains(chain_pnl)').nodes()).addClass('emph-column');
-      $(table.column(':contains(tgtinit%)').nodes()).addClass('emph-column');
+      $(table.column(':contains(pnl_chain)').nodes()).addClass('emph-column');
 
       // TODO(blais): Remove, this was replaced with a link.
       // When the Clear button is pressed, clear the selection.
@@ -50,7 +55,33 @@
           window.open(`/share?chain_ids=${ids}`, '_blank');
       } );
 
-
+      // Update the footer sums on a selection change.
+      var updateFooter = function(table) {
+          const columns = {
+              init: sumFloat,
+              init_legs: sumInt,
+              pnl_chain: sumFloat,
+              net_liq: sumFloat,
+              commissions: sumFloat,
+              fees: sumFloat,
+          }
+          $.each(columns, function(colname, reducer) {
+              var data = table.cells('.selected', ':contains(' + colname + ')').data();
+              var column = table.column(':contains(' + colname + ')');
+              if (data.length == 0) {
+                  $(column.footer()).html('');
+                  return;
+              }
+              var sum = data.reduce(reducer);
+              $(column.footer()).html(sum);
+          });
+      };
+      table.on('select.dt', function () {
+          updateFooter(table);
+      });
+      table.on('deselect.dt', function () {
+          updateFooter(table);
+      });
   });
 
 </script>

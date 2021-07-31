@@ -107,9 +107,24 @@ def ToHtmlString(table: Table, cls: str, ids: List[str] = None) -> bytes:
     table.tohtml(sink)
     html = sink.getvalue().decode('utf8')
     html = re.sub("class='petl'", f"class='display compact nowrap cell-border' id='{cls}'", html)
+
+    # Add column ids for each column of the header. We use this in JS to
+    # identify columns by name.
     if ids:
         iter_ids = itertools.chain(['header'], iter(ids))
         html = re.sub('<tr>', lambda _: '<tr id="{}">'.format(next(iter_ids)), html)
+
+    # Add a footer, for partial summaries.
+    buf = io.StringIO()
+    pr = partial(print, file=buf)
+    pr('<tfoot>', )
+    pr('<tr>', )
+    for fname in table.fieldnames():
+        pr(f'<th class="footcol-{fname}"></th>')
+    pr('</tr>')
+    pr('</tfoot>')
+    html = re.sub('</table>', '{}</table>'.format(buf.getvalue()), html)
+
     return html
 
 

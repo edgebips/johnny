@@ -22,8 +22,6 @@
 
 - Add tags
 
-- Add bottom line with sums of partial selections
-
 - Create a local database, inferring initial positions from differential
 
 - Make this public, finalize license
