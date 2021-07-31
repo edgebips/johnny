@@ -44,7 +44,7 @@ ZERO = Decimal(0)
 def debug(config_filename: str):
     """Parse the configuration, the sources, transform, and save."""
     config = configlib.ParseFile(config_filename)
-    transactions = petl.frompickle(config.output.imported_filename)
+    transactions = petl.frompickle(config.output.transactions)
     price_map = mark.GetPriceMap(transactions, config)
     transactions = mark.Mark(transactions, price_map)
     chains = chainslib.TransactionsTableToChainsTable(transactions, config)

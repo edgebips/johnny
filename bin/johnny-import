@@ -64,17 +64,26 @@ def ImportTransactions(config: configlib.Config,
               help="Configuration filename. Default to $JOHNNY_CONFIG")
 @click.option('--force', '-f', is_flag=True,
               help="For import even if validation fails.")
-def import_(config: Optional[str], force: bool):
+@click.option('--light', '-q', is_flag=True,
+              help="Lightweight import; reuse transactions nad just recompute the chains.")
+def import_(config: Optional[str], force: bool, light: bool):
     """Parse the configuration, the sources, transform, and save."""
     filename = configlib.GetConfigFilenameWithDefaults(config)
     config = configlib.ParseFile(filename)
-    transactions = ImportTransactions(config, force)
-    ctransactions, cconfig = chainslib.ChainTransactions(transactions, config)
-    ctransactions.topickle(config.output.imported_filename)
 
-    # Run table chain aggregator once, just to make sure it won't trigger errors
-    # later.
-    chainslib.TransactionsTableToChainsTable(ctransactions, cconfig)
+    if light:
+        transactions = (petl.frompickle(config.output.transactions)
+                        .cutout('chain_id'))
+    else:
+        transactions = ImportTransactions(config, force)
+
+    ctransactions, cconfig = chainslib.ChainTransactions(transactions, config)
+    chains = chainslib.TransactionsTableToChainsTable(ctransactions, cconfig)
+
+    ctransactions.topickle(config.output.transactions)
+    chains.topickle(config.output.chains)
+    with open(config.output.config, 'w') as outfile:
+        print(configlib.ToText(cconfig), file=outfile)
 
 
 if __name__ == '__main__':

@@ -86,7 +86,7 @@ def print_table(table: Table, expand: bool):
 def imported(ctx: click.Context):
     "Find, process and print positions."
     config = ctx.obj['config']
-    imported = petl.frompickle(config.output.imported_filename)
+    imported = petl.frompickle(config.output.transactions)
     print(imported.lookallstr())
 
 
@@ -95,7 +95,7 @@ def imported(ctx: click.Context):
 def marks(ctx: click.Context):
     "Print out marks."
     config = ctx.obj['config']
-    transactions = petl.frompickle(config.output.imported_filename)
+    transactions = petl.frompickle(config.output.transactions)
     # Mark the transactions.
     price_map = mark.GetPriceMap(transactions, config)
     transactions = mark.Mark(transactions, price_map)
@@ -110,7 +110,7 @@ def marks(ctx: click.Context):
 def chains(ctx: click.Context):
     "Print out marked chains."
     config = ctx.obj['config']
-    transactions = petl.frompickle(config.output.imported_filename)
+    transactions = petl.frompickle(config.output.transactions)
     price_map = mark.GetPriceMap(transactions, config)
     transactions = mark.Mark(transactions, price_map)
     chains = chainslib.TransactionsTableToChainsTable(transactions, config)

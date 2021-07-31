@@ -42,8 +42,15 @@ message Inputs {
 
 // Configuration for outputs and databases.
 message Outputs {
-  // A database file to contain the processed and normalized transactions.
-  optional string imported_filename = 1;
+  // A pbtxt file to contain the updated configuration.
+  // This is an output, not the input protobuf (which is this file).
+  optional string config = 1;
+
+  // A tabular file to contain the processed and normalized transactions.
+  optional string transactions = 2;
+
+  // A tabular file to contain the precomputed chain data.
+  optional string chains = 3;
 }
 
 // This is a mapping of (option-product-code, month-code) to

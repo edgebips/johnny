@@ -29,7 +29,7 @@ config: config-gen config-diff
 earnings: config-earnings config-diff
 
 config-gen:
-	johnny-config > $(JOHNNY_CONFIG_NEW)
+	johnny-import -q
 
 config-earnings:
 	./experiments/finalize-earnings.py -g Earnings > $(JOHNNY_CONFIG_NEW)

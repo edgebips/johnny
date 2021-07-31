@@ -57,7 +57,9 @@ class State(NamedTuple):
 
 def Initialize():
     # Make sure we have a configuration to work from.
-    config_filename = os.getenv("JOHNNY_CONFIG")
+    #
+    # Note: We're reading the clean config produced by the import.
+    config_filename = os.getenv("JOHNNY_CONFIG_NEW")
     if not config_filename:
         logging.error("Error: No configuration file set set. Please set JOHNNY_CONFIG to "
                       "your .pbtxt file with a text-formatted config.proto.")
@@ -75,22 +77,23 @@ def Initialize():
 
             # Get the imported transactions.
             config = configlib.ParseFile(config_filename)
-            transactions = petl.frompickle(config.output.imported_filename)
+            transactions = petl.frompickle(config.output.transactions)
+            chains_table = petl.frompickle(config.output.chains)
 
-            # Mark the transactions.
-            price_map = mark.GetPriceMap(transactions, config)
-            transactions = mark.Mark(transactions, price_map)
+            # TODO(blais): Contemplate remarking the positions with an updated
+            # list of prices since import. Not sure we'll care; this really
+            # ought to go in the monitoring tool
+            ## Mark the transactions.
+            #price_map = mark.GetPriceMap(transactions, config)
+            #transactions = mark.Mark(transactions, price_map)
 
-            # Compute chains, clean up configuration.
-            chains_table, clean_config = chainslib.TransactionsTableToChainsTable(
-                transactions, config)
-            chains_map = {c.chain_id: c for c in clean_config.chains}
+            chains_map = {c.chain_id: c for c in config.chains}
 
             # Extract current positions from marks.
             positions = (transactions
                          .selecteq('rowtype', 'Mark'))
 
-            STATE = State(transactions, positions, chains_table, chains_map, clean_config)
+            STATE = State(transactions, positions, chains_table, chains_map, config)
             app.logger.info("Done.")
 
     return STATE

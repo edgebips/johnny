@@ -593,7 +593,7 @@ def InferStrategy(transactions_map: Dict[str, Record], config: configlib.Config)
             chain.strategy = strategy
         else:
             logging.warning(f"Could not infer strategy for chain "
-                            f"http://localhost:5000/chain/{chain.chain_id}: {signature}")
+                            f"http://localhost:5000/chain/{chain.chain_id} : {signature}")
 
 
 def AcceptChain(chain: configlib.Chain,
