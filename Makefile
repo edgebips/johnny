@@ -45,3 +45,6 @@ config-commit commit:
 
 fetch-earnings:
 	overnight-fetch --no-headless | tee /tmp/earnings.csv
+
+accept:
+	cat | ./experiments/accept-chains.py -g Premium -s FINAL > $(JOHNNY_CONFIG_NEW)

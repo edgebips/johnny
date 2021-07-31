@@ -1,5 +1,7 @@
 # General
 
+- Idea: Compact file format for sharing full trade history.
+
 - Report P/L from equity and options separately (for covered calls)
 
 - 'maxdate' on an Active position should be set to today. Somehow it isn't.

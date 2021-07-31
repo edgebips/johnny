@@ -92,11 +92,9 @@ def Group(transactions: Table,
       by_match: A flag, indicating that matching transactions should be chained.
       by_order: A flag, indicating that transactions from the same order should be chained.
       by_time: A flag, indicating that transactions overlapping over time should be chained.
-      explicit_chain_map: A mapping of (transaction-id, unique-chain-id).
     Returns:
       A modified table with an extra "chain" column, identifying groups of
       related transactions, by episode, or chain.
-
     """
     # Extract finalized chains explicitly. They don't have to be part of the graph.
     final_chains, match_chains = [], []
@@ -104,19 +102,17 @@ def Group(transactions: Table,
         (final_chains
          if chain.status == ChainStatus.FINAL
          else match_chains).append(chain)
+    final_chain_ids = {chain.chain_id for chain in final_chains}
 
-    # Start with final chains.
-    final_chain_map = {transaction_id: chain.chain_id
-                       for chain in final_chains
-                       for transaction_id in chain.ids}
-    chain_map = copy.copy(final_chain_map)
+    # Initialize the resulting mapping of transactions to chains with finalized
+    # chains.
+    txn_chain_map = {transaction_id: chain.chain_id
+                     for chain in final_chains
+                     for transaction_id in chain.ids}
 
-    # Select remaining transactions.
+    # Select only remaining transactions.
     match_transactions = (transactions
-                          .selectnotin('transaction_id', chain_map))
-    match_chain_map = {transaction_id: chain.chain_id
-                       for chain in final_chains
-                       for transaction_id in chain.ids}
+                          .selectnotin('transaction_id', txn_chain_map))
 
     # Create a graph and process each connected component to an individual trade.
     graph = CreateGraph(match_transactions, match_chains, by_match, by_order, by_time)
@@ -134,14 +130,19 @@ def Group(transactions: Table,
 
         assert chain_txns, "Invalid empty chain: {}".format(chain_txns)
 
-        chain_id = ChainName(chain_txns, match_chain_map)
-        assert chain_id not in final_chain_map, (
+        chain_id = ChainName(chain_txns, txn_chain_map)
+
+        # This should never happen; but if you somehow used the wrong
+        # transaction - with the same (account, datetime, underlying) in a final
+        # chain, it could. Best is to adjust the input file, but we could
+        # eventually just insert a random character here.
+        assert chain_id not in final_chain_ids, (
             f"Collision with FINAL chain names at '{chain_id}'.")
         for rec in chain_txns:
-            chain_map[rec.transaction_id] = chain_id
+            txn_chain_map[rec.transaction_id] = chain_id
 
     return (transactions
-            .addfield('chain_id', lambda r: chain_map[r.transaction_id]))
+            .addfield('chain_id', lambda r: txn_chain_map[r.transaction_id]))
 
 
 def CreateGraph(transactions: Table,
@@ -524,6 +525,9 @@ def UpdateConfig(transactions: Table,
         chain.auto_ids.append(transaction_id)
 
     InferStatus(referenced_chain_ids, active_chain_ids, new_config)
+
+    # TODO(blais): Save markers for the initial transactions in the produced table.
+    # Then use this to share all earnings setups with @zero.
     InferStrategy(transactions_map, new_config)
 
     return new_config
@@ -533,12 +537,6 @@ def InferStatus(referenced_chain_ids: Set[str],
                 active_chain_ids: Set[str],
                 config: configlib.Config):
     """Update (mutate) `status` on chains, from transactions."""
-
-    # referenced_chain_ids = set(transactions
-    #                            .values('chain_id'))
-    # active_chain_ids = set(transactions
-    #                        .selecteq('rowtype', 'Mark')
-    #                        .values('chain_id'))
 
     # Infer the status of non-finalized chains.
     for chain in config.chains:
@@ -565,11 +563,6 @@ def InferStatus(referenced_chain_ids: Set[str],
 
 def InferStrategy(transactions_map: Dict[str, Record], config: configlib.Config):
     """Update (mutate) `strategy` on chains, inferring where missing."""
-
-    # The transactions table is only used as a source of transaction rows. Its
-    # `chain_id` field is ignored and we use the transaction ids from the proto
-    # - which should be consistent.
-    ##transactions_map = transactions.recordlookupone('transaction_id')
 
     for chain in config.chains:
         # Don't override already present values for `strategy`.
