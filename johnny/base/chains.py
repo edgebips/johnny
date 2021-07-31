@@ -373,13 +373,15 @@ def _GetChainAttribute(chain_map, attrname, rec: Record) -> Any:
     """Get a chain attribute."""
     chain = chain_map.get(rec.chain_id, None)
     if chain is None:
-        return ''
+        logging.warning(f"Could not get chain '{rec.chain_id}' for attribute '{attrname}'")
+        return None
     return getattr(chain, attrname)
 
 
 def TransactionsTableToChainsTable(transactions: Table, config: configlib.Config) -> Table:
     """Aggregate a table of already identified transactions row (with a `chain_id` column)
-    to a table of aggregated chains."""
+    to a table of aggregated chains. The `config` object is used to join attributes in the
+    table."""
 
     agg = {
         'txns': ('transaction_id', list),
@@ -429,12 +431,16 @@ def TransactionsTableToChainsTable(transactions: Table, config: configlib.Config
         .addfield('days', lambda r: (r.maxdate - r.mindate).days + 1)
 
         .addfield('status', partial(_GetChainAttribute, chain_map, 'status'))
-        .convert('status', lambda e: ChainStatus.Name(e))
+        .convert('status', lambda e: ChainStatus.Name(e) if e is not None else 'NoStatus')
         .addfield('group', partial(_GetChainAttribute, chain_map, 'group'))
         .addfield('strategy', partial(_GetChainAttribute, chain_map, 'strategy'))
 
+
+
         # TODO(blais): Remove
         .convert('group', lambda v: v or 'NoGroup')
+
+
 
         .sort('maxdate')
         .cut('chain_id', 'account', 'underlying', 'status',
@@ -544,6 +550,8 @@ def InferStatus(referenced_chain_ids: Set[str],
         # those. We only recalculate and update the status on ACTIVE and CLOSED
         # chains.
         if chain.status == ChainStatus.FINAL:
+            if chain.chain_id in active_chain_ids:
+                logging.error("ACTIVE chain {chain.chain_id} marked FINAL.")
             continue
 
         # If a previously present chain is now absent from the list of chains

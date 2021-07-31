@@ -83,10 +83,10 @@ def import_(config: Optional[str], force: bool, light: bool):
 
     # Mark the transactions at the price at the time of import.
     price_map = mark.GetPriceMap(transactions, config)
-    transactions = mark.Mark(transactions, price_map)
+    ptransactions = mark.Mark(transactions, price_map)
 
     # Calculate the chains and partial sums.
-    ctransactions, cconfig = chainslib.ChainTransactions(transactions, config)
+    ctransactions, cconfig = chainslib.ChainTransactions(ptransactions, config)
     chains = chainslib.TransactionsTableToChainsTable(ctransactions, cconfig)
 
     # Write out the imported databases.
