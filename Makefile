@@ -40,5 +40,8 @@ config-diff diff:
 config-clobber clobber:
 	cp $(JOHNNY_CONFIG_NEW) $(JOHNNY_CONFIG)
 
+config-commit commit:
+	hg commit $(JOHNNY_CONFIG)
+
 fetch-earnings:
 	overnight-fetch --no-headless | tee /tmp/earnings.csv

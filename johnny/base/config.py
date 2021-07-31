@@ -56,11 +56,3 @@ def Validate(config: config_pb2.Config):
     for a in config.input.accounts:
         if not a.HasField('logtype'):
             raise ConfigError("Log type is not set")
-
-    # Make sure that finalized chains don't have any `auto_ids` set.
-    for chain in config.chains:
-        if chain.status == ChainStatus.FINAL:
-            if chain.auto_ids:
-                logging.warning(f"Finalized chain '{chain.chain_id}' still has `auto_id`")
-            if not chain.ids:
-                logging.error(f"Finalized chain '{chain.chain_id}' has no `ids`")

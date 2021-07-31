@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
-"""Read and clean up the configuration.
+"""Recomputate the chains and produce the updated configuration.
 
-This tool reads the database and removes invalid chains, insert missing ones,
-and prints out the corrected configuration. You can then edit this manually.
+This tool reads the imported database and recomputes the chains clustering,
+producing an updated configuration file. You can then edit this manually and use
+it on further runs.
 """
+
 __copyright__ = "Copyright (C) 2021  Martin Blais"
 __license__ = "GNU GPLv2"
 
@@ -25,15 +27,12 @@ from johnny.base import chains as chainslib
 @click.option('--config', '-c', type=click.Path(exists=True),
               help="Configuration filename. Default to $JOHNNY_CONFIG")
 def chains(config: Optional[str]):
-    "Find, process and print positions."
-
     filename = configlib.GetConfigFilenameWithDefaults(config)
     config = configlib.ParseFile(filename)
-    transactions = petl.frompickle(config.output.imported_filename)
-    chains, clean_config = chainslib.TransactionsTableToChainsTable(
-        transactions, config)
-
-    print(configlib.ToText(clean_config))
+    mtransactions = (petl.frompickle(config.output.imported_filename)
+                     .cutout('chain_id'))
+    ctransactions, cconfig = chainslib.ChainTransactions(mtransactions, config)
+    print(configlib.ToText(cconfig))
 
 
 if __name__ == '__main__':

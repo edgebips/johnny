@@ -14,12 +14,13 @@ __license__ = "GNU GPLv2"
 
 import logging
 import traceback
-from typing import List, Optional
+import time
+from typing import List, Optional, Tuple
 
 import click
 import simplejson
 
-from johnny.base import chains
+from johnny.base import chains as chainslib
 from johnny.base import config as configlib
 from johnny.base import discovery
 from johnny.base import instrument
@@ -28,12 +29,15 @@ from johnny.base import transactions as txnlib
 from johnny.base.etl import Table
 
 
-def ImportTransactions(config: configlib.Config, force: bool) -> Table:
+def ImportTransactions(config: configlib.Config,
+                       force: bool) -> Tuple[Table, configlib.Config]:
     """Read transactions, and do all necessary processing."""
 
     # Read the inputs.
     logtables = discovery.ReadConfiguredInputs(config)
     transactions = logtables[configlib.Account.LogType.TRANSACTIONS]
+
+    # TODO(blais): Move this to another function.
 
     # Check that the imports are sound before we process them and ensure that
     # the transaction ids are unique.
@@ -50,19 +54,9 @@ def ImportTransactions(config: configlib.Config, force: bool) -> Table:
     num_txns = transactions.nrows()
     assert num_txns == len(unique_ids)
 
-    # Synthesize opening balances. We need to temporarily expand the instrument
-    # fields, as they are needed by the match and chains modules.
-    transactions = (transactions
-
-                    # Run the matching process.
-                    .applyfn(match.Process)
-
-                    # Run the chains heuristic.
-                    .applyfn(instrument.Expand, 'symbol')
-                    .applyfn(chains.Group, config.chains)
-                    .applyfn(instrument.Shrink))
-
-    return transactions
+    # Match transactions to each other, synthesize opening balances, and mark
+    # ending positions.
+    return transactions.applyfn(match.Process)
 
 
 @click.command()
@@ -74,8 +68,13 @@ def import_(config: Optional[str], force: bool):
     """Parse the configuration, the sources, transform, and save."""
     filename = configlib.GetConfigFilenameWithDefaults(config)
     config = configlib.ParseFile(filename)
-    imported = ImportTransactions(config, force)
-    imported.topickle(config.output.imported_filename)
+    transactions = ImportTransactions(config, force)
+    ctransactions, cconfig = chainslib.ChainTransactions(transactions, config)
+    ctransactions.topickle(config.output.imported_filename)
+
+    # Run table chain aggregator once, just to make sure it won't trigger errors
+    # later.
+    chainslib.TransactionsTableToChainsTable(ctransactions, cconfig)
 
 
 if __name__ == '__main__':
