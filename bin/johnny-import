@@ -25,6 +25,7 @@ from johnny.base import config as configlib
 from johnny.base import discovery
 from johnny.base import instrument
 from johnny.base import match
+from johnny.base import mark
 from johnny.base import transactions as txnlib
 from johnny.base.etl import Table
 
@@ -68,18 +69,27 @@ def ImportTransactions(config: configlib.Config,
               help="Lightweight import; reuse transactions nad just recompute the chains.")
 def import_(config: Optional[str], force: bool, light: bool):
     """Parse the configuration, the sources, transform, and save."""
+
+    # Read the input configuration.
     filename = configlib.GetConfigFilenameWithDefaults(config)
     config = configlib.ParseFile(filename)
 
+    # Read the past transactions.
     if light:
         transactions = (petl.frompickle(config.output.transactions)
                         .cutout('chain_id'))
     else:
         transactions = ImportTransactions(config, force)
 
+    # Mark the transactions at the price at the time of import.
+    price_map = mark.GetPriceMap(transactions, config)
+    transactions = mark.Mark(transactions, price_map)
+
+    # Calculate the chains and partial sums.
     ctransactions, cconfig = chainslib.ChainTransactions(transactions, config)
     chains = chainslib.TransactionsTableToChainsTable(ctransactions, cconfig)
 
+    # Write out the imported databases.
     ctransactions.topickle(config.output.transactions)
     chains.topickle(config.output.chains)
     with open(config.output.config, 'w') as outfile:

@@ -36,7 +36,9 @@
       $('button#clear').click( function () {
           table.rows('.selected').deselect();
       } );
-
+      $('button#all').click( function () {
+          table.rows({ search: 'applied' }).select();
+      } );
       // Redirect with a list of the selected chains.
       $('button#names').click( function () {
           var ids = table.rows('.selected').ids().join(",");
@@ -90,6 +92,7 @@
 <body>
 {% include 'navigation.html' %}
 <button id="clear">Clear</button>
+<button id="all">All</button>
 <button id="names">Names</button>
 <button id="stats">Stats</button>
 <button id="protos">Protos</button>
