@@ -1,0 +1,70 @@
+#!/usr/bin/env python3
+"""Gather files from likely download locations.
+
+Move files from likely download locations to locations where they are configured
+to be found and imported from. This is for CSV file imports, typically. We
+download the files wherever - lazily, really - and this is run before import to
+find all those files and put them in a final resting place where we collect them
+for import.
+"""
+__copyright__ = "Copyright (C) 2021  Martin Blais"
+__license__ = "GNU GPLv2"
+
+import os
+import re
+from os import path
+from typing import Optional
+
+import click
+
+from johnny.base import config as configlib
+
+
+HOME = os.getenv("HOME")
+DOWNLOAD_DIRS = [
+    HOME,
+    path.join(HOME, "Downloads")
+]
+
+
+@click.command()
+@click.option('--config', '-c', type=click.Path(exists=True),
+              help="Configuration filename. Default to $JOHNNY_CONFIG")
+@click.option('--extra-downloads', '-d', type=click.Path(exists=True),
+              help="An extra download directory to look into.")
+def main(config: Optional[str], extra_downloads: Optional[str]):
+    # Read the input configuration.
+    filename = configlib.GetConfigFilenameWithDefaults(config)
+    config = configlib.ParseFile(filename)
+
+    regexps = {
+        "johnny.sources.thinkorswim_csv.transactions": "tasty.*\.csv$",
+        "johnny.sources.thinkorswim_csv.positions": ".*AccountStatement.csv$",
+        "johnny.sources.tastyworks_csv.positions": ".*PositionStatement.csv$",
+    }
+
+    download_dirs = DOWNLOAD_DIRS
+    if extra_downloads:
+        download_dirs.append(extra_downloads)
+
+    for account in config.input.accounts:
+        # Get a regexp of filenames to move.
+        regexp = regexps.get(account.module)
+        if regexp is None:
+            continue
+        assert not path.isdir(account.source)
+        destination = path.dirname(account.source)
+        assert path.isdir(destination)
+
+        # Look for them in all downloads directories.
+        for directory in download_dirs:
+            for filename in os.listdir(directory):
+                if re.match(regexp, filename):
+                    src = path.join(directory, filename)
+                    dst = path.join(destination, filename)
+                    logging.info(f"Moving {src} to {dst}")
+                    os.rename(src, dst)
+
+
+if __name__ == '__main__':
+    main()

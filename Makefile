@@ -11,9 +11,7 @@ debug:
 	python3 ./experiments/johnny-debug
 
 move-files:
-	@echo
-	-mv -f $(HOME)/tasty* $(HOME)/*Statement.csv $(DOWNLOADS)
-	@echo
+	johnny-move-files
 
 update:
 	tastyworks-update -a Individual $(DOWNLOADS)/tastyworks-individual.db

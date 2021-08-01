@@ -62,7 +62,8 @@ def GetLogTables(config: configlib.Config, logtype: int) -> Table:
 @click.pass_context
 def rawtxns(ctx: click.Context):
     "Find, process and print transactions."
-    table = GetLogTables(ctx.obj['config'], configlib.Account.LogType.TRANSACTIONS)
+    table = (GetLogTables(ctx.obj['config'], configlib.Account.LogType.TRANSACTIONS)
+             .sort(['datetime', 'account', 'transaction_id']))
     print_table(table, ctx.obj['expand'])
 
 
