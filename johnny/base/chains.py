@@ -412,9 +412,9 @@ def TransactionsTableToChainsTable(transactions: Table, config: configlib.Config
 
 
 
-        # TODO(blais): Can we remove this? Assume it from the input.
-        .replace('commissions', None, ZERO)
-        .replace('fees', None, ZERO)
+        # # TODO(blais): Can we remove this? Assume it from the input.
+        # .replace('commissions', None, ZERO)
+        # .replace('fees', None, ZERO)
 
 
 
@@ -435,12 +435,8 @@ def TransactionsTableToChainsTable(transactions: Table, config: configlib.Config
         .addfield('group', partial(_GetChainAttribute, chain_map, 'group'))
         .addfield('strategy', partial(_GetChainAttribute, chain_map, 'strategy'))
 
-
-
-        # TODO(blais): Remove
+        # Mark missing groups with a string that can be filtered on.
         .convert('group', lambda v: v or 'NoGroup')
-
-
 
         .sort('maxdate')
         .cut('chain_id', 'account', 'underlying', 'status',
