@@ -12,6 +12,7 @@ __license__ = "GNU GPLv2"
 
 import os
 import re
+import logging
 from os import path
 from typing import Optional
 
