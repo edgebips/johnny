@@ -48,6 +48,7 @@ from johnny.base import strategy as strategylib
 from johnny.base import instrument
 from johnny.base import mark
 from johnny.base.etl import AssertColumns, Record, Table
+from johnny.utils import timing
 ChainStatus = configlib.ChainStatus
 
 
@@ -60,17 +61,22 @@ def ChainTransactions(matched_transactions: Table,
     """Cluster the transactions and return a new table, with added 'chain_id' and an
     update chains configuration on a config object."""
 
+    log = functools.partial(timing.log_time, log_timings=logging.info, indent=1)
+
     # Clean up the configuration before clustering with it as a side-input.
-    clean_config = ScrubConfig(matched_transactions, config)
+    with log('scrub'):
+        clean_config = ScrubConfig(matched_transactions, config)
 
     # Run the chains heuristic. (Note: We need to temporarily expand the
     # instrument fields, as they are needed by the match and chains modules.)
-    chained_transactions = (matched_transactions
-                            .applyfn(instrument.Expand, 'symbol')
-                            .applyfn(Group, clean_config.chains)
-                            .applyfn(instrument.Shrink))
+    with log('group'):
+        chained_transactions = (matched_transactions
+                                .applyfn(instrument.Expand, 'symbol')
+                                .applyfn(Group, clean_config.chains)
+                                .applyfn(instrument.Shrink))
 
-    updated_config = UpdateConfig(chained_transactions, clean_config)
+    with log('update'):
+        updated_config = UpdateConfig(chained_transactions, clean_config)
 
     return chained_transactions, updated_config
 
