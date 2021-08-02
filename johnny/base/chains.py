@@ -384,10 +384,16 @@ def _GetChainAttribute(chain_map, attrname, rec: Record) -> Any:
     return getattr(chain, attrname)
 
 
-def TransactionsTableToChainsTable(transactions: Table, config: configlib.Config) -> Table:
+def TransactionsTableToChainsTable(transactions: Table,
+                                   config: configlib.Config) -> Tuple[Table, Table]:
     """Aggregate a table of already identified transactions row (with a `chain_id` column)
     to a table of aggregated chains. The `config` object is used to join attributes in the
-    table."""
+    table.
+
+    A new table of transactions is returned. It will contain additional columns,
+    columns that can only be computed with the chains data, such as flags that
+    mark rows as initial or not.
+    """
 
     agg = {
         'txns': ('transaction_id', list),
@@ -416,14 +422,6 @@ def TransactionsTableToChainsTable(transactions: Table, config: configlib.Config
         # Add the underlying.
         .addfield('underlying', lambda r: instrument.ParseUnderlying(r.symbol))
 
-
-
-        # # TODO(blais): Can we remove this? Assume it from the input.
-        # .replace('commissions', None, ZERO)
-        # .replace('fees', None, ZERO)
-
-
-
         # Aggregate over the chain id.
         .aggregate('chain_id', agg)
         .convert('txns', lambda txns: list(map(transaction_map.__getitem__, txns)))
@@ -444,13 +442,23 @@ def TransactionsTableToChainsTable(transactions: Table, config: configlib.Config
         # Mark missing groups with a string that can be filtered on.
         .convert('group', lambda v: v or 'NoGroup')
 
-        .sort('maxdate')
-        .cut('chain_id', 'account', 'underlying', 'status',
-             'mindate', 'maxdate', 'days',
-             'init', 'init_legs', 'pnl_chain', 'net_liq', 'commissions', 'fees',
-             'group', 'strategy', 'instruments'))
+        .sort('maxdate'))
 
-    return chains_table
+    # Add a row marking transactions with the initial flag.
+    init_txns = set(rec.transaction_id
+                    for chain_row in chains_table.records()
+                    for rec in chain_row.init_txns)
+    itransactions = (transactions
+                     .addfield('init', lambda r: r.transaction_id in init_txns))
+
+    # Strip unnecessary columns.
+    chains_table = (chains_table
+                    .cut('chain_id', 'account', 'underlying', 'status',
+                         'mindate', 'maxdate', 'days',
+                         'init', 'init_legs', 'pnl_chain', 'net_liq', 'commissions', 'fees',
+                         'group', 'strategy', 'instruments'))
+
+    return chains_table, itransactions
 
 
 def ScrubConfig(transactions: Table,

@@ -39,7 +39,7 @@ def main(config: Optional[str], group: str, date: datetime.date):
     filename = configlib.GetConfigFilenameWithDefaults(config)
     config = configlib.ParseFile(filename)
     transactions = petl.frompickle(config.output.transactions)
-    chain_table, config = chainslib.TransactionsTableToChainsTable(transactions, config)
+    chain_table, _ = chainslib.TransactionsTableToChainsTable(transactions, config)
     chain_map = chain_table.recordlookupone('chain_id')
 
     finalized = []

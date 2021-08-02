@@ -103,7 +103,8 @@ def import_(config: Optional[str], force: bool, light: bool):
     with log('chains'):
         ctransactions, cconfig = chainslib.ChainTransactions(ptransactions, config)
     with log('reduce'):
-        chains = chainslib.TransactionsTableToChainsTable(ctransactions, cconfig)
+        chains, ctransactions = chainslib.TransactionsTableToChainsTable(ctransactions,
+                                                                         cconfig)
 
     # Write out the imported databases.
     with log('output_tables'):

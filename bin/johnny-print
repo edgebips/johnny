@@ -114,7 +114,7 @@ def chains(ctx: click.Context):
     transactions = petl.frompickle(config.output.transactions)
     price_map = mark.GetPriceMap(transactions, config)
     transactions = mark.Mark(transactions, price_map)
-    chains = chainslib.TransactionsTableToChainsTable(transactions, config)
+    chains, _ = chainslib.TransactionsTableToChainsTable(transactions, config)
     print(chains.lookallstr())
 
 

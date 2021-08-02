@@ -40,9 +40,6 @@ def main(config: Optional[str],
     filename = configlib.GetConfigFilenameWithDefaults(config)
     config = configlib.ParseFile(filename)
     chain_map = {c.chain_id: c for c in config.chains}
-    # transactions = petl.frompickle(config.output.transactions)
-    # chain_table = chainslib.TransactionsTableToChainsTable(transactions, config)
-    # chain_map = chain_table.recordlookupone('chain_id')
 
     chain_ids = set(chain_ids)
     for chain_id in chain_ids:
