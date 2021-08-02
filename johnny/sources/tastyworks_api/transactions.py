@@ -88,6 +88,7 @@ ALLOW_TYPES = {
     ('Receive Deliver', 'Cash Settled Exercise'): 'Trade',
     ('Receive Deliver', 'Exercise'): 'Trade',
     ('Receive Deliver', 'Forward Split'): 'Trade',
+    ('Receive Deliver', 'Reverse Split'): 'Trade',
 }
 
 OTHER_TYPES = {
@@ -183,11 +184,9 @@ def CalculateCost(rec: Record) -> Decimal:
 
 def CalculatePrice(value: str, rec: Record) -> Decimal:
     """Clean up prices and calculate them where missing."""
-
-    # TODO(blais): Contemplate adding a new type.
-    if rec.description.startswith('Forward split'):
+    if rec['transaction-sub-type'] in {'Forward Split', 'Reverse Split'}:
         assert value is None
-        return abs(rec.cost / rec.quantity)
+        return abs(rec.cost / rec.quantity / rec.instrument.multiplier)
     if value is None:
         return ZERO
     return Decimal(value)
@@ -234,8 +233,9 @@ def GetTransactions(filename: str) -> Tuple[Table, Table]:
 
              # Parse the symbol.
              .rename('symbol', 'symbol-orig')
-             .addfield('symbol', lambda r: str(symbols.ParseSymbol(r['symbol-orig'],
-                                                                   r['instrument-type'])))
+             .addfield('instrument', lambda r: symbols.ParseSymbol(r['symbol-orig'],
+                                                                   r['instrument-type']))
+             .addfield('symbol', lambda r: str(r.instrument))
 
              # Split 'action' field.
              .addfield('effect', GetPosEffect)
