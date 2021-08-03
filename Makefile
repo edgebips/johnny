@@ -1,8 +1,10 @@
 #!/bin/bash
 
 # Set JOHNNY_CONFIG in order for this to work.
-DOWNLOADS=$(HOME)/trading/downloads
-JOHNNY_CONFIG_NEW=$(JOHNNY_CONFIG).new
+DOWNLOADS = $(HOME)/trading/downloads
+JOHNNY_CONFIG_NEW = $(JOHNNY_CONFIG).new
+TODAY = $(shell date +%Y%m%d)
+EARNINGS_TODAY = $(HOME)/trading/earnings/earnings-$(TODAY).csv
 
 test:
 	python3 -m pytest -x johnny
@@ -41,8 +43,14 @@ config-clobber clobber:
 config-commit commit:
 	hg commit $(JOHNNY_CONFIG)
 
-fetch-earnings:
-	overnight-fetch --no-headless | tee /tmp/earnings.csv
+overnight-fetch:
+	overnight-fetch --no-headless --output=$(EARNINGS_TODAY)  | tee /tmp/earnings.csv
+
+# Note: Rate-limit the first one, and not the second.
+# TODO(blais): Handle rate limiting in the API.
+overnight:
+	overnight -r -n --ameritrade-cache=/tmp/td -v --csv-filename=$(EARNINGS_TODAY) | tee $(EARNINGS_TODAY:.csv=.overnight_all)
+	overnight --ameritrade-cache=/tmp/td -v --csv-filename=$(EARNINGS_TODAY) | tee $(EARNINGS_TODAY:.csv=.overnight)
 
 accept:
 	cat | ./experiments/accept-chains.py -g Premium -s FINAL > $(JOHNNY_CONFIG_NEW)

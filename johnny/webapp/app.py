@@ -457,12 +457,12 @@ def GetNotional(rec: Record) -> Decimal:
 @app.route('/stats/')
 def stats():
     # Compute stats on winners and losers.
-    chains = FilterChains(STATE.chains)
+    orig_chains = FilterChains(STATE.chains)
 
     def PctCr(rec: Record):
         return 0 if rec.init == 0 else rec.pnl_chain / rec.init
 
-    chains = chains.addfield('pct_cr', PctCr)
+    chains = orig_chains.addfield('pct_cr', PctCr)
     win, los = chains.biselect(lambda r: r.pnl_chain > 0)
     pnl = np.array(chains.values('pnl_chain'))
     pnl_win = np.array(win.values('pnl_chain'))
@@ -541,6 +541,7 @@ def stats():
     return flask.render_template(
         'stats.html',
         stats_table=ToHtmlString(stats_table, 'stats'),
+        chains=ToHtmlString(orig_chains, 'chains'),
         pnlhist=flask.url_for('stats_pnlhist', chain_ids=chain_ids),
         pnlpctinit=flask.url_for('stats_pnlpctinit', chain_ids=chain_ids),
         pnlinit=flask.url_for('stats_pnlinit', chain_ids=chain_ids),
