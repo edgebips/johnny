@@ -4,6 +4,7 @@ __license__ = "GNU GPLv2"
 from datetime import datetime, timedelta
 from decimal import Decimal as D
 from typing import Any, List, Tuple
+from functools import partial
 import unittest
 
 from johnny.base import chains
@@ -50,7 +51,7 @@ def process(rows: List[Any]) -> Tuple[Table, List[str]]:
               .cutout('description', 'price', 'commissions', 'fees')
 
               .applyfn(instrument.Expand, 'symbol')
-              .applyfn(chains.Group)
+              .applyfn(chains.Group, [])
               .applyfn(instrument.Shrink))
     return actual, expected
 

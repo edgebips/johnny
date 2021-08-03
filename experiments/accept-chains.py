@@ -13,6 +13,7 @@ import click
 
 from johnny.base import discovery
 from johnny.base import mark
+from johnny.base import chains_pb2
 from johnny.base import chains as chainslib
 from johnny.base import config as configlib
 from johnny.base import instrument
@@ -22,7 +23,7 @@ from johnny.base.etl import petl, Table
 @click.command()
 @click.option('--config', '-c', type=click.Path(exists=True),
               help="Configuration filename. Default to $JOHNNY_CONFIG")
-@click.option('--status', '-s', default=None, type=configlib.ChainStatus.Value,
+@click.option('--status', '-s', default=None, type=chains_pb2.ChainStatus.Value,
               help="Set the status on the given chains.")
 @click.option('--group', '-g', default=None,
               help="Group to assign to chains.")

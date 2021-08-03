@@ -54,3 +54,12 @@ overnight:
 
 accept:
 	cat | ./experiments/accept-chains.py -g Premium -s FINAL > $(JOHNNY_CONFIG_NEW)
+
+# Proto generation rules.
+protos: johnny/base/config_pb2.py johnny/base/chains_pb2.py
+
+johnny/base/config_pb2.py: johnny/base/config.proto
+	protoc -I . --python_out . --proto_path . $<
+
+johnny/base/chains_pb2.py: johnny/base/chains.proto
+	protoc -I . --python_out . --proto_path . $<

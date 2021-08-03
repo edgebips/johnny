@@ -18,11 +18,12 @@ import click
 
 from johnny.base import discovery
 from johnny.base import mark
+from johnny.base import chains_pb2
 from johnny.base import chains as chainslib
 from johnny.base import config as configlib
 from johnny.base import instrument
 from johnny.base.etl import petl, Table
-ChainStatus = configlib.ChainStatus
+ChainStatus = chains_pb2.ChainStatus
 
 
 @click.command()

@@ -19,6 +19,7 @@ import click
 from johnny.base import discovery
 from johnny.base import mark
 from johnny.base import chains as chainslib
+from johnny.base import chains_pb2
 from johnny.base import config as configlib
 from johnny.base import instrument
 from johnny.base.etl import petl, Table
@@ -45,7 +46,7 @@ def main(config: Optional[str], group: str, date: datetime.date):
     finalized = []
     for chain in config.chains:
         # We only process CLOSED chains.
-        if chain.status != configlib.ChainStatus.CLOSED:
+        if chain.status != chains_pb2.ChainStatus.CLOSED:
             continue
 
         # We try to find a corresponding calculated row.

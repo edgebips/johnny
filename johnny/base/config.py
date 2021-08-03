@@ -9,7 +9,8 @@ import logging
 from typing import Mapping, Optional, Tuple
 
 # pylint: disable=unused-import
-from johnny.base.config_pb2 import Config, Chain, ChainStatus, Account
+from johnny.base.config_pb2 import Config, Account
+from johnny.base.chains_pb2 import Chain, ChainStatus
 from johnny.base.config_pb2 import FutOptMonthMapping
 from johnny.base import config_pb2
 from johnny.base.etl import petl, Table

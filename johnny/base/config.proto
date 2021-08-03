@@ -11,6 +11,8 @@
 
 syntax = "proto2";
 
+import "johnny/base/chains.proto";
+
 package johnny;
 
 // Configuration for returns script.
@@ -131,99 +133,4 @@ message Account {
   // will create these positions at the front of the transactions log history
   // import.
   optional string initial = 5;
-}
-
-// The status of a chain. This is produced in the output configuration after an
-// import, and is intended for the user to review and update, to confirm the
-// current state of a chain's definition.
-//
-// A chain begins its life as `ACTIVE`, automatically identified and produced by
-// heuristics. From there, if you close the position, it may move to `CLOSED`.
-// When the chain is complete, it should be marked `FINAL` by the user (in which
-// case it will never change or be matched against any new trades). Previously
-// defined chains that have become invalid, due to, e.g. changes in the code, or
-// otherwise, will be marked `IGNORE` in order to avoid deleting their dta.
-//
-// The chains list is used as input but also as output. Efforts are made to
-// minimize diffs between them.
-enum ChainStatus {
-  // An automatically identified and updated chain. This is the default value.
-  // The `ids` from those chains will be pulled out but new transactions may be
-  // matched against them. `auto_ids` will be ignored from the input, but it
-  // will be updated in the output for the user to inspect, recreated from
-  // scratch automatically on all further runs. These are produced for you to
-  // look at and upgrade their status to `FINAL`. These are considered active
-  // chains.
-  ACTIVE = 0;
-
-  // An automatically identified, and closed chain, similar to `ACTIVE`, but
-  // whose position at the end of the trade is empty. The difference with
-  // `ACTIVE` is that the resulting inventory has no residual position (all
-  // positions opened in the chain have been closed). Those should be verified
-  // by the user and marked `FINAL` manually.
-  CLOSED = 1;
-
-  // A manually verified and finalized chain. Those are marked by you, the user,
-  // and the corresponding transactions are pulled out as they are defined from
-  // `ids` and never matched against any other transaction rows in the log.
-  // `auto_ids` are ignored (and cleared from the output). Make your chain final
-  // when it has been completed and need never be added or removed any more
-  // trades ever again. All the opened positions should be closed by the end of
-  // those chain, defining `FINAL` chains with open position is an error (the
-  // software may verify this invariant.)
-  FINAL = 2;
-
-  // For chains that were read from the input but which aren't identified by the
-  // algorithm anymore. We use the `IGNORE` type just to avoid deleting
-  // potentially useful data. Technically, all the `ids` probably fail. This
-  // type of chain may get removed eventually, as we refine the workflow.
-  IGNORE = 3;
-}
-
-// A trade chain.
-message Chain {
-  // The chain id of a trade. This is a unique string computed in the front end.
-  optional string chain_id = 1;
-
-  // Status of the chain. If not set, this is equivalent to AUTO.
-  optional ChainStatus status = 2;
-
-  // User-associated trade group or line of business. This can be used to split
-  // up your trades in different groups, e.g. "MemeStocks", "ShortPremium",
-  // "LongStock".
-  optional string group = 3;
-
-  // User-provided description. Free-form, may span multiple lines (include
-  // newlines).
-  optional string comment = 6;
-
-  // Initial strategy used, e.g. "Strangle", "BrokenWingButterfly", etc. The
-  // software may attempt to set a value for this, but you can override it in
-  // the configuration file.
-  optional string strategy = 4;
-  optional string auto_strategy = 5;
-
-  // If this is present, an explicit list of transaction ids that are part of
-  // the trade. All the rows matching these transactions will be automatically
-  // removed from the table and extracted as a unique chain. Make sure that
-  // matches without these trades can resolve. `auto_ids` are fields for `ids`
-  // but which were filled automatically. Remove the `auto_` prefix in order to
-  // make these permanent.
-  repeated string ids = 7;
-  repeated string auto_ids = 8;
-}
-
-// Declaration of asset vs. asset-class mapping.
-message Asset {
-  // Normalized instrument name.
-  optional string instrument = 1;
-
-  // Corresponding asset class, e.g. "EquityIndex", "Metals", "Rates", "Ags",
-  // "Currencies", "Energy".
-  optional string class = 2;
-
-  // Factor. This is typically a sub-category of asset class. For example, asset
-  // class would be "Metals", and factor might be "Copper" for FCX, COPX and
-  // /HG.
-  optional string factor = 3;
 }
