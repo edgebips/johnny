@@ -52,7 +52,10 @@ overnight:
 	overnight -r -n --ameritrade-cache=/tmp/td -v --csv-filename=$(EARNINGS_TODAY) | tee $(EARNINGS_TODAY:.csv=.overnight_all)
 	overnight --ameritrade-cache=/tmp/td -v --csv-filename=$(EARNINGS_TODAY) | tee $(EARNINGS_TODAY:.csv=.overnight)
 
-accept:
+accept-all:
+	./experiments/accept-all.py > $(JOHNNY_CONFIG_NEW)
+
+accept-specific-chains:
 	cat | ./experiments/accept-chains.py -g Premium -s FINAL > $(JOHNNY_CONFIG_NEW)
 
 # Proto generation rules.

@@ -608,7 +608,7 @@ def InferStrategy(transactions_map: Dict[str, Record], config: configlib.Config)
 
 
 def AcceptChain(chain: configlib.Chain,
-                group: Optional[str],
+                group: Optional[str]=None,
                 status: Optional[int]=ChainStatus.FINAL):
     """Mutate the chain to bake the ids and modify some of its attributes."""
 
