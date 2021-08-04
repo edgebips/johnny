@@ -43,15 +43,6 @@ config-clobber clobber:
 config-commit commit:
 	hg commit $(JOHNNY_CONFIG)
 
-overnight-fetch:
-	overnight-fetch --no-headless --output=$(EARNINGS_TODAY)  | tee /tmp/earnings.csv
-
-# Note: Rate-limit the first one, and not the second.
-# TODO(blais): Handle rate limiting in the API.
-overnight:
-	overnight -r -n --ameritrade-cache=/tmp/td -v --csv-filename=$(EARNINGS_TODAY) | tee $(EARNINGS_TODAY:.csv=.overnight_all)
-	overnight --ameritrade-cache=/tmp/td -v --csv-filename=$(EARNINGS_TODAY) | tee $(EARNINGS_TODAY:.csv=.overnight)
-
 accept-all:
 	./experiments/accept-all.py > $(JOHNNY_CONFIG_NEW)
 
