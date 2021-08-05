@@ -3,8 +3,6 @@
 # Set JOHNNY_CONFIG in order for this to work.
 DOWNLOADS = $(HOME)/trading/downloads
 JOHNNY_CONFIG_NEW = $(JOHNNY_CONFIG).new
-TODAY = $(shell date +%Y%m%d)
-EARNINGS_TODAY = $(HOME)/trading/earnings/earnings-$(TODAY).csv
 
 test:
 	python3 -m pytest -x johnny
