@@ -13,7 +13,7 @@ from johnny.base import instrument
 Instrument = instrument.Instrument
 
 
-def ParseSymbol(symbol: str, instype: Optional[str]) -> Instrument:
+def ParseSymbol(symbol: str, instype: Optional[str] = None) -> Instrument:
     """Parse a symbol from the Tastyworks platforms."""
     # Note: The instrument type is a normalized one, not the original one.
     if not symbol:
@@ -32,12 +32,12 @@ def ParseSymbol(symbol: str, instype: Optional[str]) -> Instrument:
           instype is None and ' ' in symbol):
         inst = _ParseEquityOptionSymbol(symbol)
     # And finally, just equities.
-    elif instype == 'Equity':
+    elif instype == 'Equity' or instype is None:
         inst = _ParseEquitySymbol(symbol)
     elif instype in {'Crypto', 'Cryptocurrency'}:
         inst = _ParseCrypto(symbol)
     else:
-        raise ValueError(f"Unknown instrument type: {instype}")
+        raise ValueError(f"Unknown instrument type for {symbol}")
     return inst
 
 
