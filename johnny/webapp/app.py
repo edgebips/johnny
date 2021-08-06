@@ -250,8 +250,19 @@ def chain(chain_id: str):
             .selecteq('chain_id', chain_id))
     txns = instrument.Expand(txns, 'symbol')
 
-    # TODO(blais): Isolate this to a function.
+    # Calculate P/L from static deltas.
+    print(txns.selectin('instype', {'Equity', 'Future', 'Crypto'}).lookallstr())
 
+    # Split up static and dynamic deltas.
+    static, dynamic = (txns
+                       .biselect(lambda r: r.instype in {'Equity', 'Future', 'Crypto'}))
+    def agg_cost(table):
+        agg_table = table.aggregate(None, {'cost': ('cost', sum)})
+        return next(iter(agg_table.values('cost'))).quantize(Q)
+    pnl_static = agg_cost(static)
+    pnl_dynamic = agg_cost(dynamic)
+
+    # TODO(blais): Isolate this to a function.
     if 0:
         history_html = RenderHistorySVG(txns)
     else:
@@ -266,6 +277,8 @@ def chain(chain_id: str):
         transactions=ToHtmlString(txns, 'chain_transactions'),
         history=history_html,
         graph=flask.url_for('chain_graph', chain_id=chain_id),
+        pnl_static=pnl_static,
+        pnl_dynamic=pnl_dynamic,
         **GetNavigation())
 
 
