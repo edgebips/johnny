@@ -144,7 +144,6 @@ def GetNavigation() -> Dict[str, str]:
         'page_chains': flask.url_for('chains'),
         'page_transactions': flask.url_for('transactions'),
         'page_positions': flask.url_for('positions'),
-        'page_risk': flask.url_for('risk'),
         'page_stats': flask.url_for('stats'),
     }
 
@@ -204,7 +203,7 @@ def render_chains(status: set[str]):
     chains = STATE.chains
     if status:
         chains = (STATE.chains
-                  .selectin('status', {'ACTIVE', 'CLOSED'}))
+                  .selectin('status', status))
     ids = chains.values('chain_id')
     chains = (chains
               .convert('chain_id', partial(AddUrl, 'chain', 'chain_id')))
@@ -216,7 +215,7 @@ def render_chains(status: set[str]):
 
 @app.route('/active')
 def active():
-    return render_chains({'ACTIVE', 'CLOSED'})
+    return render_chains({'ACTIVE'})
 
 
 @app.route('/chains')
@@ -428,37 +427,6 @@ def positions():
     return flask.render_template(
         'positions.html',
         table=ToHtmlString(STATE.positions, 'positions'),
-        **GetNavigation())
-
-
-@app.route('/risk')
-def risk():
-    agg = {
-        'account': ('account', first),
-        'cost': ('cost', sum),
-        'net_liq': ('net_liq', sum),
-        'pnl_open': ('pnl_open', sum),
-        'notional': ('notional', sum),
-    }
-    risk = (
-        instrument.Expand(STATE.positions, 'symbol')
-        .replace('cost', None, ZERO)
-        .addfield('notional', GetNotional)
-        .aggregate(('underlying', 'expiration'), agg)
-    )
-
-    total = risk.aggregate(None, agg)
-    notional = abs(first(total.values('notional')))
-    net_liq = Decimal(1e6) ## TODO(blais): How do we fetch net_liq from the positions?
-    leverage = notional / net_liq
-
-    ## TODO(blais):
-    return flask.render_template(
-        'risk.html',
-        table=ToHtmlString(risk, 'risk'),
-        notional="{:,.0f}".format(notional),
-        net_liq="{:,.0f}".format(net_liq),
-        leverage="{:.2f}".format(leverage),
         **GetNavigation())
 
 
