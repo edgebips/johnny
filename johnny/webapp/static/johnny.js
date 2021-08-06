@@ -58,15 +58,22 @@ function InstallDataTableFocus(table) {
     });
 }
 
+function SumFloat(a, b) {
+    return (parseFloat(a) + parseFloat(b)).toFixed(2);
+}
+function SumInteger(a, b) {
+    return parseInt(a) + parseInt(b);
+}
+
 // Update the footer sums on a selection change.
 function UpdateFooter(table) {
     const columns = {
-        init: sumFloat,
-        init_legs: sumInt,
-        pnl_chain: sumFloat,
-        net_liq: sumFloat,
-        commissions: sumFloat,
-        fees: sumFloat,
+        init: SumFloat,
+        init_legs: SumInteger,
+        pnl_chain: SumFloat,
+        net_liq: SumFloat,
+        commissions: SumFloat,
+        fees: SumFloat,
     }
     $.each(columns, function(colname, reducer) {
         var contains = ':contains(' + colname + ')';

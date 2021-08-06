@@ -8,10 +8,6 @@
 
 <script>
 
-  function sumFloat(a, b) { return (parseFloat(a) + parseFloat(b)).toFixed(2); }
-  function sumInt(a, b) { return parseInt(a) + parseInt(b); }
-
-
   $(document).ready(function() {
       // Hide the size selector.
       var extra = {
@@ -77,11 +73,11 @@ WARNING: Commissions and fees are for the entire chains.
 {{ Daytrade|safe }}
 {% endif %}
 
-<h2>Adjusting</h2>
-{{ Adjusting|safe }}
-
 <h2>Opening</h2>
 {{ Opening|safe }}
+
+<h2>Adjusting</h2>
+{{ Adjusting|safe }}
 
 </body>
 </html>

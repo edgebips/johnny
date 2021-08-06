@@ -6,9 +6,6 @@
 <head>
 <script>
 
-  function sumFloat(a, b) { return (parseFloat(a) + parseFloat(b)).toFixed(2); }
-  function sumInt(a, b) { return parseInt(a) + parseInt(b); }
-
   $(document).ready(function() {
       var table = CreateChainsTable('#chains');
 
@@ -33,10 +30,6 @@
           var ids = table.rows('.selected').ids().join(",");
           window.open(`/chain_protos?chain_ids=${ids}`, '_blank');
       } );
-      $('button#share').click( function () {
-          var ids = table.rows('.selected').ids().join(",");
-          window.open(`/share?chain_ids=${ids}`, '_blank');
-      } );
   });
 
 </script>
@@ -49,7 +42,6 @@
 <button id="names">Names</button>
 <button id="stats">Stats</button>
 <button id="protos">Protos</button>
-<button id="share">Share</button>
 
 {{ table|safe }}
 
