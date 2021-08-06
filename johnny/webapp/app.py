@@ -422,7 +422,7 @@ def chain_graph(chain_id: str):
         tmp.flush()
         with open(tmp.name, 'rb') as infile:
             contents = infile.read()
-    return flask.Response(contents, mimetype='image/pn')
+    return flask.Response(contents, mimetype='image/png')
 
 
 @app.route('/transactions')
@@ -680,30 +680,144 @@ def recap(date: str):
                               if action_table.nrows() > 0
                               else '')
     else:
-        # TODO(blais): Remove.
-        params['chains'] = ToHtmlString(chains, 'chains');
+        # Single table rendering.
+        params['chains'] = ToHtmlString(chains, 'chains')
 
     return flask.render_template('recap.html', **params)
 
 
-@app.route('/share')
-def share():
-    # Filter down the list of chains.
-    chains = (FilterChains(STATE.chains)
-              .cut('underlying', 'mindate', 'days', 'init', 'pnl_chain'))
 
-    # Add bottom line totals.
-    totals = (chains
-              .cut('init', 'pnl_chain')
-              .aggregate(None, {'init': ('init', sum),
-                                'pnl_chain': ('pnl_chain', sum)})
-              .addfield('underlying', '__TOTAL__'))
-    chains = petl.cat(chains, totals)
 
-    return flask.render_template(
-        'summary.html',
-        table=ToHtmlString(chains, 'summary'),
-        **GetNavigation())
+# import altair as alt
+# from vega_datasets import data
+
+
+
+@app.route('/timeline')
+def timeline():
+    return flask.render_template('timeline.html')
+
+    # source = data.stocks()
+    # alt.Chart(source).mark_line().encode(
+    #     x='date',
+    #     y='price',
+    #     color='symbol',
+    #     strokeDash='symbol',
+    # )
+
+@app.route('/timeline.json')
+def timeline_json():
+
+    spec = """\
+{
+  "$schema": "https://vega.github.io/schema/vega/v5.json",
+  "width": "container",
+  "height": 300,
+  "padding": 5,
+
+  "data": [
+    {
+      "name": "table",
+      "values": [
+        {"category": "A", "amount": 28},
+        {"category": "B", "amount": 55},
+        {"category": "C", "amount": 43},
+        {"category": "D", "amount": 91},
+        {"category": "E", "amount": 81},
+        {"category": "F", "amount": 53},
+        {"category": "G", "amount": 19},
+        {"category": "H", "amount": 87}
+      ]
+    }
+  ],
+
+  "signals": [
+    {
+      "name": "tooltip",
+      "value": {},
+      "on": [
+        {"events": "rect:mouseover", "update": "datum"},
+        {"events": "rect:mouseout",  "update": "{}"}
+      ]
+    }
+  ],
+
+  "scales": [
+    {
+      "name": "xscale",
+      "type": "band",
+      "domain": {"data": "table", "field": "category"},
+      "range": "width",
+      "padding": 0.05,
+      "round": true
+    },
+    {
+      "name": "yscale",
+      "domain": {"data": "table", "field": "amount"},
+      "nice": true,
+      "range": "height"
+    }
+  ],
+
+  "axes": [
+    { "orient": "bottom", "scale": "xscale" },
+    { "orient": "left", "scale": "yscale" }
+  ],
+
+  "marks": [
+    {
+      "type": "rect",
+      "from": {"data":"table"},
+      "encode": {
+        "enter": {
+          "x": {"scale": "xscale", "field": "category"},
+          "width": {"scale": "xscale", "band": 1},
+          "y": {"scale": "yscale", "field": "amount"},
+          "y2": {"scale": "yscale", "value": 0}
+        },
+        "update": {
+          "fill": {"value": "steelblue"}
+        },
+        "hover": {
+          "fill": {"value": "red"}
+        }
+      }
+    },
+    {
+      "type": "text",
+      "encode": {
+        "enter": {
+          "align": {"value": "center"},
+          "baseline": {"value": "bottom"},
+          "fill": {"value": "#333"}
+        },
+        "update": {
+          "x": {"scale": "xscale", "signal": "tooltip.category", "band": 0.5},
+          "y": {"scale": "yscale", "signal": "tooltip.amount", "offset": -2},
+          "text": {"signal": "tooltip.amount"},
+          "fillOpacity": [
+            {"test": "isNaN(tooltip.amount)", "value": 0},
+            {"value": 1}
+          ]
+        }
+      }
+    }
+  ]
+}
+    """
+
+    return flask.Response(spec, mimetype='application/json')
+
+
+
+#     return flask.render_template(
+#         'positions.html',
+#         #table=ToHtmlString(STATE.positions, 'positions'),
+#         **GetNavigation())
+
+
+
+
 
 
 # Trigger the initialization on load (before even the first request).

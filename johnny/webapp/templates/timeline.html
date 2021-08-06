@@ -1,0 +1,44 @@
+<!doctype html>
+<html>
+
+{% include 'head.html' %}
+
+  <!-- Import Vega & Vega-Lite -->
+  <script src="https://cdn.jsdelivr.net/npm/vega@5"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vega-lite@4"></script>
+  <!-- Import vega-embed -->
+  <script src="https://cdn.jsdelivr.net/npm/vega-embed@6"></script>
+
+<head>
+<style>
+
+  div#vis {
+      width: 100%;
+      height: 300px;
+      border: thin solid red;
+  }
+
+</style>
+
+<script>
+
+</script>
+</head>
+
+<body>
+{% include 'navigation.html' %}
+<h1>Timeline</h1>
+
+<script type="text/javascript">
+  var spec = "./timeline.json";
+  vegaEmbed('#vis', spec).then(function(result) {
+    // Access the Vega view instance (https://vega.github.io/vega/docs/api/view/) as result.view
+  }).catch(console.error);
+</script>
+
+  <div id="vis"></div>
+
+
+
+</body>
+</html>
