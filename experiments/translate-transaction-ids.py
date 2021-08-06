@@ -29,6 +29,7 @@ def main(config: Optional[str]):
 
     filename = configlib.GetConfigFilenameWithDefaults(config)
     config = configlib.ParseFile(filename)
+    chains_db = configlib.ReadChains(config.input.chains_db)
     logtables = discovery.ReadConfiguredInputs(config)
     table = (logtables[configlib.Account.LogType.TRANSACTIONS]
              .selectne('transaction_new_id', None))
@@ -41,7 +42,7 @@ def main(config: Optional[str]):
     mapping = (table
                .lookup('transaction_id', 'transaction_new_id'))
 
-    for chain in config.chains:
+    for chain in chains_db.chains:
         if not chain.ids:
             continue
         ids = list(chain.ids)

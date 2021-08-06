@@ -11,8 +11,6 @@
 
 syntax = "proto2";
 
-import "johnny/base/chains.proto";
-
 package johnny;
 
 // Configuration for returns script.
@@ -27,9 +25,6 @@ message Config {
   // months. This is a temporary mapping we use until we code up the rules from
   // the CME contracts.
   optional FutOptMonthMapping futures_option_month_mapping = 3;
-
-  // A list of manually disambiguated trades and their annotations.
-  repeated Chain chains = 4;
 }
 
 // Configuration for inputs to be imported.
@@ -37,16 +32,16 @@ message Inputs {
   // A list of account sources to pull data from.
   repeated Account accounts = 1;
 
-  // TODO(blais): Add a field for the Ledger to be processed to exclude a set of
-  // order ids.
-  // optional string ledger = 2;
+  // A tabular file to contain the input chain data.
+  // This is updated to produce `Output.chains`.
+  optional string chains_db = 2;
 }
 
 // Configuration for outputs and databases.
 message Outputs {
-  // A pbtxt file to contain the updated configuration.
-  // This is an output, not the input protobuf (which is this file).
-  optional string config = 1;
+  // A tabular file to contain the precomputed chain data.
+  // This is a cleaned up and updated version in `Inputs.chains_db`.
+  optional string chains_db = 1;
 
   // A tabular file to contain the processed and normalized transactions.
   optional string transactions = 2;

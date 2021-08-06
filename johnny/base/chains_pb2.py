@@ -20,7 +20,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   syntax='proto2',
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_pb=b'\n\x18johnny/base/chains.proto\x12\x06johnny\"\xa6\x01\n\x05\x43hain\x12\x10\n\x08\x63hain_id\x18\x01 \x01(\t\x12#\n\x06status\x18\x02 \x01(\x0e\x32\x13.johnny.ChainStatus\x12\r\n\x05group\x18\x03 \x01(\t\x12\x0f\n\x07\x63omment\x18\x06 \x01(\t\x12\x10\n\x08strategy\x18\x04 \x01(\t\x12\x15\n\rauto_strategy\x18\x05 \x01(\t\x12\x0b\n\x03ids\x18\x07 \x03(\t\x12\x10\n\x08\x61uto_ids\x18\x08 \x03(\t\":\n\x05\x41sset\x12\x12\n\ninstrument\x18\x01 \x01(\t\x12\r\n\x05\x63lass\x18\x02 \x01(\t\x12\x0e\n\x06\x66\x61\x63tor\x18\x03 \x01(\t*<\n\x0b\x43hainStatus\x12\n\n\x06\x41\x43TIVE\x10\x00\x12\n\n\x06\x43LOSED\x10\x01\x12\t\n\x05\x46INAL\x10\x02\x12\n\n\x06IGNORE\x10\x03'
+  serialized_pb=b'\n\x18johnny/base/chains.proto\x12\x06johnny\"\'\n\x06\x43hains\x12\x1d\n\x06\x63hains\x18\x01 \x03(\x0b\x32\r.johnny.Chain\"\xa6\x01\n\x05\x43hain\x12\x10\n\x08\x63hain_id\x18\x01 \x01(\t\x12#\n\x06status\x18\x02 \x01(\x0e\x32\x13.johnny.ChainStatus\x12\r\n\x05group\x18\x03 \x01(\t\x12\x0f\n\x07\x63omment\x18\x06 \x01(\t\x12\x10\n\x08strategy\x18\x04 \x01(\t\x12\x15\n\rauto_strategy\x18\x05 \x01(\t\x12\x0b\n\x03ids\x18\x07 \x03(\t\x12\x10\n\x08\x61uto_ids\x18\x08 \x03(\t\":\n\x05\x41sset\x12\x12\n\ninstrument\x18\x01 \x01(\t\x12\r\n\x05\x63lass\x18\x02 \x01(\t\x12\x0e\n\x06\x66\x61\x63tor\x18\x03 \x01(\t*<\n\x0b\x43hainStatus\x12\n\n\x06\x41\x43TIVE\x10\x00\x12\n\n\x06\x43LOSED\x10\x01\x12\t\n\x05\x46INAL\x10\x02\x12\n\n\x06IGNORE\x10\x03'
 )
 
 _CHAINSTATUS = _descriptor.EnumDescriptor(
@@ -53,8 +53,8 @@ _CHAINSTATUS = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   serialized_options=None,
-  serialized_start=265,
-  serialized_end=325,
+  serialized_start=306,
+  serialized_end=366,
 )
 _sym_db.RegisterEnumDescriptor(_CHAINSTATUS)
 
@@ -64,6 +64,38 @@ CLOSED = 1
 FINAL = 2
 IGNORE = 3
 
+
+
+_CHAINS = _descriptor.Descriptor(
+  name='Chains',
+  full_name='johnny.Chains',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  create_key=_descriptor._internal_create_key,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='chains', full_name='johnny.Chains.chains', index=0,
+      number=1, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto2',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=36,
+  serialized_end=75,
+)
 
 
 _CHAIN = _descriptor.Descriptor(
@@ -142,8 +174,8 @@ _CHAIN = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=37,
-  serialized_end=203,
+  serialized_start=78,
+  serialized_end=244,
 )
 
 
@@ -188,15 +220,24 @@ _ASSET = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=205,
-  serialized_end=263,
+  serialized_start=246,
+  serialized_end=304,
 )
 
+_CHAINS.fields_by_name['chains'].message_type = _CHAIN
 _CHAIN.fields_by_name['status'].enum_type = _CHAINSTATUS
+DESCRIPTOR.message_types_by_name['Chains'] = _CHAINS
 DESCRIPTOR.message_types_by_name['Chain'] = _CHAIN
 DESCRIPTOR.message_types_by_name['Asset'] = _ASSET
 DESCRIPTOR.enum_types_by_name['ChainStatus'] = _CHAINSTATUS
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
+
+Chains = _reflection.GeneratedProtocolMessageType('Chains', (_message.Message,), {
+  'DESCRIPTOR' : _CHAINS,
+  '__module__' : 'johnny.base.chains_pb2'
+  # @@protoc_insertion_point(class_scope:johnny.Chains)
+  })
+_sym_db.RegisterMessage(Chains)
 
 Chain = _reflection.GeneratedProtocolMessageType('Chain', (_message.Message,), {
   'DESCRIPTOR' : _CHAIN,

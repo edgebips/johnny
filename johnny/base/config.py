@@ -10,9 +10,8 @@ from typing import Mapping, Optional, Tuple
 
 # pylint: disable=unused-import
 from johnny.base.config_pb2 import Config, Account
-from johnny.base.chains_pb2 import Chain, ChainStatus
+from johnny.base.chains_pb2 import Chains, Chain, ChainStatus
 from johnny.base.config_pb2 import FutOptMonthMapping
-from johnny.base import config_pb2
 from johnny.base.etl import petl, Table
 
 from google.protobuf import text_format
@@ -33,10 +32,10 @@ def GetConfigFilenameWithDefaults(filename: Optional[str]) -> str:
     return filename
 
 
-def ParseFile(filename: str) -> config_pb2.Config:
+def ParseFile(filename: str) -> Config:
     """Parse a text-formatted proto configuration file."""
     with open(filename) as infile:
-        config = text_format.Parse(infile.read(), config_pb2.Config())
+        config = text_format.Parse(infile.read(), Config())
     Validate(config)
     return config
 
@@ -45,7 +44,7 @@ class ConfigError(ValueError):
     """Error raised for invalid configurations."""
 
 
-def Validate(config: config_pb2.Config):
+def Validate(config: Config):
     """Validate the configuration."""
 
     # Check the account nicknames are unique.
@@ -57,3 +56,10 @@ def Validate(config: config_pb2.Config):
     for a in config.input.accounts:
         if not a.HasField('logtype'):
             raise ConfigError("Log type is not set")
+
+
+def ReadChains(filename: str) -> Chains:
+    """Parse a text-formatted chains poor man's db file."""
+    with open(filename) as infile:
+        config = text_format.Parse(infile.read(), Chains())
+    return config

@@ -50,7 +50,7 @@ Q = Decimal('0.01')
 
 
 def ChainTransactions(matched_transactions: Table,
-                      config: configlib.Config) -> Tuple[Table, configlib.Config]:
+                      chains_db: configlib.Chains) -> Tuple[Table, configlib.Chains]:
     """Cluster the transactions and return a new table, with added 'chain_id' and an
     update chains configuration on a config object."""
 
@@ -58,20 +58,20 @@ def ChainTransactions(matched_transactions: Table,
 
     # Clean up the configuration before clustering with it as a side-input.
     with log('scrub'):
-        clean_config = ScrubConfig(matched_transactions, config)
+        clean_chains_db = ScrubConfig(matched_transactions, chains_db)
 
     # Run the chains heuristic. (Note: We need to temporarily expand the
     # instrument fields, as they are needed by the match and chains modules.)
     with log('group'):
         chained_transactions = (matched_transactions
                                 .applyfn(instrument.Expand, 'symbol')
-                                .applyfn(Group, clean_config.chains)
+                                .applyfn(Group, clean_chains_db.chains)
                                 .applyfn(instrument.Shrink))
 
     with log('update'):
-        updated_config = UpdateConfig(chained_transactions, clean_config)
+        updated_chains_db = UpdateConfig(chained_transactions, clean_chains_db)
 
-    return chained_transactions, updated_config
+    return chained_transactions, updated_chains_db
 
 
 def Group(transactions: Table,
@@ -378,7 +378,7 @@ def _GetChainAttribute(chain_map, attrname, rec: Record) -> Any:
 
 
 def TransactionsTableToChainsTable(transactions: Table,
-                                   config: configlib.Config) -> Tuple[Table, Table]:
+                                   chains_db: configlib.Chains) -> Tuple[Table, Table]:
     """Aggregate a table of already identified transactions row (with a `chain_id` column)
     to a table of aggregated chains. The `config` object is used to join attributes in the
     table.
@@ -407,7 +407,7 @@ def TransactionsTableToChainsTable(transactions: Table,
     }
 
     transaction_map = transactions.recordlookupone('transaction_id')
-    chain_map = {c.chain_id: c for c in config.chains}
+    chain_map = {c.chain_id: c for c in chains_db.chains}
 
     chains_table = (
         transactions
@@ -457,17 +457,17 @@ def TransactionsTableToChainsTable(transactions: Table,
 
 
 def ScrubConfig(transactions: Table,
-                config: configlib.Config) -> configlib.Config:
+                chains_db: configlib.Chains) -> configlib.Chains:
     """Update and clean configuration from the processed transactions table."""
 
     # Create a new result configuration object.
-    new_config = configlib.Config()
-    new_config.CopyFrom(config)
+    new_chains_db = configlib.Chains()
+    new_chains_db.CopyFrom(chains_db)
 
     # If a chain is in FINAL state, automatically promote all of its `auto_ids`
     # to `ids`.
     transaction_ids = set(transactions.values('transaction_id'))
-    for chain in new_config.chains:
+    for chain in new_chains_db.chains:
         if chain.status == ChainStatus.FINAL and chain.auto_ids:
             chain.ids.extend(chain.auto_ids)
 
@@ -481,11 +481,11 @@ def ScrubConfig(transactions: Table,
             if transaction_id not in transaction_ids:
                 logging.error(f"Invalid transaction id from chain file: '{transaction_id}'")
 
-    return new_config
+    return new_chains_db
 
 
 def UpdateConfig(transactions: Table,
-                 config: configlib.Config) -> configlib.Config:
+                 chains_db: configlib.Chains) -> configlib.Chains:
     """Insert new transaction ids from updated transactions and update the status of
     all the non-finalized chains. This assumes a transactions Table with freshly
     clustered chain ids.
@@ -494,12 +494,12 @@ def UpdateConfig(transactions: Table,
     # Create a new result configuration object. Note that we copy them in the
     # same order as in the input filein order to be able to diff the output with
     # the # original file while minimizing the text differences.
-    new_config = configlib.Config()
-    new_config.CopyFrom(config)
+    new_chains_db = configlib.Chains()
+    new_chains_db.CopyFrom(chains_db)
 
     # Gather the set of already existing ids.
     inserted_ids = {transaction_id
-                    for chain in new_config.chains
+                    for chain in new_chains_db.chains
                     for transaction_id in chain.ids}
 
     # Initialize a few mappings. This is much faster than running the more
@@ -512,7 +512,7 @@ def UpdateConfig(transactions: Table,
     # Add new transactions to all the chains as `auto_ids`, where they weren't
     # already included. Create new Chain objects as necessary. Exclude marks for
     # active positions.
-    chain_map = {c.chain_id: c for c in new_config.chains}
+    chain_map = {c.chain_id: c for c in new_chains_db.chains}
     for txn in transactions.records():
         # Update various maps.
         transactions_map[txn.transaction_id] = txn
@@ -530,27 +530,27 @@ def UpdateConfig(transactions: Table,
 
         chain = chain_map.get(txn.chain_id, None)
         if chain is None:
-            chain = new_config.chains.add()
+            chain = new_chains_db.chains.add()
             chain.chain_id = txn.chain_id
             chain_map[chain.chain_id] = chain
         chain.auto_ids.append(transaction_id)
 
-    InferStatus(referenced_chain_ids, active_chain_ids, new_config)
+    InferStatus(referenced_chain_ids, active_chain_ids, new_chains_db)
 
     # TODO(blais): Save markers for the initial transactions in the produced table.
     # Then use this to share all earnings setups with @zero.
-    InferStrategy(transactions_map, new_config)
+    InferStrategy(transactions_map, new_chains_db)
 
-    return new_config
+    return new_chains_db
 
 
 def InferStatus(referenced_chain_ids: Set[str],
                 active_chain_ids: Set[str],
-                config: configlib.Config):
+                chains_db: configlib.Chains):
     """Update (mutate) `status` on chains, from transactions."""
 
     # Infer the status of non-finalized chains.
-    for chain in config.chains:
+    for chain in chains_db.chains:
         # Preserve finalized and ignored chains, don't override the status on
         # those. We only recalculate and update the status on ACTIVE and CLOSED
         # chains.
@@ -574,10 +574,10 @@ def InferStatus(referenced_chain_ids: Set[str],
                         else ChainStatus.CLOSED)
 
 
-def InferStrategy(transactions_map: Dict[str, Record], config: configlib.Config):
+def InferStrategy(transactions_map: Dict[str, Record], chains_db: configlib.Chains):
     """Update (mutate) `strategy` on chains, inferring where missing."""
 
-    for chain in config.chains:
+    for chain in chains_db.chains:
         # Don't override already present values for `strategy`.
         if chain.strategy:
             continue

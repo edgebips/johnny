@@ -36,7 +36,8 @@ def main(config: Optional[str],
     # Read the existing configuration.
     filename = configlib.GetConfigFilenameWithDefaults(config)
     config = configlib.ParseFile(filename)
-    chain_map = {c.chain_id: c for c in config.chains}
+    chains_db = configlib.ReadChains(config.input.chains_db)
+    chain_map = {c.chain_id: c for c in chains_db.chains}
 
     # Read the CSV file.
     table = petl.fromcsv(csv_filename)

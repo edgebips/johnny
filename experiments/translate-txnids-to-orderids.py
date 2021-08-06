@@ -24,6 +24,7 @@ from johnny.base.etl import Table, WrapRecords
 @click.argument('config_filename', type=click.Path(exists=True))
 def main(config_filename: str):
     config = configlib.ParseFile(config_filename)
+    chains_db = configlib.ReadChains(config.input.chains_db)
     logtables = discovery.ReadConfiguredInputs(config)
     transactions = logtables[configlib.Account.LogType.TRANSACTIONS]
 
@@ -34,7 +35,7 @@ def main(config_filename: str):
     txn_ids = set(transactions.values('transaction_id'))
     order_ids = set(transactions.values('order_id'))
     missing_chains = []
-    for chain in config.chains:
+    for chain in chains_db.chains:
         missing = False
         for id in chain.order_ids:
             if id not in order_ids:

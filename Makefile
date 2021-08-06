@@ -2,7 +2,8 @@
 
 # Set JOHNNY_CONFIG in order for this to work.
 DOWNLOADS = $(HOME)/trading/downloads
-JOHNNY_CONFIG_NEW = $(JOHNNY_CONFIG).new
+CHAINS = $(shell grep chains_db $(JOHNNY_CONFIG) | head -n1 | sed  -e 's/.*chains_db: "//;s/"//')
+CHAINS_NEW = $(CHAINS).new
 
 test:
 	python3 -m pytest -x johnny
@@ -30,22 +31,22 @@ config-gen:
 	johnny-import -q
 
 config-earnings:
-	./experiments/finalize-earnings.py -g Earnings > $(JOHNNY_CONFIG_NEW)
+	./experiments/finalize-earnings.py -g Earnings > $(CHAINS_NEW)
 
 config-diff diff:
-	-xxdiff -D -B $(JOHNNY_CONFIG) $(JOHNNY_CONFIG_NEW)
+	-xxdiff -D -B $(CHAINS) $(CHAINS_NEW)
 
 config-clobber clobber:
-	cp $(JOHNNY_CONFIG_NEW) $(JOHNNY_CONFIG)
+	cp $(CHAINS_NEW) $(CHAINS)
 
 config-commit commit:
-	hg commit $(JOHNNY_CONFIG)
+	hg commit $(CHAINS)
 
 accept-all:
-	./experiments/accept-all.py > $(JOHNNY_CONFIG_NEW)
+	./experiments/accept-all.py > $(CHAINS_NEW)
 
 accept-specific-chains:
-	cat | ./experiments/accept-chains.py -g Premium -s FINAL > $(JOHNNY_CONFIG_NEW)
+	cat | ./experiments/accept-chains.py -g Premium -s FINAL > $(CHAINS_NEW)
 
 # Proto generation rules.
 protos: johnny/base/config_pb2.py johnny/base/chains_pb2.py

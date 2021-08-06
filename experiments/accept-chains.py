@@ -40,7 +40,8 @@ def main(config: Optional[str],
 
     filename = configlib.GetConfigFilenameWithDefaults(config)
     config = configlib.ParseFile(filename)
-    chain_map = {c.chain_id: c for c in config.chains}
+    chains_db = configlib.ReadChains(config.input.chains_db)
+    chain_map = {c.chain_id: c for c in chains_db.chains}
 
     chain_ids = set(chain_ids)
     for chain_id in chain_ids:

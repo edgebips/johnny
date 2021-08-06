@@ -60,6 +60,11 @@ enum ChainStatus {
   IGNORE = 3;
 }
 
+// A database of chains, just a container for the chains db file.
+message Chains {
+  repeated Chain chains = 1;
+}
+
 // A trade chain.
 message Chain {
   // The chain id of a trade. This is a unique string computed in the front end.

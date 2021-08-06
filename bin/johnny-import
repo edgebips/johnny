@@ -100,11 +100,13 @@ def import_(config: Optional[str], force: bool, light: bool):
         ptransactions = mark.Mark(transactions, price_map)
 
     # Calculate the chains and partial sums.
+    with log('read_chains'):
+        chains_db = configlib.ReadChains(config.input.chains_db)
     with log('chains'):
-        ctransactions, cconfig = chainslib.ChainTransactions(ptransactions, config)
+        ctransactions, cchains_db = chainslib.ChainTransactions(ptransactions, chains_db)
     with log('reduce'):
         chains, ctransactions = chainslib.TransactionsTableToChainsTable(ctransactions,
-                                                                         cconfig)
+                                                                         cchains_db)
 
     # Write out the imported databases.
     with log('output_tables'):
@@ -112,8 +114,8 @@ def import_(config: Optional[str], force: bool, light: bool):
         chains.topickle(config.output.chains)
 
     with log('output_config'):
-        with open(config.output.config, 'w') as outfile:
-            print(configlib.ToText(cconfig), file=outfile)
+        with open(config.output.chains_db, 'w') as outfile:
+            print(configlib.ToText(cchains_db), file=outfile)
 
 
 if __name__ == '__main__':

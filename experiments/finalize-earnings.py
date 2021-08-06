@@ -40,11 +40,12 @@ def main(config: Optional[str], group: str, date: datetime.date):
     filename = configlib.GetConfigFilenameWithDefaults(config)
     config = configlib.ParseFile(filename)
     transactions = petl.frompickle(config.output.transactions)
-    chain_table, _ = chainslib.TransactionsTableToChainsTable(transactions, config)
+    chains_db = configlib.ReadChains(config.input.chains_db)
+    chain_table, _ = chainslib.TransactionsTableToChainsTable(transactions, chains_db)
     chain_map = chain_table.recordlookupone('chain_id')
 
     finalized = []
-    for chain in config.chains:
+    for chain in chains_db.chains:
         # We only process CLOSED chains.
         if chain.status != chains_pb2.ChainStatus.CLOSED:
             continue

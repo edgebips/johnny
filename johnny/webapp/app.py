@@ -62,7 +62,7 @@ def Initialize():
     # Make sure we have a configuration to work from.
     #
     # Note: We're reading the clean config produced by the import.
-    config_filename = os.getenv("JOHNNY_CONFIG_NEW")
+    config_filename = os.getenv("JOHNNY_CONFIG")
     if not config_filename:
         logging.error("Error: No configuration file set set. Please set JOHNNY_CONFIG to "
                       "your .pbtxt file with a text-formatted config.proto.")
@@ -90,7 +90,8 @@ def Initialize():
             #price_map = mark.GetPriceMap(transactions, config)
             #transactions = mark.Mark(transactions, price_map)
 
-            chains_map = {c.chain_id: c for c in config.chains}
+            chains_db = configlib.ReadChains(config.input.chains_db)
+            chains_map = {c.chain_id: c for c in chains_db.chains}
 
             # Extract current positions from marks.
             positions = (transactions
@@ -264,9 +265,9 @@ def chain_proto(chain_id: str):
         chain_obj = configlib.Chain()
         chain_obj.chain_id = chain_id
 
-    config = configlib.Config()
-    config.chains.add().CopyFrom(chain_obj)
-    response = flask.make_response(configlib.ToText(config), 200)
+    chains_db = configlib.Chains()
+    chains_db.chain.add().CopyFrom(chain_obj)
+    response = flask.make_response(configlib.ToText(chains_db), 200)
     response.mimetype = "text/plain"
     return response
 
@@ -274,10 +275,10 @@ def chain_proto(chain_id: str):
 @app.route('/chain_protos')
 def chain_protos():
     chains_table = FilterChains(STATE.chains)
-    config = configlib.Config()
+    chains_db = configlib.Chains()
     for rec in chains_table.records():
-        config.chains.add().CopyFrom(STATE.chains_map.get(rec.chain_id))
-    response = flask.make_response(configlib.ToText(config), 200)
+        chains_db.chains.add().CopyFrom(STATE.chains_map.get(rec.chain_id))
+    response = flask.make_response(configlib.ToText(chains_db), 200)
     response.mimetype = "text/plain"
     return response
 
