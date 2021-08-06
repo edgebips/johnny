@@ -14,13 +14,6 @@ Transactions are grouped together if
 This code is designed to be independent of the source, as we went to be able to
 do this on all options platforms, such as Ameritrade, InteractiveBrokers,
 Vanguard and Tastyworks.
-
-
-# TODO(blais): Also implement the boolean flags for matching.
-# TODO(blais): Write unit tests.
-
-# TODO(blais): Make sure not just date is taken into account, but also time,
-# when span matching. An intra-day reset is valuable.
 """
 
 __copyright__ = "Copyright (C) 2021  Martin Blais"
