@@ -73,7 +73,7 @@ function UpdateFooter(table) {
         var column = table.column(contains);
         var data = table.cells('.selected', contains).data();
         if (data.length == 0) {
-            data = table.cells('', contains).data();
+            data = table.cells({search: 'applied'}, contains).data();
             if (data.length == 0) {
                 $(column.footer()).html('N/A');
                 return;
