@@ -424,7 +424,7 @@ def TransactionsTableToChainsTable(transactions: Table,
         # Add calculations off the initial position records.
         .addfield('init', InitialCredits)
         .addfield('init_legs', lambda r: len(r.init_txns))
-        .addfield('init_frac', lambda r: (r.pnl_chain / r.init).quantize(Q) if r.init else ZERO)
+        .addfield('pnl_frac', lambda r: (r.pnl_chain / r.init).quantize(Q) if r.init else ZERO)
 
         .addfield('days', lambda r: (r.maxdate - r.mindate).days + 1)
 
@@ -449,7 +449,7 @@ def TransactionsTableToChainsTable(transactions: Table,
     chains_table = (chains_table
                     .cut('chain_id', 'account', 'underlying', 'status',
                          'mindate', 'maxdate', 'days',
-                         'init', 'init_legs', 'init_frac', 'pnl_chain',
+                         'init', 'init_legs', 'pnl_chain', 'pnl_frac',
                          'net_liq', 'commissions', 'fees',
                          'group', 'strategy', 'instruments'))
 
