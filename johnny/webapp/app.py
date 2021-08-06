@@ -664,6 +664,9 @@ def recap(date: str):
     chains, summary = get_date_chains(date)
     params = GetNavigation()
     params['date'] = date
+    day = datetime.timedelta(days=1)
+    params['prev_day'] = flask.url_for('recap', date=(date - day).isoformat())
+    params['next_day'] = flask.url_for('recap', date=(date + day).isoformat())
     params['weekday'] = date.strftime("%A")
     params['summary'] = ToHtmlString(summary, 'summary')
     if 1:
