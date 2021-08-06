@@ -3,23 +3,27 @@
 //  Copyright (C) 2021  Martin Blais
 //  License: GNU GPLv2
 
-function CreateChainsTable(id) {
+function CreateChainsTable(id, extra_config) {
     // Create the table instance.
     var config = {
         pageLength: 200,
         select: 'multi+shift',
         fixedHeader: true,
         colReorder: true,
-        columnDefs: [{
-            // TODO(blais): Set this by name (doesn't seem to work).
-            // These are the column indices with numbers, to right-align.
-            targets: [6,7,8,9,10,11],
-            className: 'dt-body-right'
-        }],
+        columnDefs: [
+            {targets: ['init', 'pnl_chain', 'net_liq', 'commissions', 'fees'],
+             className: 'dt-body-right'},
+        ],
 
         // This gets called once when the table is drawn.
-        ///footerCallback: function (row, data, start, end, display) {}
+        footerCallback: function (row, data, start, end, display) {
+            var api = this.api()
+            UpdateFooter(api);
+        }
     };
+    if (extra_config != null) {
+        config = Object.assign(config, extra_config)
+    }
     var table = $(id).DataTable(config);
 
     // Emphasize some columns of the table.
@@ -65,11 +69,15 @@ function UpdateFooter(table) {
         fees: sumFloat,
     }
     $.each(columns, function(colname, reducer) {
-        var data = table.cells('.selected', ':contains(' + colname + ')').data();
-        var column = table.column(':contains(' + colname + ')');
+        var contains = ':contains(' + colname + ')';
+        var column = table.column(contains);
+        var data = table.cells('.selected', contains).data();
         if (data.length == 0) {
-            $(column.footer()).html('');
-            return;
+            data = table.cells('', contains).data();
+            if (data.length == 0) {
+                $(column.footer()).html('N/A');
+                return;
+            }
         }
         var sum = data.reduce(reducer);
         $(column.footer()).html(sum);
