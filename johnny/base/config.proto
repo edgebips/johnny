@@ -25,6 +25,9 @@ message Config {
   // months. This is a temporary mapping we use until we code up the rules from
   // the CME contracts.
   optional FutOptMonthMapping futures_option_month_mapping = 3;
+
+  // Options for the presentation of results.
+  optional Presentation presentation = 4;
 }
 
 // Configuration for inputs to be imported.
@@ -74,6 +77,13 @@ message FutOptMonthMapping {
     optional string future_month = 4;
   };
   repeated Item months = 1;
+}
+
+// Options for the presentation of results.
+message Presentation {
+  // Groups whose chains to ignore for presentation. This can be used to exclude
+  // regular (i.e., non-trading) investments.
+  repeated string ignore_groups = 4;
 }
 
 // The declaration of an account source. Only declared accounts are ingested.

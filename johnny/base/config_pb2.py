@@ -19,7 +19,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   syntax='proto2',
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_pb=b'\n\x18johnny/base/config.proto\x12\x06johnny\"\x8a\x01\n\x06\x43onfig\x12\x1d\n\x05input\x18\x01 \x01(\x0b\x32\x0e.johnny.Inputs\x12\x1f\n\x06output\x18\x02 \x01(\x0b\x32\x0f.johnny.Outputs\x12@\n\x1c\x66utures_option_month_mapping\x18\x03 \x01(\x0b\x32\x1a.johnny.FutOptMonthMapping\">\n\x06Inputs\x12!\n\x08\x61\x63\x63ounts\x18\x01 \x03(\x0b\x32\x0f.johnny.Account\x12\x11\n\tchains_db\x18\x02 \x01(\t\"B\n\x07Outputs\x12\x11\n\tchains_db\x18\x01 \x01(\t\x12\x14\n\x0ctransactions\x18\x02 \x01(\t\x12\x0e\n\x06\x63hains\x18\x03 \x01(\t\"\xa9\x01\n\x12\x46utOptMonthMapping\x12/\n\x06months\x18\x01 \x03(\x0b\x32\x1f.johnny.FutOptMonthMapping.Item\x1a\x62\n\x04Item\x12\x16\n\x0eoption_product\x18\x01 \x01(\t\x12\x14\n\x0coption_month\x18\x02 \x01(\t\x12\x16\n\x0e\x66uture_product\x18\x03 \x01(\t\x12\x14\n\x0c\x66uture_month\x18\x04 \x01(\t\"\xa2\x01\n\x07\x41\x63\x63ount\x12\x10\n\x08nickname\x18\x01 \x01(\t\x12(\n\x07logtype\x18\x02 \x01(\x0e\x32\x17.johnny.Account.LogType\x12\x0e\n\x06module\x18\x03 \x01(\t\x12\x0e\n\x06source\x18\x04 \x01(\t\x12\x0f\n\x07initial\x18\x05 \x01(\t\"*\n\x07LogType\x12\x10\n\x0cTRANSACTIONS\x10\x01\x12\r\n\tPOSITIONS\x10\x02'
+  serialized_pb=b'\n\x18johnny/base/config.proto\x12\x06johnny\"\xb6\x01\n\x06\x43onfig\x12\x1d\n\x05input\x18\x01 \x01(\x0b\x32\x0e.johnny.Inputs\x12\x1f\n\x06output\x18\x02 \x01(\x0b\x32\x0f.johnny.Outputs\x12@\n\x1c\x66utures_option_month_mapping\x18\x03 \x01(\x0b\x32\x1a.johnny.FutOptMonthMapping\x12*\n\x0cpresentation\x18\x04 \x01(\x0b\x32\x14.johnny.Presentation\">\n\x06Inputs\x12!\n\x08\x61\x63\x63ounts\x18\x01 \x03(\x0b\x32\x0f.johnny.Account\x12\x11\n\tchains_db\x18\x02 \x01(\t\"B\n\x07Outputs\x12\x11\n\tchains_db\x18\x01 \x01(\t\x12\x14\n\x0ctransactions\x18\x02 \x01(\t\x12\x0e\n\x06\x63hains\x18\x03 \x01(\t\"\xa9\x01\n\x12\x46utOptMonthMapping\x12/\n\x06months\x18\x01 \x03(\x0b\x32\x1f.johnny.FutOptMonthMapping.Item\x1a\x62\n\x04Item\x12\x16\n\x0eoption_product\x18\x01 \x01(\t\x12\x14\n\x0coption_month\x18\x02 \x01(\t\x12\x16\n\x0e\x66uture_product\x18\x03 \x01(\t\x12\x14\n\x0c\x66uture_month\x18\x04 \x01(\t\"%\n\x0cPresentation\x12\x15\n\rignore_groups\x18\x04 \x03(\t\"\xa2\x01\n\x07\x41\x63\x63ount\x12\x10\n\x08nickname\x18\x01 \x01(\t\x12(\n\x07logtype\x18\x02 \x01(\x0e\x32\x17.johnny.Account.LogType\x12\x0e\n\x06module\x18\x03 \x01(\t\x12\x0e\n\x06source\x18\x04 \x01(\t\x12\x0f\n\x07initial\x18\x05 \x01(\t\"*\n\x07LogType\x12\x10\n\x0cTRANSACTIONS\x10\x01\x12\r\n\tPOSITIONS\x10\x02'
 )
 
 
@@ -44,8 +44,8 @@ _ACCOUNT_LOGTYPE = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   serialized_options=None,
-  serialized_start=602,
-  serialized_end=644,
+  serialized_start=685,
+  serialized_end=727,
 )
 _sym_db.RegisterEnumDescriptor(_ACCOUNT_LOGTYPE)
 
@@ -79,6 +79,13 @@ _CONFIG = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='presentation', full_name='johnny.Config.presentation', index=3,
+      number=4, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
   ],
   extensions=[
   ],
@@ -92,7 +99,7 @@ _CONFIG = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=37,
-  serialized_end=175,
+  serialized_end=219,
 )
 
 
@@ -130,8 +137,8 @@ _INPUTS = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=177,
-  serialized_end=239,
+  serialized_start=221,
+  serialized_end=283,
 )
 
 
@@ -176,8 +183,8 @@ _OUTPUTS = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=241,
-  serialized_end=307,
+  serialized_start=285,
+  serialized_end=351,
 )
 
 
@@ -229,8 +236,8 @@ _FUTOPTMONTHMAPPING_ITEM = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=381,
-  serialized_end=479,
+  serialized_start=425,
+  serialized_end=523,
 )
 
 _FUTOPTMONTHMAPPING = _descriptor.Descriptor(
@@ -260,8 +267,40 @@ _FUTOPTMONTHMAPPING = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=310,
-  serialized_end=479,
+  serialized_start=354,
+  serialized_end=523,
+)
+
+
+_PRESENTATION = _descriptor.Descriptor(
+  name='Presentation',
+  full_name='johnny.Presentation',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  create_key=_descriptor._internal_create_key,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='ignore_groups', full_name='johnny.Presentation.ignore_groups', index=0,
+      number=4, type=9, cpp_type=9, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto2',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=525,
+  serialized_end=562,
 )
 
 
@@ -321,13 +360,14 @@ _ACCOUNT = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=482,
-  serialized_end=644,
+  serialized_start=565,
+  serialized_end=727,
 )
 
 _CONFIG.fields_by_name['input'].message_type = _INPUTS
 _CONFIG.fields_by_name['output'].message_type = _OUTPUTS
 _CONFIG.fields_by_name['futures_option_month_mapping'].message_type = _FUTOPTMONTHMAPPING
+_CONFIG.fields_by_name['presentation'].message_type = _PRESENTATION
 _INPUTS.fields_by_name['accounts'].message_type = _ACCOUNT
 _FUTOPTMONTHMAPPING_ITEM.containing_type = _FUTOPTMONTHMAPPING
 _FUTOPTMONTHMAPPING.fields_by_name['months'].message_type = _FUTOPTMONTHMAPPING_ITEM
@@ -337,6 +377,7 @@ DESCRIPTOR.message_types_by_name['Config'] = _CONFIG
 DESCRIPTOR.message_types_by_name['Inputs'] = _INPUTS
 DESCRIPTOR.message_types_by_name['Outputs'] = _OUTPUTS
 DESCRIPTOR.message_types_by_name['FutOptMonthMapping'] = _FUTOPTMONTHMAPPING
+DESCRIPTOR.message_types_by_name['Presentation'] = _PRESENTATION
 DESCRIPTOR.message_types_by_name['Account'] = _ACCOUNT
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
@@ -375,6 +416,13 @@ FutOptMonthMapping = _reflection.GeneratedProtocolMessageType('FutOptMonthMappin
   })
 _sym_db.RegisterMessage(FutOptMonthMapping)
 _sym_db.RegisterMessage(FutOptMonthMapping.Item)
+
+Presentation = _reflection.GeneratedProtocolMessageType('Presentation', (_message.Message,), {
+  'DESCRIPTOR' : _PRESENTATION,
+  '__module__' : 'johnny.base.config_pb2'
+  # @@protoc_insertion_point(class_scope:johnny.Presentation)
+  })
+_sym_db.RegisterMessage(Presentation)
 
 Account = _reflection.GeneratedProtocolMessageType('Account', (_message.Message,), {
   'DESCRIPTOR' : _ACCOUNT,

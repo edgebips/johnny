@@ -35,6 +35,7 @@ from johnny.base import mark
 from johnny.base import instrument
 from johnny.base.etl import petl, Table, Record
 ChainStatus = chainslib.ChainStatus
+Chain = configlib.Chain
 
 
 ZERO = Decimal(0)
@@ -56,6 +57,13 @@ class State(NamedTuple):
     chains: Table
     chains_map: Mapping[str, configlib.Chain]
     config: configlib.Config
+
+
+def get_dict_attribute(mapping: Mapping[str, Any], attr: str, key: str) -> Any:
+    value = mapping.get(key, None)
+    if value is None:
+        return None
+    return getattr(value, attr, None)
 
 
 def Initialize():
@@ -81,7 +89,6 @@ def Initialize():
             # Get the imported transactions.
             config = configlib.ParseFile(config_filename)
             transactions = petl.frompickle(config.output.transactions)
-            chains_table = petl.frompickle(config.output.chains)
 
             # TODO(blais): Contemplate remarking the positions with an updated
             # list of prices since import. Not sure we'll care; this really
@@ -92,6 +99,12 @@ def Initialize():
 
             chains_db = configlib.ReadChains(config.input.chains_db)
             chains_map = {c.chain_id: c for c in chains_db.chains}
+
+            ignore_groups = set(config.presentation.ignore_groups)
+            chains_table = (
+                petl.frompickle(config.output.chains)
+                .select(lambda r: (get_dict_attribute(chains_map, 'group', r.chain_id)
+                                   not in ignore_groups)))
 
             # Extract current positions from marks.
             positions = (transactions
