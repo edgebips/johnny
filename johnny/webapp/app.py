@@ -8,8 +8,9 @@ __license__ = "GNU GPLv2"
 from decimal import Decimal
 from functools import partial
 from os import path
-from typing import Any, Dict, List, Mapping, NamedTuple
+from typing import Any, Dict, List, Mapping, NamedTuple, Optional, Tuple
 import io
+import datetime
 import functools
 import itertools
 import os
@@ -17,6 +18,7 @@ import re
 import threading
 import logging
 
+import dateutil.parser
 import numpy as np
 import networkx as nx
 from matplotlib import pyplot
@@ -32,6 +34,7 @@ from johnny.base import chains as chainslib
 from johnny.base import mark
 from johnny.base import instrument
 from johnny.base.etl import petl, Table, Record
+ChainStatus = chainslib.ChainStatus
 
 
 ZERO = Decimal(0)
@@ -107,6 +110,10 @@ def ToHtmlString(table: Table, cls: str, ids: List[str] = None) -> bytes:
     table.tohtml(sink)
     html = sink.getvalue().decode('utf8')
     html = re.sub("class='petl'", f"class='display compact nowrap cell-border' id='{cls}'", html)
+
+    # Add class to <th> tags.
+    fnames = iter(table.fieldnames())
+    html = re.sub("^<th>", lambda match: "<th class={}>".format(next(fnames)), html, flags=re.M)
 
     # Add column ids for each column of the header. We use this in JS to
     # identify columns by name.
@@ -572,6 +579,106 @@ def stats_pnlinit():
     init = np.array(chains.values('init')).astype(float)
     image = RenderHistogram(init, "Initial Credits ($)")
     return flask.Response(image, mimetype='image/png')
+
+
+ACTIONS = {
+    'Earnings': 0,
+    'Closing': 1,
+    'Daytrade': 2,
+    'Adjusting': 3,
+    'Opening': 4,
+}
+
+def get_date_chains(date: datetime.date) -> Tuple[Table, Table]:
+    """Filter and identify chains active on a given date."""
+
+    # A set of chain ids with transactions on the date.
+    # This is used to figure out if an adjustment took place on a chain.
+    date_chains = set(
+        STATE.transactions
+        .selectne('rowtype', 'Mark')
+        .select(lambda r: r.datetime.date() == date)
+        .values('chain_id'))
+
+    # Infer the action of the chain based on the status and date extents. Note
+    # that this may return None, in which case the chain is to be excluded.
+    def infer_action(r: Record) -> Optional[str]:
+        if date == r.maxdate and r.status in {'FINAL', 'CLOSED'}:
+            if date == r.mindate:
+                return 'Daytrade'
+            # Break out 'Earnings' to its own table.
+            if r.group == 'Earnings':
+                return 'Earnings'
+            else:
+                return 'Closing'
+        elif date == r.mindate:
+            return 'Opening'
+        elif r.chain_id in date_chains:
+            return 'Adjusting'
+        else:
+            return None
+
+    # Join in the comments from the chain.
+    def get_comment(r: Record) -> str:
+        chain = STATE.chains_map.get(r.chain_id)
+        if not chain:
+            logging.error(f"Missing chain {chain_id}")
+        return chain.comment if chain else ''
+
+    # Process the chains.
+    chains = (STATE.chains
+              .select(lambda r: r.mindate <= date <= r.maxdate)
+              .addfield('action', infer_action, index=0)
+              .selecttrue('action')
+              .addfield('k', lambda r: ACTIONS.get(r.action), index=0)
+              .sort(['k', 'chain_id'])
+              .cutout('k')
+              .addfield('comment', get_comment)
+              .convert('chain_id', partial(AddUrl, 'chain', 'chain_id'))
+              .cutout('account', 'instruments', 'init_legs', 'net_liq'))
+
+    # Calculate a sensible summary table. Note that we clear the adjusting and
+    # opening P/L, as they are not relevant to the day's action.
+    agg = {
+        'pnl_chain': ('pnl_chain', sum),
+        'commissions': ('commissions', sum),
+        'fees': ('fees', sum),
+    }
+
+    def convert_agg_pnl(value, r: Record) -> str:
+        return 0 if r.action in {'Adjusting', 'Opening'} else value
+    summary = (chains
+               .aggregate('action', agg)
+               .convert('pnl_chain', convert_agg_pnl, pass_row=True)
+               .addfield('k', lambda r: ACTIONS.get(r.action))
+               .sort('k')
+               .cutout('k'))
+
+    return chains, summary
+
+
+
+@app.route('/recap/<date>')
+def recap(date: str):
+    date = dateutil.parser.parse(date).date()
+    chains, summary = get_date_chains(date)
+    params = GetNavigation()
+    params['date'] = date
+    params['weekday'] = date.strftime("%A")
+    params['summary'] = ToHtmlString(summary, 'summary')
+    if 1:
+        for action in ACTIONS:
+            action_table = (chains
+                            .selecteq('action', action)
+                            .cutout('action'))
+            params[action] = (ToHtmlString(action_table, action)
+                              if action_table.nrows() > 0
+                              else '')
+    else:
+        # TODO(blais): Remove.
+        params['chains'] = ToHtmlString(chains, 'chains');
+
+    return flask.render_template('recap.html', **params)
 
 
 @app.route('/monitor')

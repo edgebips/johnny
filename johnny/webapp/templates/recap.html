@@ -1,0 +1,77 @@
+<!doctype html>
+<html>
+
+<title>Day Recap: {{date}}</title>
+{% include 'head.html' %}
+
+<head>
+
+<script>
+
+  function sumFloat(a, b) { return (parseFloat(a) + parseFloat(b)).toFixed(2); }
+  function sumInt(a, b) { return parseInt(a) + parseInt(b); }
+
+
+  $(document).ready(function() {
+      // Hide the size selector.
+      var extra = {
+          searching: false,
+          paging: false,
+          info: false,
+      };
+      var summary_extra = Object.assign(extra, {bAutoWidth: false})
+      CreateChainsTable('#summary', summary_extra);
+
+      var tables = ['#Earnings', '#Closing', '#Opening', '#Daytrade', '#Adjusting'];
+      $.each(tables, function(index, name) {
+          CreateChainsTable(name, extra);
+      });
+  });
+
+</script>
+
+<style>
+  .dataTables_wrapper #summary {
+      margin: 0 0;
+      width: 10%;
+  }
+
+  h2 {
+      margin-bottom: 0px;
+  }
+</style>
+
+</head>
+
+<body>
+{% include 'navigation.html' %}
+<h1>Day Recap: {{date}} ({{weekday}})</h1>
+
+<!-- {{ chains|safe }} -->
+<p style="font-size: small; font-style: italic;">
+WARNING: Commissions and fees are for the entire chains.
+</p>
+
+{{ summary|safe }}
+
+{% if Earnings %}
+<h2>Earnings</h2>
+{{ Earnings|safe }}
+{% endif %}
+
+<h2>Closing</h2>
+{{ Closing|safe }}
+
+{% if Daytrade %}
+<h2>Daytrades</h2>
+{{ Daytrade|safe }}
+{% endif %}
+
+<h2>Adjusting</h2>
+{{ Adjusting|safe }}
+
+<h2>Opening</h2>
+{{ Opening|safe }}
+
+</body>
+</html>
