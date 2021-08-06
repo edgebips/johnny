@@ -138,6 +138,8 @@ def ToHtmlString(table: Table, cls: str, ids: List[str] = None) -> bytes:
 def GetNavigation() -> Dict[str, str]:
     """Get navigation bar."""
     return {
+        'page_active': flask.url_for('active'),
+        'page_recap': flask.url_for('recap_today'),
         'page_chains': flask.url_for('chains'),
         'page_transactions': flask.url_for('transactions'),
         'page_positions': flask.url_for('positions'),
@@ -197,15 +199,28 @@ def favicon():
     return flask.redirect(flask.url_for('static', filename='favicon.ico'))
 
 
-@app.route('/chains')
-def chains():
-    ids = STATE.chains.values('chain_id')
-    table = (STATE.chains
-             .convert('chain_id', partial(AddUrl, 'chain', 'chain_id')))
+def render_chains(status: set[str]):
+    chains = STATE.chains
+    if status:
+        chains = (STATE.chains
+                  .selectin('status', {'ACTIVE', 'CLOSED'}))
+    ids = chains.values('chain_id')
+    chains = (chains
+              .convert('chain_id', partial(AddUrl, 'chain', 'chain_id')))
     return flask.render_template(
         'chains.html',
-        table=ToHtmlString(table, 'chains', ids),
+        table=ToHtmlString(chains, 'chains', ids),
         **GetNavigation())
+
+
+@app.route('/active')
+def active():
+    return render_chains({'ACTIVE', 'CLOSED'})
+
+
+@app.route('/chains')
+def chains():
+    return render_chains(None)
 
 
 @app.route('/chain/<chain_id>')
@@ -622,7 +637,7 @@ def get_date_chains(date: datetime.date) -> Tuple[Table, Table]:
     def get_comment(r: Record) -> str:
         chain = STATE.chains_map.get(r.chain_id)
         if not chain:
-            logging.error(f"Missing chain {chain_id}")
+            logging.error(f"Missing chain {r.chain_id}")
         return chain.comment if chain else ''
 
     # Process the chains.
@@ -658,6 +673,11 @@ def get_date_chains(date: datetime.date) -> Tuple[Table, Table]:
 
 
 
+@app.route('/recap')
+def recap_today():
+    return flask.redirect(flask.url_for('recap', date=datetime.date.today().isoformat()))
+
+
 @app.route('/recap/<date>')
 def recap(date: str):
     date = dateutil.parser.parse(date).date()
@@ -682,14 +702,6 @@ def recap(date: str):
         params['chains'] = ToHtmlString(chains, 'chains');
 
     return flask.render_template('recap.html', **params)
-
-
-@app.route('/monitor')
-def monitor():
-    ## TODO(blais):
-    return flask.render_template(
-        'monitor.html',
-        **GetNavigation())
 
 
 @app.route('/share')
