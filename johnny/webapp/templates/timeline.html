@@ -12,15 +12,23 @@
 <head>
 <style>
 
-  div#vis {
-      width: 100%;
-      height: 300px;
-      border: thin solid red;
-  }
+div#vis {
+    width: 90%;
+    /* height: 800px; */
+    /* border: thin solid red; */
+}
 
 </style>
 
-<script>
+
+<script type="text/javascript">
+
+ $(document).ready(function() {
+
+      vegaEmbed('#vis', "./timeline.json").then(function(result) {}).catch(console.error);
+
+  });
+
 
 </script>
 </head>
@@ -29,15 +37,7 @@
 {% include 'navigation.html' %}
 <h1>Timeline</h1>
 
-<script type="text/javascript">
-  var spec = "./timeline.json";
-  vegaEmbed('#vis', spec).then(function(result) {
-    // Access the Vega view instance (https://vega.github.io/vega/docs/api/view/) as result.view
-  }).catch(console.error);
-</script>
-
-  <div id="vis"></div>
-
+<div id="vis"></div>
 
 
 </body>

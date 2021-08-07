@@ -158,6 +158,7 @@ def GetNavigation() -> Dict[str, str]:
         'page_transactions': flask.url_for('transactions'),
         'page_positions': flask.url_for('positions'),
         'page_stats': flask.url_for('stats'),
+        'page_timeline': flask.url_for('timeline'),
     }
 
 
@@ -717,14 +718,19 @@ def timeline():
     #     strokeDash='symbol',
     # )
 
+
+##  "autosize": {"type": "pad", "resize": true, "contains": "padding"},
+
+
 @app.route('/timeline.json')
 def timeline_json():
 
     spec = """\
 {
   "$schema": "https://vega.github.io/schema/vega/v5.json",
-  "width": "container",
-  "height": 300,
+
+  "width": 1600,
+  "height": 400,
   "padding": 5,
 
   "data": [
