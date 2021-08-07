@@ -24,7 +24,9 @@ def main(config: Optional[str]):
     for chain in chain_map.values():
         if chain.status == ChainStatus.CLOSED:
             chainslib.AcceptChain(chain, status=ChainStatus.FINAL)
-    print(configlib.ToText(chains_db))
+
+    with open(config.output.chains_db, 'w') as outfile:
+        outfile.write(configlib.ToText(chains_db))
 
 
 if __name__ == '__main__':
