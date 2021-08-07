@@ -370,7 +370,7 @@ def _CalculateNetLiq(pairs: Iterator[Tuple[str, Decimal]]):
                        if rowtype == 'Mark'))
 
 
-def _GetInstruments(symbols: Iterator[str]) -> List[str]:
+def _GetUnderlyings(symbols: Iterator[str]) -> List[str]:
     return ",".join(sorted(set(instrument.FromString(symbol).underlying
                                for symbol in symbols)))
 
@@ -405,12 +405,11 @@ def TransactionsTableToChainsTable(transactions: Table,
         'account': ('account', first),
         'mindate': ('datetime', lambda g: min(g).date()),
         'maxdate': ('datetime', lambda g: max(g).date()),
-        'underlying': ('underlying', first),
+        'underlyings': ('symbol', _GetUnderlyings),
         'pnl_chain': ('cost', lambda vlist: sum(vlist).quantize(Q)),
         'net_liq': (('rowtype', 'cost'), _CalculateNetLiq),
         'commissions': ('commissions', sum),
         'fees': ('fees', sum),
-        'instruments': ('symbol', _GetInstruments),
     }
 
     transaction_map = transactions.recordlookupone('transaction_id')
@@ -454,11 +453,11 @@ def TransactionsTableToChainsTable(transactions: Table,
 
     # Strip unnecessary columns.
     chains_table = (chains_table
-                    .cut('chain_id', 'account', 'underlying', 'status',
+                    .cut('chain_id', 'account', 'underlyings', 'status',
                          'mindate', 'maxdate', 'days',
                          'init', 'init_legs', 'pnl_chain', 'pnl_frac',
                          'net_liq', 'commissions', 'fees',
-                         'group', 'strategy', 'instruments'))
+                         'group', 'strategy'))
 
     return chains_table, itransactions
 

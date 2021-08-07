@@ -314,7 +314,7 @@ def chain_names():
     buf = io.StringIO()
     pr = functools.partial(print, file=buf)
     print(chains_table.lookallstr())
-    for rec in chains_table.sort('underlying').records():
+    for rec in chains_table.sort('underlyings').records():
         pr(rec.chain_id)
     response = flask.make_response(buf.getvalue(), 200)
     response.mimetype = "text/plain"
@@ -645,7 +645,7 @@ def get_date_chains(date: datetime.date) -> Tuple[Table, Table]:
               .cutout('k')
               .addfield('comment', get_comment)
               .convert('chain_id', partial(AddUrl, 'chain', 'chain_id'))
-              .cutout('account', 'instruments', 'init_legs', 'net_liq'))
+              .cutout('account', 'init_legs', 'net_liq'))
 
     # Calculate a sensible summary table. Note that we clear the adjusting and
     # opening P/L, as they are not relevant to the day's action.
@@ -703,14 +703,14 @@ def recap(date: str):
 def share():
     # Filter down the list of chains.
     chains = (FilterChains(STATE.chains)
-              .cut('underlying', 'mindate', 'days', 'init', 'pnl_chain'))
+              .cut('underlyings', 'mindate', 'days', 'init', 'pnl_chain'))
 
     # Add bottom line totals.
     totals = (chains
               .cut('init', 'pnl_chain')
               .aggregate(None, {'init': ('init', sum),
                                 'pnl_chain': ('pnl_chain', sum)})
-              .addfield('underlying', '__TOTAL__'))
+              .addfield('underlyings', '__TOTAL__'))
     chains = petl.cat(chains, totals)
 
     return flask.render_template(

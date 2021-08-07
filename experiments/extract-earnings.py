@@ -66,7 +66,7 @@ def main(config: Optional[str], output: Optional[str]):
         .selectlt('days', 5)
 
         # Remove unnecessary columns.
-        .cutout('account', 'instruments')
+        .cutout('account')
     )
     chains_map = (earnings_chains
                   .dictlookupone('chain_id'))
