@@ -250,15 +250,15 @@ def chain(chain_id: str):
             .selecteq('chain_id', chain_id))
     txns = instrument.Expand(txns, 'symbol')
 
-    # Calculate P/L from static deltas.
-    print(txns.selectin('instype', {'Equity', 'Future', 'Crypto'}).lookallstr())
-
-    # Split up static and dynamic deltas.
+    # Split up P/L from static and dynamic deltas.
     static, dynamic = (txns
                        .biselect(lambda r: r.instype in {'Equity', 'Future', 'Crypto'}))
     def agg_cost(table):
         agg_table = table.aggregate(None, {'cost': ('cost', sum)})
-        return next(iter(agg_table.values('cost'))).quantize(Q)
+        values = agg_table.values('cost')
+        if not values:
+            return ZERO
+        return next(iter(values)).quantize(Q)
     pnl_static = agg_cost(static)
     pnl_dynamic = agg_cost(dynamic)
 
