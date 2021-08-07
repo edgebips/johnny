@@ -29,7 +29,10 @@ def ParseInputFile(comments_filename: str,
     dicts = []
     with open(comments_filename) as infile:
         for row in csv.reader(infile):
-            linedict = {}
+            if set(row) == {None}:
+                continue
+            linedict = {name: None
+                        for name in ['symbol', 'chain_id', 'comment', 'group', 'strategy']}
             for comp in row:
                 comp = comp.strip()
                 if re.fullmatch("([A-Z]+|/[A-Z0-9]+)", comp):
@@ -38,22 +41,19 @@ def ParseInputFile(comments_filename: str,
                     linedict['group'] = comp
                 elif comp in strategies:
                     linedict['strategy'] = comp
+                elif re.fullmatch(r".*\.2\d{5}_\d{6}\..*$", comp):
+                    linedict['chain_id'] = comp
                 else:
                     linedict['comment'] = comp
-            if 'symbol' not in linedict:
-                logging.error(f"No symbol found on line {row}; skipping")
-                continue
             dicts.append(linedict)
     return (petl.fromdicts(dicts)
-            .sort('symbol'))
+            .sort(['chain_id', 'symbol']))
 
 
 @click.command()
 @click.argument('comments_filename', type=click.Path(exists=True))
 @click.option('--config', '-c', type=click.Path(exists=True),
               help="Configuration filename. Default to $JOHNNY_CONFIG")
-@click.option('--force/--no-force',
-              help="Overwrite comments if already set.")
 def main(comments_filename: str, config: Optional[str], force: bool=False):
     # Read chains DB.
     filename = configlib.GetConfigFilenameWithDefaults(config)
@@ -75,14 +75,30 @@ def main(comments_filename: str, config: Optional[str], force: bool=False):
                   .recordlookupone('underlying'))
 
     for crow in comments.records():
-        srow = last_chain.get(crow.symbol, None)
-        if srow is None:
+        # Get a chain id.
+        if crow.chain_id:
+            chain_id = crow.chain_id
+        elif crow.symbol:
+            srow = last_chain.get(crow.symbol, None)
+            if srow is None:
+                continue
+            chain_id = srow.chain_id
+        else:
+            logging.error(f"No symbol nor chain id for row {crow}")
             continue
-        chain = chains_map.get(srow.chain_id, None)
+
+        # Get the chain.
+        chain = chains_map.get(chain_id, None)
         if chain is None:
             continue
-        if force or not chain.comment:
+
+        # Set the comment and other features.
+        if crow.comment:
             chain.comment = crow.comment
+        if crow.group:
+            chain.group = crow.group
+        if crow.strategy:
+            chain.strategy = crow.strategy
 
     with open(config.output.chains_db, 'w') as outfile:
         outfile.write(configlib.ToText(chains_db))
