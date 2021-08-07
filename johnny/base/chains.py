@@ -384,6 +384,32 @@ def _GetChainAttribute(chain_map, attrname, rec: Record) -> Any:
     return getattr(chain, attrname)
 
 
+# Threshold under which successive trades are considered a single one. We look
+# for a gap at least this large in order to count distinct adjustments.
+MIN_TIME_GAP = datetime.timedelta(seconds=10 * 60)
+
+
+def _NumAdjustments(rec: Record) -> int:
+    """Compute the number of adjustments made to a chain, excluding the initial
+    opening and closing."""
+
+    exclude_ids = set(t.transaction_id for t in rec.init_txns)
+    last_time = datetime.datetime.fromtimestamp(0)
+    num_adjustments = 0
+    for txn in sorted(rec.txns, key=lambda t: t.datetime):
+        # Don't count opening transactions.
+        if txn.transaction_id in exclude_ids:
+            continue
+        # Look for a large enough time gap.
+        if txn.datetime - last_time > MIN_TIME_GAP:
+            num_adjustments += 1
+        last_time = txn.datetime
+
+    # Don't count closing transactions.
+    num_adjustments -= 1
+    return num_adjustments
+
+
 def TransactionsTableToChainsTable(transactions: Table,
                                    chains_db: configlib.Chains) -> Tuple[Table, Table]:
     """Aggregate a table of already identified transactions row (with a `chain_id` column)
@@ -431,6 +457,7 @@ def TransactionsTableToChainsTable(transactions: Table,
         .addfield('init', InitialCredits)
         .addfield('init_legs', lambda r: len(r.init_txns))
         .addfield('pnl_frac', lambda r: (r.pnl_chain / r.init).quantize(Q) if r.init else ZERO)
+        .addfield('adjust', _NumAdjustments)
 
         .addfield('days', lambda r: (r.maxdate - r.mindate).days + 1)
 
@@ -455,8 +482,8 @@ def TransactionsTableToChainsTable(transactions: Table,
     chains_table = (chains_table
                     .cut('chain_id', 'account', 'underlyings', 'status',
                          'mindate', 'maxdate', 'days',
-                         'init', 'init_legs', 'pnl_chain', 'pnl_frac',
-                         'net_liq', 'commissions', 'fees',
+                         'init', 'init_legs', 'adjust',
+                         'pnl_chain', 'pnl_frac', 'net_liq', 'commissions', 'fees',
                          'group', 'strategy'))
 
     return chains_table, itransactions
