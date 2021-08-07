@@ -3,7 +3,7 @@
 # Set JOHNNY_CONFIG in order for this to work.
 DOWNLOADS = $(HOME)/trading/downloads
 CHAINS = $(shell grep chains_db $(JOHNNY_CONFIG) | head -n1 | sed  -e 's/.*chains_db: "//;s/"//')
-CHAINS_NEW = $(CHAINS).new
+CHAINS_NEW = $(shell grep chains_db $(JOHNNY_CONFIG) | tail -n1 | sed  -e 's/.*chains_db: "//;s/"//')
 
 test:
 	python3 -m pytest -x johnny
@@ -31,7 +31,7 @@ config-gen:
 	johnny-import -q
 
 config-earnings:
-	./experiments/finalize-earnings.py -g Earnings > $(CHAINS_NEW)
+	./experiments/finalize-earnings.py -g Earnings
 
 config-diff diff:
 	-xxdiff -D -B $(CHAINS) $(CHAINS_NEW)
@@ -42,11 +42,11 @@ config-clobber clobber:
 config-commit commit:
 	hg commit $(CHAINS)
 
-accept-all:
-	./experiments/accept-all.py > $(CHAINS_NEW)
+final accept-all:
+	./experiments/accept-all.py
 
 accept-specific-chains:
-	cat | ./experiments/accept-chains.py -g Premium -s FINAL > $(CHAINS_NEW)
+	cat | ./experiments/accept-chains.py -g Premium -s FINAL
 
 # Proto generation rules.
 protos: johnny/base/config_pb2.py johnny/base/chains_pb2.py

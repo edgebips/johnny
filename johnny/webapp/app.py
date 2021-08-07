@@ -250,8 +250,19 @@ def chain(chain_id: str):
             .selecteq('chain_id', chain_id))
     txns = instrument.Expand(txns, 'symbol')
 
-    # TODO(blais): Isolate this to a function.
+    # Split up P/L from static and dynamic deltas.
+    static, dynamic = (txns
+                       .biselect(lambda r: r.instype in {'Equity', 'Future', 'Crypto'}))
+    def agg_cost(table):
+        agg_table = table.aggregate(None, {'cost': ('cost', sum)})
+        values = agg_table.values('cost')
+        if not values:
+            return ZERO
+        return next(iter(values)).quantize(Q)
+    pnl_static = agg_cost(static)
+    pnl_dynamic = agg_cost(dynamic)
 
+    # TODO(blais): Isolate this to a function.
     if 0:
         history_html = RenderHistorySVG(txns)
     else:
@@ -266,6 +277,8 @@ def chain(chain_id: str):
         transactions=ToHtmlString(txns, 'chain_transactions'),
         history=history_html,
         graph=flask.url_for('chain_graph', chain_id=chain_id),
+        pnl_static=pnl_static,
+        pnl_dynamic=pnl_dynamic,
         **GetNavigation())
 
 
@@ -301,7 +314,7 @@ def chain_names():
     buf = io.StringIO()
     pr = functools.partial(print, file=buf)
     print(chains_table.lookallstr())
-    for rec in chains_table.sort('underlying').records():
+    for rec in chains_table.sort('underlyings').records():
         pr(rec.chain_id)
     response = flask.make_response(buf.getvalue(), 200)
     response.mimetype = "text/plain"
@@ -632,7 +645,7 @@ def get_date_chains(date: datetime.date) -> Tuple[Table, Table]:
               .cutout('k')
               .addfield('comment', get_comment)
               .convert('chain_id', partial(AddUrl, 'chain', 'chain_id'))
-              .cutout('account', 'instruments', 'init_legs', 'net_liq'))
+              .cutout('account', 'init_legs', 'net_liq'))
 
     # Calculate a sensible summary table. Note that we clear the adjusting and
     # opening P/L, as they are not relevant to the day's action.
@@ -684,7 +697,6 @@ def recap(date: str):
         params['chains'] = ToHtmlString(chains, 'chains')
 
     return flask.render_template('recap.html', **params)
-
 
 
 

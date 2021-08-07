@@ -54,7 +54,8 @@ def main(config: Optional[str],
         # Apply the modifications.
         chainslib.AcceptChain(chain, group, status)
 
-    print(configlib.ToText(config))
+    with open(config.output.chains_db, 'w') as outfile:
+        outfile.write(configlib.ToText(chains_db))
 
 
 if __name__ == '__main__':

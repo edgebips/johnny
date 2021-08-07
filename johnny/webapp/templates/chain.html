@@ -24,6 +24,17 @@
   });
 
 </script>
+
+<style>
+  table#pnl_split {
+      border-collapse: collapse;
+  }
+  table#pnl_split td {
+      border: thin solid black;
+      padding: 0 0.5em 0 0.5em;
+  }
+</style>
+
 </head>
 
 <body>
@@ -38,6 +49,13 @@
 
 <div id="_chain_transactions">
 {{ transactions|safe }}
+</div>
+
+<div id="_chain_pnl_split">
+<table id="pnl_split">
+  <tr><td>Static P/L</td><td>{{pnl_static}}</td></tr>
+  <tr><td>Dynamic P/L</td><td>{{pnl_dynamic}}</td></tr>
+</table>
 </div>
 
 <div id="_chain_history">

@@ -21,7 +21,7 @@ __license__ = "GNU GPLv2"
 
 from functools import partial
 from decimal import Decimal
-from typing import Any, Iterator, List, Mapping, Optional, Tuple, Dict, Set
+from typing import Any, Iterator, List, Mapping, Optional, Tuple, Union, Dict, Set
 import functools
 import string
 import hashlib
@@ -206,6 +206,12 @@ def CreateGraph(transactions: Table,
     return graph
 
 
+def _GetExpiration(rec: Record) -> Union[datetime.date, str]:
+    """Get a unique expiration date or code for the instrument."""
+    return rec.expiration or rec.expcode
+
+
+
 def _LinkByOverlapping(transactions: Table) -> List[Tuple[str, str]]:
     """Return pairs of linked matches, linking all transactions where either of (a)
     an outright position exists in that underlying and/or (b) a common
@@ -252,19 +258,20 @@ def _LinkByOverlapping(transactions: Table) -> List[Tuple[str, str]]:
         # thereof). (Note that undermap is mutating if the key is new.) Also
         # note that in order to open separate positions in the same terms, we
         # need to insert a unique id.
-        isnew = rec.expiration not in undermap
+        expiration = _GetExpiration(rec)
+        isnew = expiration not in undermap
         term_id = "{}/{}/{}/{}".format(rec.account, rec.underlying,
-                                       rec.expiration, next(idgen))
-        term = undermap.get(rec.expiration, None)
+                                       expiration, next(idgen))
+        term = undermap.get(expiration, None)
         if term is None:
-            term = undermap[rec.expiration] = Term(term_id)
+            term = undermap[expiration] = Term(term_id)
 
         if isnew:
-            if rec.expiration is None:
+            if expiration is None:
                 # This is an underlying, not an option on one.
                 # Link it to all the currently active expirations.
-                for expiration, expterm in undermap.items():
-                    if expiration is None:
+                for uexpiration, expterm in undermap.items():
+                    if uexpiration is None:
                         continue
                     links.append((term.id, expterm.id))
             else:
@@ -280,7 +287,7 @@ def _LinkByOverlapping(transactions: Table) -> List[Tuple[str, str]]:
         if term.quantities[rec.symbol] == ZERO:
             del term.quantities[rec.symbol]
         if not term.quantities:
-            del undermap[rec.expiration]
+            del undermap[expiration]
 
     # Sanity check. All positions should have been closed (`Mark` rows close
     # outstanding positions) and the resulting inventory should be completely
@@ -363,7 +370,7 @@ def _CalculateNetLiq(pairs: Iterator[Tuple[str, Decimal]]):
                        if rowtype == 'Mark'))
 
 
-def _GetInstruments(symbols: Iterator[str]) -> List[str]:
+def _GetUnderlyings(symbols: Iterator[str]) -> List[str]:
     return ",".join(sorted(set(instrument.FromString(symbol).underlying
                                for symbol in symbols)))
 
@@ -375,6 +382,32 @@ def _GetChainAttribute(chain_map, attrname, rec: Record) -> Any:
         logging.warning(f"Could not get chain '{rec.chain_id}' for attribute '{attrname}'")
         return None
     return getattr(chain, attrname)
+
+
+# Threshold under which successive trades are considered a single one. We look
+# for a gap at least this large in order to count distinct adjustments.
+MIN_TIME_GAP = datetime.timedelta(seconds=10 * 60)
+
+
+def _NumAdjustments(rec: Record) -> int:
+    """Compute the number of adjustments made to a chain, excluding the initial
+    opening and closing."""
+
+    exclude_ids = set(t.transaction_id for t in rec.init_txns)
+    last_time = datetime.datetime.fromtimestamp(0)
+    num_adjustments = 0
+    for txn in sorted(rec.txns, key=lambda t: t.datetime):
+        # Don't count opening transactions.
+        if txn.transaction_id in exclude_ids:
+            continue
+        # Look for a large enough time gap.
+        if txn.datetime - last_time > MIN_TIME_GAP:
+            num_adjustments += 1
+        last_time = txn.datetime
+
+    # Don't count closing transactions.
+    num_adjustments -= 1
+    return num_adjustments
 
 
 def TransactionsTableToChainsTable(transactions: Table,
@@ -398,12 +431,11 @@ def TransactionsTableToChainsTable(transactions: Table,
         'account': ('account', first),
         'mindate': ('datetime', lambda g: min(g).date()),
         'maxdate': ('datetime', lambda g: max(g).date()),
-        'underlying': ('underlying', first),
+        'underlyings': ('symbol', _GetUnderlyings),
         'pnl_chain': ('cost', lambda vlist: sum(vlist).quantize(Q)),
         'net_liq': (('rowtype', 'cost'), _CalculateNetLiq),
         'commissions': ('commissions', sum),
         'fees': ('fees', sum),
-        'instruments': ('symbol', _GetInstruments),
     }
 
     transaction_map = transactions.recordlookupone('transaction_id')
@@ -425,6 +457,7 @@ def TransactionsTableToChainsTable(transactions: Table,
         .addfield('init', InitialCredits)
         .addfield('init_legs', lambda r: len(r.init_txns))
         .addfield('pnl_frac', lambda r: (r.pnl_chain / r.init).quantize(Q) if r.init else ZERO)
+        .addfield('adjust', _NumAdjustments)
 
         .addfield('days', lambda r: (r.maxdate - r.mindate).days + 1)
 
@@ -447,11 +480,11 @@ def TransactionsTableToChainsTable(transactions: Table,
 
     # Strip unnecessary columns.
     chains_table = (chains_table
-                    .cut('chain_id', 'account', 'underlying', 'status',
+                    .cut('chain_id', 'account', 'underlyings', 'status',
                          'mindate', 'maxdate', 'days',
-                         'init', 'init_legs', 'pnl_chain', 'pnl_frac',
-                         'net_liq', 'commissions', 'fees',
-                         'group', 'strategy', 'instruments'))
+                         'init', 'init_legs', 'adjust',
+                         'pnl_chain', 'pnl_frac', 'net_liq', 'commissions', 'fees',
+                         'group', 'strategy'))
 
     return chains_table, itransactions
 

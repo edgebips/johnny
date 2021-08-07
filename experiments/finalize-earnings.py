@@ -66,7 +66,8 @@ def main(config: Optional[str], group: str, date: datetime.date):
     for chain_id in sorted(finalized, key=lambda s: re.search('.*\.([A-Z0-9.]+)$', s).group(1)):
         print(chain_id, file=sys.stderr)
 
-    print(configlib.ToText(config))
+    with open(config.output.chains_db, 'w') as outfile:
+        outfile.write(configlib.ToText(chains_db))
 
 
 if __name__ == '__main__':
