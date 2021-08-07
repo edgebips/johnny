@@ -635,6 +635,12 @@ def get_date_chains(date: datetime.date) -> Tuple[Table, Table]:
             logging.error(f"Missing chain {r.chain_id}")
         return chain.comment if chain else ''
 
+    # Filter commissions & fees per day.
+    commfees = (STATE.transactions
+                .select(lambda r: r.datetime.date() == date)
+                .aggregate('chain_id', {'commissions': ('commissions', sum),
+                                        'fees': ('fees', sum)}))
+
     # Process the chains.
     chains = (STATE.chains
               .select(lambda r: r.mindate <= date <= r.maxdate)
@@ -644,15 +650,16 @@ def get_date_chains(date: datetime.date) -> Tuple[Table, Table]:
               .sort(['k', 'chain_id'])
               .cutout('k')
               .addfield('comment', get_comment)
-              .convert('chain_id', partial(AddUrl, 'chain', 'chain_id'))
-              .cutout('account', 'init_legs', 'net_liq'))
+              .leftjoin(commfees, key='chain_id', rprefix='day_')
+              .cutout('account', 'init_legs', 'net_liq', 'commissions', 'fees')
+              .convert('chain_id', partial(AddUrl, 'chain', 'chain_id')))
 
     # Calculate a sensible summary table. Note that we clear the adjusting and
     # opening P/L, as they are not relevant to the day's action.
     agg = {
         'pnl_chain': ('pnl_chain', sum),
-        'commissions': ('commissions', sum),
-        'fees': ('fees', sum),
+        'day_commissions': ('day_commissions', sum),
+        'day_fees': ('day_fees', sum),
     }
 
     def convert_agg_pnl(value, r: Record) -> str:
