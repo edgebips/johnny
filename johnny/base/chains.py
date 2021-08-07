@@ -21,7 +21,7 @@ __license__ = "GNU GPLv2"
 
 from functools import partial
 from decimal import Decimal
-from typing import Any, Iterator, List, Mapping, Optional, Tuple, Dict, Set
+from typing import Any, Iterator, List, Mapping, Optional, Tuple, Union, Dict, Set
 import functools
 import string
 import hashlib
@@ -206,6 +206,12 @@ def CreateGraph(transactions: Table,
     return graph
 
 
+def _GetExpiration(rec: Record) -> Union[datetime.date, str]:
+    """Get a unique expiration date or code for the instrument."""
+    return rec.expiration or rec.expcode
+
+
+
 def _LinkByOverlapping(transactions: Table) -> List[Tuple[str, str]]:
     """Return pairs of linked matches, linking all transactions where either of (a)
     an outright position exists in that underlying and/or (b) a common
@@ -252,19 +258,20 @@ def _LinkByOverlapping(transactions: Table) -> List[Tuple[str, str]]:
         # thereof). (Note that undermap is mutating if the key is new.) Also
         # note that in order to open separate positions in the same terms, we
         # need to insert a unique id.
-        isnew = rec.expiration not in undermap
+        expiration = _GetExpiration(rec)
+        isnew = expiration not in undermap
         term_id = "{}/{}/{}/{}".format(rec.account, rec.underlying,
-                                       rec.expiration, next(idgen))
-        term = undermap.get(rec.expiration, None)
+                                       expiration, next(idgen))
+        term = undermap.get(expiration, None)
         if term is None:
-            term = undermap[rec.expiration] = Term(term_id)
+            term = undermap[expiration] = Term(term_id)
 
         if isnew:
-            if rec.expiration is None:
+            if expiration is None:
                 # This is an underlying, not an option on one.
                 # Link it to all the currently active expirations.
-                for expiration, expterm in undermap.items():
-                    if expiration is None:
+                for uexpiration, expterm in undermap.items():
+                    if uexpiration is None:
                         continue
                     links.append((term.id, expterm.id))
             else:
@@ -280,7 +287,7 @@ def _LinkByOverlapping(transactions: Table) -> List[Tuple[str, str]]:
         if term.quantities[rec.symbol] == ZERO:
             del term.quantities[rec.symbol]
         if not term.quantities:
-            del undermap[rec.expiration]
+            del undermap[expiration]
 
     # Sanity check. All positions should have been closed (`Mark` rows close
     # outstanding positions) and the resulting inventory should be completely
