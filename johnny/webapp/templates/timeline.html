@@ -1,44 +1,21 @@
 <!doctype html>
 <html>
 
+<title>Timeline</title>
 {% include 'head.html' %}
-
-  <!-- Import Vega & Vega-Lite -->
-  <script src="https://cdn.jsdelivr.net/npm/vega@5"></script>
-  <script src="https://cdn.jsdelivr.net/npm/vega-lite@4"></script>
-  <!-- Import vega-embed -->
-  <script src="https://cdn.jsdelivr.net/npm/vega-embed@6"></script>
 
 <head>
 <style>
 
-div#vis {
-    width: 90%;
-    /* height: 800px; */
-    /* border: thin solid red; */
-}
 
 </style>
-
-
-<script type="text/javascript">
-
- $(document).ready(function() {
-
-      vegaEmbed('#vis', "./timeline.json").then(function(result) {}).catch(console.error);
-
-  });
-
-
-</script>
 </head>
 
 <body>
 {% include 'navigation.html' %}
 <h1>Timeline</h1>
 
-<div id="vis"></div>
-
+<img src="{{ timeline_png }}"></img>
 
 </body>
 </html>

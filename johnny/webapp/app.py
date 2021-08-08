@@ -21,6 +21,8 @@ import logging
 import dateutil.parser
 import numpy as np
 import networkx as nx
+import seaborn as sns
+sns.set()
 from matplotlib import pyplot
 import matplotlib
 matplotlib.use('Agg')
@@ -189,7 +191,6 @@ def RatioDistribution(num, denom, threshold=1000):
     return num/denom * 100
 
 
-# TODO(blais): Convert to Plotly.
 def RenderHistogram(data: np.array, title: str) -> bytes:
     fig, ax = pyplot.subplots()
     ax.set_title(title)
@@ -700,142 +701,55 @@ def recap(date: str):
     return flask.render_template('recap.html', **params)
 
 
-
-# import altair as alt
-# from vega_datasets import data
-
-
-
 @app.route('/timeline')
 def timeline():
-    return flask.render_template('timeline.html')
-
-    # source = data.stocks()
-    # alt.Chart(source).mark_line().encode(
-    #     x='date',
-    #     y='price',
-    #     color='symbol',
-    #     strokeDash='symbol',
-    # )
+    return flask.render_template(
+        'timeline.html',
+        timeline_png=flask.url_for('timeline_png'),
+        **GetNavigation())
 
 
-##  "autosize": {"type": "pad", "resize": true, "contains": "padding"},
+@app.route('/timeline.png')
+def timeline_png():
+    chains = STATE.chains
+
+    if 0:
+        # Remove beginning.
+        start_date = datetime.date(2021, 4, 1)
+        chains = chains.selectge('maxdate', start_date)
+
+    if 0:
+        # Remove dumb mistakes.
+        chains = (chains
+                  .selectnotin('chain_id', {'x96.210405_120918.LEQ21.HEQ21',
+                                            'x18.210528_102003.AMC',
+                                            'x96.210602_125419.AMC'}))
+
+    if 1:
+        # Remove groups not interested in.
+        data = (chains
+                .selectnotin('group', {'Error', 'Experiments', 'Synthetic'}))
 
 
-@app.route('/timeline.json')
-def timeline_json():
+    data = (chains
+            .convert('pnl_chain', float)
+            .cut('maxdate', 'pnl_chain'))
+    pivot = (chains
+             .selectnotin('group', {'Error', 'Experiments', 'Synthetic'})
+             .convert('pnl_chain', float)
+             .pivot('maxdate', 'group', 'pnl_chain', sum)
+             .replaceall(None, 0))
 
-    spec = """\
-{
-  "$schema": "https://vega.github.io/schema/vega/v5.json",
+    df_data = data.todataframe().set_index('maxdate').cumsum()
+    df_pivot = pivot.todataframe().set_index('maxdate').cumsum()
 
-  "width": 1600,
-  "height": 400,
-  "padding": 5,
-
-  "data": [
-    {
-      "name": "table",
-      "values": [
-        {"category": "A", "amount": 28},
-        {"category": "B", "amount": 55},
-        {"category": "C", "amount": 43},
-        {"category": "D", "amount": 91},
-        {"category": "E", "amount": 81},
-        {"category": "F", "amount": 53},
-        {"category": "G", "amount": 19},
-        {"category": "H", "amount": 87}
-      ]
-    }
-  ],
-
-  "signals": [
-    {
-      "name": "tooltip",
-      "value": {},
-      "on": [
-        {"events": "rect:mouseover", "update": "datum"},
-        {"events": "rect:mouseout",  "update": "{}"}
-      ]
-    }
-  ],
-
-  "scales": [
-    {
-      "name": "xscale",
-      "type": "band",
-      "domain": {"data": "table", "field": "category"},
-      "range": "width",
-      "padding": 0.05,
-      "round": true
-    },
-    {
-      "name": "yscale",
-      "domain": {"data": "table", "field": "amount"},
-      "nice": true,
-      "range": "height"
-    }
-  ],
-
-  "axes": [
-    { "orient": "bottom", "scale": "xscale" },
-    { "orient": "left", "scale": "yscale" }
-  ],
-
-  "marks": [
-    {
-      "type": "rect",
-      "from": {"data":"table"},
-      "encode": {
-        "enter": {
-          "x": {"scale": "xscale", "field": "category"},
-          "width": {"scale": "xscale", "band": 1},
-          "y": {"scale": "yscale", "field": "amount"},
-          "y2": {"scale": "yscale", "value": 0}
-        },
-        "update": {
-          "fill": {"value": "steelblue"}
-        },
-        "hover": {
-          "fill": {"value": "red"}
-        }
-      }
-    },
-    {
-      "type": "text",
-      "encode": {
-        "enter": {
-          "align": {"value": "center"},
-          "baseline": {"value": "bottom"},
-          "fill": {"value": "#333"}
-        },
-        "update": {
-          "x": {"scale": "xscale", "signal": "tooltip.category", "band": 0.5},
-          "y": {"scale": "yscale", "signal": "tooltip.amount", "offset": -2},
-          "text": {"signal": "tooltip.amount"},
-          "fillOpacity": [
-            {"test": "isNaN(tooltip.amount)", "value": 0},
-            {"value": 1}
-          ]
-        }
-      }
-    }
-  ]
-}
-    """
-
-    return flask.Response(spec, mimetype='application/json')
-
-
-
-#     return flask.render_template(
-#         'positions.html',
-#         #table=ToHtmlString(STATE.positions, 'positions'),
-#         **GetNavigation())
-
-
-
-
+    fig, ax = pyplot.subplots()
+    pyplot.tight_layout()
+    df_data.plot(ax=ax, figsize=(24, 12), linewidth=3)
+    df_pivot.plot(ax=ax, figsize=(24, 8))
+    buf = io.BytesIO()
+    FigureCanvas(fig).print_png(buf)
+    return flask.Response(buf.getvalue(), mimetype='image/png')
 
 
 # Trigger the initialization on load (before even the first request).
