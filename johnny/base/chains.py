@@ -43,6 +43,8 @@ from johnny.base import mark
 from johnny.base.etl import AssertColumns, Record, Table
 from johnny.utils import timing
 ChainStatus = configlib.ChainStatus
+Chain = configlib.Chain
+Chains = configlib.Chains
 
 
 ZERO = Decimal(0)
@@ -50,7 +52,7 @@ Q = Decimal('0.01')
 
 
 def ChainTransactions(matched_transactions: Table,
-                      chains_db: configlib.Chains) -> Tuple[Table, configlib.Chains]:
+                      chains_db: Chains) -> Tuple[Table, Chains]:
     """Cluster the transactions and return a new table, with added 'chain_id' and an
     update chains configuration on a config object."""
 
@@ -75,7 +77,7 @@ def ChainTransactions(matched_transactions: Table,
 
 
 def Group(transactions: Table,
-          chains: List[configlib.Chain],
+          chains: List[Chain],
           by_match=True,
           by_order=True,
           by_time=True) -> Table:
@@ -145,7 +147,7 @@ def Group(transactions: Table,
 
 
 def CreateGraph(transactions: Table,
-                chains: List[configlib.Chain],
+                chains: List[Chain],
                 by_match=True,
                 by_order=True,
                 by_time=True,
@@ -367,7 +369,7 @@ def InitialCredits(rec: Record) -> Decimal:
 def _CalculateNetLiq(pairs: Iterator[Tuple[str, Decimal]]):
     return Decimal(sum(cost
                        for rowtype, cost in pairs
-                       if rowtype == 'Mark'))
+                       if rowtype == 'Mark')).quantize(Q)
 
 
 def _GetUnderlyings(symbols: Iterator[str]) -> List[str]:
@@ -375,13 +377,41 @@ def _GetUnderlyings(symbols: Iterator[str]) -> List[str]:
                                for symbol in symbols)))
 
 
-def _GetChainAttribute(chain_map, attrname, rec: Record) -> Any:
-    """Get a chain attribute."""
+def _GetChain(chain_map, rec: Record) -> Chain:
+    """Get the chain from the id."""
     chain = chain_map.get(rec.chain_id, None)
     if chain is None:
-        logging.warning(f"Could not get chain '{rec.chain_id}' for attribute '{attrname}'")
+        logging.warning(f"Could not get chain '{rec.chain_id}'")
         return None
-    return getattr(chain, attrname)
+    return chain
+
+
+def _GetChainAttribute(attrname: str, rec: Record) -> Any:
+    """Get the chain from the id."""
+    return None if rec.chain is None else getattr(rec.chain, attrname)
+
+
+DEFAULT_POP50 = 0.80
+DEFAULT_TARGET_FRAC = 0.50
+
+Probabilities = collections.namedtuple('Probabilities',
+                                       ['pop', 'target', 'pnl_win', 'pnl_loss'])
+
+def _CalculateProbabilities(rec: Record) -> Optional[Decimal]:
+    """Pull the explicit win target or compute it using simple Kelly criterion."""
+    chain = rec.chain
+    if chain is None:
+        return None, None
+    pop = chain.pop or DEFAULT_POP50
+    assert 0 < pop < 1
+    target_frac = chain.target or DEFAULT_TARGET_FRAC
+    assert 0 < target_frac
+    pnl_win = abs(float(rec.init)) * target_frac
+    pnl_loss = pnl_win * (pop / (1 - pop))
+    return Probabilities(Decimal(pop).quantize(Q),
+                         Decimal(target_frac).quantize(Q),
+                         Decimal(pnl_win).quantize(Q),
+                         Decimal(-pnl_loss).quantize(Q))
 
 
 # Threshold under which successive trades are considered a single one. We look
@@ -410,8 +440,14 @@ def _NumAdjustments(rec: Record) -> int:
     return num_adjustments
 
 
+def _CalculatePnlFrac(r: Record) -> Decimal:
+    """Calculate the P/L fraction."""
+    denom = r.pnl_win if r.pnl_chain * r.pnl_win > 0 else -r.pnl_loss
+    return (r.pnl_chain / denom).quantize(Q) if denom else ZERO
+
+
 def TransactionsTableToChainsTable(transactions: Table,
-                                   chains_db: configlib.Chains) -> Tuple[Table, Table]:
+                                   chains_db: Chains) -> Tuple[Table, Table]:
     """Aggregate a table of already identified transactions row (with a `chain_id` column)
     to a table of aggregated chains. The `config` object is used to join attributes in the
     table.
@@ -456,15 +492,29 @@ def TransactionsTableToChainsTable(transactions: Table,
         # Add calculations off the initial position records.
         .addfield('init', InitialCredits)
         .addfield('init_legs', lambda r: len(r.init_txns))
-        .addfield('pnl_frac', lambda r: (r.pnl_chain / r.init).quantize(Q) if r.init else ZERO)
         .addfield('adjust', _NumAdjustments)
 
         .addfield('days', lambda r: (r.maxdate - r.mindate).days + 1)
 
-        .addfield('status', partial(_GetChainAttribute, chain_map, 'status'))
+        # Chain attributes.
+        .addfield('chain', partial(_GetChain, chain_map))
+        .addfield('status', partial(_GetChainAttribute, 'status'))
         .convert('status', lambda e: ChainStatus.Name(e) if e is not None else 'NoStatus')
-        .addfield('group', partial(_GetChainAttribute, chain_map, 'group'))
-        .addfield('strategy', partial(_GetChainAttribute, chain_map, 'strategy'))
+        .addfield('group', partial(_GetChainAttribute, 'group'))
+        .addfield('strategy', partial(_GetChainAttribute, 'strategy'))
+
+        # Probability & targets.
+        .addfield('prob', _CalculateProbabilities)
+        .addfield('pop', lambda r: r.prob and r.prob.pop)
+        .addfield('target', lambda r: r.prob and r.prob.target)
+        .addfield('pnl_win', lambda r: r.prob and r.prob.pnl_win)
+        .addfield('pnl_loss', lambda r: r.prob and r.prob.pnl_loss)
+        .addfield('pnl_frac', _CalculatePnlFrac)
+
+        # Calculate net liq win/loss equivalent to match on the platform.
+        .addfield('net_win', lambda r: r.net_liq + (r.pnl_win - r.pnl_chain))
+        .addfield('net_loss', lambda r: r.net_liq + (r.pnl_loss - r.pnl_chain))
+        .cutout('prob', 'chain')
 
         # Mark missing groups with a string that can be filtered on.
         .convert('group', lambda v: v or 'NoGroup')
@@ -483,18 +533,21 @@ def TransactionsTableToChainsTable(transactions: Table,
                     .cut('chain_id', 'account', 'underlyings', 'status',
                          'mindate', 'maxdate', 'days',
                          'init', 'init_legs', 'adjust',
-                         'pnl_chain', 'pnl_frac', 'net_liq', 'commissions', 'fees',
+                         'pnl_win', 'pnl_chain', 'pnl_loss', 'pnl_frac',
+                         'target', 'pop',
+                         'net_win', 'net_liq', 'net_loss',
+                         'commissions', 'fees',
                          'group', 'strategy'))
 
     return chains_table, itransactions
 
 
 def ScrubConfig(transactions: Table,
-                chains_db: configlib.Chains) -> configlib.Chains:
+                chains_db: Chains) -> Chains:
     """Update and clean configuration from the processed transactions table."""
 
     # Create a new result configuration object.
-    new_chains_db = configlib.Chains()
+    new_chains_db = Chains()
     new_chains_db.CopyFrom(chains_db)
 
     # If a chain is in FINAL state, automatically promote all of its `auto_ids`
@@ -518,7 +571,7 @@ def ScrubConfig(transactions: Table,
 
 
 def UpdateConfig(transactions: Table,
-                 chains_db: configlib.Chains) -> configlib.Chains:
+                 chains_db: Chains) -> Chains:
     """Insert new transaction ids from updated transactions and update the status of
     all the non-finalized chains. This assumes a transactions Table with freshly
     clustered chain ids.
@@ -527,7 +580,7 @@ def UpdateConfig(transactions: Table,
     # Create a new result configuration object. Note that we copy them in the
     # same order as in the input filein order to be able to diff the output with
     # the # original file while minimizing the text differences.
-    new_chains_db = configlib.Chains()
+    new_chains_db = Chains()
     new_chains_db.CopyFrom(chains_db)
 
     # Gather the set of already existing ids.
@@ -579,7 +632,7 @@ def UpdateConfig(transactions: Table,
 
 def InferStatus(referenced_chain_ids: Set[str],
                 active_chain_ids: Set[str],
-                chains_db: configlib.Chains):
+                chains_db: Chains):
     """Update (mutate) `status` on chains, from transactions."""
 
     # Infer the status of non-finalized chains.
@@ -607,7 +660,7 @@ def InferStatus(referenced_chain_ids: Set[str],
                         else ChainStatus.CLOSED)
 
 
-def InferStrategy(transactions_map: Dict[str, Record], chains_db: configlib.Chains):
+def InferStrategy(transactions_map: Dict[str, Record], chains_db: Chains):
     """Update (mutate) `strategy` on chains, inferring where missing."""
 
     for chain in chains_db.chains:
@@ -635,7 +688,7 @@ def InferStrategy(transactions_map: Dict[str, Record], chains_db: configlib.Chai
                             f"http://localhost:5000/chain/{chain.chain_id} : {signature}")
 
 
-def AcceptChain(chain: configlib.Chain,
+def AcceptChain(chain: Chain,
                 group: Optional[str]=None,
                 status: Optional[int]=ChainStatus.FINAL):
     """Mutate the chain to bake the ids and modify some of its attributes."""

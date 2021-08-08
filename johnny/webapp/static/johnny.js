@@ -11,7 +11,9 @@ function CreateChainsTable(id, extra_config) {
         fixedHeader: true,
         colReorder: true,
         columnDefs: [
-            {targets: ['init', 'pnl_chain', 'net_liq', 'commissions', 'fees'],
+            {targets: ['init', 'pnl_chain', 'pnl_win', 'pnl_loss',
+                       'pnl_frac', 'target', 'pop',
+                       'net_liq', 'commissions', 'fees'],
              className: 'dt-body-right'},
         ],
 
@@ -27,7 +29,12 @@ function CreateChainsTable(id, extra_config) {
     var table = $(id).DataTable(config);
 
     // Emphasize some columns of the table.
-    $(table.column(':contains(pnl_chain)').nodes()).addClass('emph-column');
+    $(table.column(':contains(pnl_win)').nodes()).addClass('win-column');
+    $(table.column(':contains(pnl_chain)').nodes()).addClass('pnl-column');
+    $(table.column(':contains(pnl_loss)').nodes()).addClass('loss-column');
+    $(table.column(':contains(net_win)').nodes()).addClass('win-column');
+    $(table.column(':contains(net_liq)').nodes()).addClass('pnl-column');
+    $(table.column(':contains(net_loss)').nodes()).addClass('loss-column');
 
     table.on('select.dt', function () {
         UpdateFooter(table);
@@ -71,6 +78,8 @@ function UpdateFooter(table) {
         init: SumFloat,
         init_legs: SumInteger,
         pnl_chain: SumFloat,
+        pnl_win: SumFloat,
+        pnl_loss: SumFloat,
         net_liq: SumFloat,
         commissions: SumFloat,
         fees: SumFloat,
