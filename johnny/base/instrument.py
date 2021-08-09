@@ -146,11 +146,16 @@ def ToString(inst: Instrument) -> str:
     instype = inst.instype
     if instype == 'FutureOption':
         # Note: For options on futures, the correct expiration date isn't always
-        # available (e.g. from TOS). We ignore it for that reason, the date is
-        # implicit in the option code. It's not very precise, but better to be
-        # consistent.
+        # available (e.g. from TOS). We use it when it's available; ignore it
+        # otherwise for that reason, the date is implicit in the option code.
+        # Since the expiration date gets reduced and encoded into the symbol
+        # name, this means that for platforms that do not provide the expiration
+        # date (e.g. TOS), we may not be able to run some algorithms. One must
+        # always assume that the 'expiration' is not present (in which case the
+        # 'expcode' will always be).
+        expiration_str = inst.expiration.strftime('%y%m%d') if inst.expiration else inst.expcode
         return "{}_{}_{}{}".format(
-            inst.underlying, inst.expcode, inst.putcall, inst.strike)
+            inst.underlying, expiration_str, inst.putcall, inst.strike)
 
     elif instype == 'Future':
         return inst.underlying

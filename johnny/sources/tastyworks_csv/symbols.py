@@ -106,7 +106,7 @@ def _ParseFuturesOptionSymbol(symbol: str) -> Instrument:
         raise ValueError("Could not match future option: {}".format(symbol))
 
     expistr = match.group(1)
-    expiration = datetime.date(int(expistr[0:2]), int(expistr[2:4]), int(expistr[4:6]))
+    expiration = datetime.date(2000 + int(expistr[0:2]), int(expistr[2:4]), int(expistr[4:6]))
     putcall = match.group(2)
     strike = Decimal(match.group(3))
 
