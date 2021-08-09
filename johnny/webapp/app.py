@@ -153,6 +153,7 @@ def GetNavigation() -> Dict[str, str]:
     """Get navigation bar."""
     return {
         'page_active': flask.url_for('active'),
+        'page_expiring': flask.url_for('expiring'),
         'page_recap': flask.url_for('recap_today'),
         'page_chains': flask.url_for('chains'),
         'page_transactions': flask.url_for('transactions'),
@@ -212,11 +213,7 @@ def favicon():
     return flask.redirect(flask.url_for('static', filename='favicon.ico'))
 
 
-def render_chains(status: set[str]):
-    chains = STATE.chains
-    if status:
-        chains = (STATE.chains
-                  .selectin('status', status))
+def render_chains(chains: Table) -> flask.Response:
     ids = chains.values('chain_id')
     chains = (chains
               .convert('chain_id', partial(AddUrl, 'chain', 'chain_id')))
@@ -228,12 +225,30 @@ def render_chains(status: set[str]):
 
 @app.route('/active')
 def active():
-    return render_chains({'ACTIVE'})
+    return render_chains(STATE.chains
+                         .selectin('status', {'ACTIVE'}))
+
+
+@app.route('/expiring')
+def expiring():
+    days = int(flask.request.args.get('days', 20))
+    today = datetime.date.today()
+    min_dte = (STATE.transactions
+               .selecteq('rowtype', 'Mark')
+               .applyfn(instrument.Expand, 'symbol')
+               .selecttrue('expiration')
+               .addfield('dte', lambda r: (r.expiration - today).days)
+               .selectle('dte', days)
+               .applyfn(instrument.Shrink)
+               .aggregate('chain_id', {'min_dte': ('dte', min)}))
+    return render_chains(STATE.chains
+                         .join(min_dte, 'chain_id')
+                         .movefield('min_dte', 1))
 
 
 @app.route('/chains')
 def chains():
-    return render_chains(None)
+    return render_chains(STATE.chains)
 
 
 @app.route('/chain/<chain_id>')
