@@ -277,6 +277,7 @@ def chain(chain_id: str):
         transactions=ToHtmlString(txns, 'chain_transactions'),
         history=history_html,
         graph=flask.url_for('chain_graph', chain_id=chain_id),
+        xrefs=chain_obj.xrefs,
         pnl_static=pnl_static,
         pnl_dynamic=pnl_dynamic,
         **GetNavigation())
