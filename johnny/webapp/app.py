@@ -97,7 +97,11 @@ def Initialize():
             #price_map = mark.GetPriceMap(transactions, config)
             #transactions = mark.Mark(transactions, price_map)
 
-            chains_db = configlib.ReadChains(config.input.chains_db)
+            # Note: You have to use the output chains (as opposed to the input
+            # chain), because they have to match the imported table of data.
+            # Otherwise, brand new trades wouldn't show a corresponding chain
+            # object.
+            chains_db = configlib.ReadChains(config.output.chains_db)
             chains_map = {c.chain_id: c for c in chains_db.chains}
 
             ignore_groups = set(config.presentation.ignore_groups)
@@ -205,7 +209,7 @@ def RenderHistogram(data: np.array, title: str) -> bytes:
 
 @app.route('/')
 def home():
-    return flask.redirect(flask.url_for('chains'))
+    return flask.redirect(flask.url_for('active'))
 
 
 @app.route('/favicon.ico')
@@ -666,7 +670,9 @@ def get_date_chains(date: datetime.date) -> Tuple[Table, Table]:
               .cutout('k')
               .addfield('comment', get_comment)
               .leftjoin(commfees, key='chain_id', rprefix='day_')
-              .cutout('account', 'init_legs', 'net_liq', 'commissions', 'fees')
+              .cutout('account', 'init_legs',
+                      'net_liq', 'net_win', 'net_loss',
+                      'commissions', 'fees')
               .convert('chain_id', partial(AddUrl, 'chain', 'chain_id')))
 
     # Calculate a sensible summary table. Note that we clear the adjusting and
