@@ -181,17 +181,23 @@ def GetContractName(symbol: str) -> str:
         return underlying
 
 
-def Expand(table: Table, fieldname: str) -> Table:
+def ExpandInstrument(table: Table) -> Table:
     """Expand the symbol name into its component fields."""
     return (table
-            .addfield('_instrument', lambda r: FromString(getattr(r, fieldname)))
             .addfield('instype', lambda r: r._instrument.instype)
             .addfield('underlying', lambda r: r._instrument.underlying)
             .addfield('expiration', lambda r: r._instrument.expiration)
             .addfield('expcode', lambda r: r._instrument.expcode)
             .addfield('putcall', lambda r: r._instrument.putcall)
             .addfield('strike', lambda r: r._instrument.strike)
-            .addfield('multiplier', lambda r: r._instrument.multiplier)
+            .addfield('multiplier', lambda r: r._instrument.multiplier))
+
+
+def Expand(table: Table, fieldname: str) -> Table:
+    """Expand the symbol name into its component fields."""
+    return (table
+            .addfield('_instrument', lambda r: FromString(getattr(r, fieldname)))
+            .applyfn(ExpandInstrument)
             .cutout('_instrument'))
 
 
