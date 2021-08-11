@@ -200,7 +200,7 @@ def RenderHistogram(data: np.array, title: str) -> bytes:
     fig, ax = pyplot.subplots(figsize=(6,3))
     fig.tight_layout()
     ax.set_title(title)
-    ax.hist(data, bins='fd', edgecolor='black', linewidth=0.5)
+    ax.hist(data, bins='auto', edgecolor='black', linewidth=0.5)
     buf = io.BytesIO()
     FigureCanvas(fig).print_png(buf)
     return buf.getvalue()
@@ -738,6 +738,7 @@ def timeline():
         'timeline.html',
         timeline_group_png=flask.url_for('timeline_group_png'),
         timeline_strategy_png=flask.url_for('timeline_strategy_png'),
+        timeline_account_png=flask.url_for('timeline_account_png'),
         **GetNavigation())
 
 
@@ -772,7 +773,7 @@ def get_timeline_chains():
 
     return (chains
             .convert('pnl_chain', float)
-            .cut('maxdate', 'group', 'strategy', 'pnl_chain'))
+            .cut('maxdate', 'account', 'group', 'strategy', 'pnl_chain'))
 
 
 def plot_timeline(chains: Table, fieldname: str) -> flask.Response:
@@ -780,7 +781,8 @@ def plot_timeline(chains: Table, fieldname: str) -> flask.Response:
 
     # Build a pivot table by date.
     total = (chains
-             .cut('maxdate', 'pnl_chain'))
+             .cut('maxdate', 'pnl_chain')
+             .aggregate('maxdate', {'pnl_day': ('pnl_chain', sum)}))
     pivot = (chains
              .pivot('maxdate', fieldname, 'pnl_chain', sum)
              .replaceall(None, 0))
@@ -807,6 +809,11 @@ def timeline_group_png():
 def timeline_strategy_png():
     chains = get_timeline_chains()
     return plot_timeline(chains, 'strategy')
+
+@app.route('/timeline_account.png')
+def timeline_account_png():
+    chains = get_timeline_chains()
+    return plot_timeline(chains, 'account')
 
 
 # Trigger the initialization on load (before even the first request).
