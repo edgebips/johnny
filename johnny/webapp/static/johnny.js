@@ -4,6 +4,18 @@
 //  License: GNU GPLv2
 
 function CreateChainsTable(id, extra_config) {
+    // A mapping of columns with reducers for the bottom line.
+    const sum_columns = {
+        init: SumFloat,
+        init_legs: SumInteger,
+        pnl_chain: SumFloat,
+        pnl_win: SumFloat,
+        pnl_loss: SumFloat,
+        net_liq: SumFloat,
+        commissions: SumFloat,
+        fees: SumFloat,
+    }
+
     // Create the table instance.
     var config = {
         pageLength: 200,
@@ -13,14 +25,15 @@ function CreateChainsTable(id, extra_config) {
         columnDefs: [
             {targets: ['init', 'pnl_chain', 'pnl_win', 'pnl_loss',
                        'pnl_frac', 'target', 'pop',
-                       'net_liq', 'commissions', 'fees'],
+                       'net_win', 'net_liq', 'net_loss',
+                       'commissions', 'fees'],
              className: 'dt-body-right'},
         ],
 
         // This gets called once when the table is drawn.
         footerCallback: function (row, data, start, end, display) {
             var api = this.api()
-            UpdateFooter(api);
+            UpdateFooter(api, sum_columns);
         }
     };
     if (extra_config != null) {
@@ -36,14 +49,9 @@ function CreateChainsTable(id, extra_config) {
     $(table.column(':contains(net_liq)').nodes()).addClass('pnl-column');
     $(table.column(':contains(net_loss)').nodes()).addClass('loss-column');
 
-    table.on('select.dt', function () {
-        UpdateFooter(table);
-    });
-    table.on('deselect.dt', function () {
-        UpdateFooter(table);
-    });
-
     InstallDataTableFocus(table);
+
+    AddFooterSums(table, sum_columns);
 
     return table;
 }
@@ -66,25 +74,30 @@ function InstallDataTableFocus(table) {
 }
 
 function SumFloat(a, b) {
-    return (parseFloat(a) + parseFloat(b)).toFixed(2);
+    return a + b;
 }
+
 function SumInteger(a, b) {
-    return parseInt(a) + parseInt(b);
+    return a + b;
+}
+
+function toFloat(s) {
+    return parseFloat(s.replace(/,/g, ""));
+}
+
+// Make the table render footer sums.
+function AddFooterSums(table, sum_columns) {
+    table.on('select.dt', function () {
+        UpdateFooter(table, sum_columns);
+    });
+    table.on('deselect.dt', function () {
+        UpdateFooter(table, sum_columns);
+    });
 }
 
 // Update the footer sums on a selection change.
-function UpdateFooter(table) {
-    const columns = {
-        init: SumFloat,
-        init_legs: SumInteger,
-        pnl_chain: SumFloat,
-        pnl_win: SumFloat,
-        pnl_loss: SumFloat,
-        net_liq: SumFloat,
-        commissions: SumFloat,
-        fees: SumFloat,
-    }
-    $.each(columns, function(colname, reducer) {
+function UpdateFooter(table, sum_columns) {
+    $.each(sum_columns, function(colname, reducer) {
         var contains = ':contains(' + colname + ')';
         var column = table.column(contains);
         var data = table.cells('.selected', contains).data();
@@ -95,7 +108,8 @@ function UpdateFooter(table) {
                 return;
             }
         }
-        var sum = data.reduce(reducer);
-        $(column.footer()).html(sum);
+
+        var sum = $.map(data, toFloat).reduce(reducer);
+        $(column.footer()).html(sum.toLocaleString('en-US'));
     });
 }

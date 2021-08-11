@@ -1,0 +1,43 @@
+<!doctype html>
+<html>
+
+{% include 'head.html' %}
+
+<head>
+<script>
+
+  $(document).ready(function() {
+      var config = {
+          pageLength: 2000,
+          select: 'multi+shift',
+          fixedHeader: true,
+          colReorder: true,
+          columnDefs: [
+              {targets: ['notional_down', 'notional_up'],
+               className: 'dt-body-right'},
+          ],
+      };
+      const sum_columns = {
+          notional_down: SumFloat,
+          notional_up: SumFloat,
+      }
+      $.each(['#per_account', '#per_group', '#per_strategy', '#per_underlying'], function(index, name) {
+          var table = $(name).DataTable(config);
+          InstallDataTableFocus(table);
+          AddFooterSums(table, sum_columns);
+      });
+  });
+
+</script>
+</head>
+
+<body>
+{% include 'navigation.html' %}
+<h1>Leverage</h1>
+{{ per_account|safe }}
+{{ per_group|safe }}
+{{ per_strategy|safe }}
+{{ per_underlying|safe }}
+
+</body>
+</html>

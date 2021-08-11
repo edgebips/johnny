@@ -91,15 +91,8 @@ def Initialize():
 
             # Get the imported transactions.
             config = configlib.ParseFile(config_filename)
-            transactions = petl.frompickle(config.output.transactions)
 
-            # TODO(blais): Contemplate remarking the positions with an updated
-            # list of prices since import. Not sure we'll care; this really
-            # ought to go in the monitoring tool
-            ## Mark the transactions.
-            #price_map = mark.GetPriceMap(transactions, config)
-            #transactions = mark.Mark(transactions, price_map)
-
+            # Read chains table.
             # Note: You have to use the output chains (as opposed to the input
             # chain), because they have to match the imported table of data.
             # Otherwise, brand new trades wouldn't show a corresponding chain
@@ -107,11 +100,19 @@ def Initialize():
             chains_db = configlib.ReadChains(config.output.chains_db)
             chains_map = {c.chain_id: c for c in chains_db.chains}
 
+            # Filter the chains table removing ignored groups.
             ignore_groups = set(config.presentation.ignore_groups)
+            ignore_chains = set(chain.chain_id
+                                for chain in chains_db.chains
+                                if chain.group in ignore_groups)
             chains_table = (
                 petl.frompickle(config.output.chains)
-                .select(lambda r: (get_dict_attribute(chains_map, 'group', r.chain_id)
-                                   not in ignore_groups)))
+                .selectnotin('chain_id', ignore_chains))
+
+            # Filter the transactions table removing ignored chains (from above).
+            transactions = (
+                petl.frompickle(config.output.transactions)
+                .selectnotin('chain_id', ignore_chains))
 
             # Extract current positions from marks.
             positions = (transactions
@@ -128,7 +129,7 @@ _STATE_LOCK = threading.Lock()
 
 def ToHtmlString(table: Table, cls: str, ids: List[str] = None) -> bytes:
     sink = petl.MemorySource()
-    table.tohtml(sink)
+    table.tohtml(sink, vrepr=vrepr)
     html = sink.getvalue().decode('utf8')
     html = re.sub("class='petl'", f"class='display compact nowrap cell-border' id='{cls}'", html)
 
@@ -154,6 +155,13 @@ def ToHtmlString(table: Table, cls: str, ids: List[str] = None) -> bytes:
     html = re.sub('</table>', '{}</table>'.format(buf.getvalue()), html)
 
     return html
+
+
+def vrepr(value: Any) -> str:
+    """Universal rendering function, rendering decimals with commas."""
+    if isinstance(value, Decimal):
+        return "{:,.2f}".format(value)
+    return str(value)
 
 
 def GetNavigation() -> Dict[str, str]:
@@ -776,34 +784,47 @@ def leverage():
                 .cutout('instruction', 'quantity')
 
                 # Compute the put/call notional risks associated with the position.
-                .addfield('notional', get_notional))
+                .addfield('notional', get_notional)
+
+                # Join in the group and strategy.
+                .leftjoin(STATE.chains
+                          .cut('chain_id', 'group', 'strategy'), 'chain_id')
+                )
+
+    print(notional.lookallstr())
 
     # Aggregate all put and call notional risk per (account, underlying).
-    leverage = (notional
-                .addfield('down', get_downside_notional)
-                .addfield('up', get_upside_notional)
-                .aggregate(['account', 'underlying', 'instype'], {
-                    'price': ('price', first),
-                    'notional_down': ('down', sum),
-                    'notional_up': ('up', sum),
-                })
-                .sort(['account', 'underlying'])
-                .cut('account', 'underlying', 'price', 'instype',
-                     'notional_down', 'notional_up'))
+    per_underlying = (notional
+                      .addfield('down', get_downside_notional)
+                      .addfield('up', get_upside_notional)
+                      .aggregate(['account', 'underlying', 'instype', 'group', 'strategy'], {
+                          'price': ('price', first),
+                          'notional_down': ('down', lambda g: sum(g).quantize(Q)),
+                          'notional_up': ('up', lambda g: sum(g).quantize(Q)),
+                      })
+                      .sort(['account', 'underlying', 'instype', 'group'])
+                      .cut('account', 'underlying', 'price', 'instype', 'group', 'strategy',
+                           'notional_down', 'notional_up'))
 
-    # Aggregate all notional per account.
-    per_account = (leverage
-                   .aggregate('account', {
-                       'notional_down': ('notional_down', sum),
-                       'notional_up': ('notional_up', sum),
-                   })
-                   .sort(['account']))
+    def aggregate(field: str):
+        return (per_underlying
+                .aggregate(field, {
+                    'notional_down': ('notional_down', sum),
+                    'notional_up': ('notional_up', sum),
+                })
+                .sort([field]))
+
+    # Aggregate all notional per account, group and strategy.
+    per_account = aggregate('account')
+    per_group = aggregate('group')
+    per_strategy = aggregate('strategy')
 
     return flask.render_template('leverage.html',
-                                 leverage=ToHtmlString(leverage, 'leverage'),
+                                 per_underlying=ToHtmlString(per_underlying, 'per_underlying'),
                                  per_account=ToHtmlString(per_account, 'per_account'),
+                                 per_group=ToHtmlString(per_group, 'per_group'),
+                                 per_strategy=ToHtmlString(per_strategy, 'per_strategy'),
                                  **GetNavigation())
-
 
 
 # Trigger the initialization on load (before even the first request).
