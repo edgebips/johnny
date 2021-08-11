@@ -517,6 +517,7 @@ def TransactionsTableToChainsTable(transactions: Table,
         .cutout('prob', 'chain')
 
         # Mark missing groups with a string that can be filtered on.
+        # TODO(blais): Move this to the presentation layer.
         .convert('group', lambda v: v or 'NoGroup')
 
         .sort('maxdate'))

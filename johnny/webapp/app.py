@@ -31,10 +31,11 @@ from more_itertools import first
 
 import flask
 
-from johnny.base import config as configlib
 from johnny.base import chains as chainslib
-from johnny.base import mark
+from johnny.base import config as configlib
 from johnny.base import instrument
+from johnny.base import mark
+from johnny.base import recap as recaplib
 from johnny.base.etl import petl, Table, Record
 ChainStatus = chainslib.ChainStatus
 Chain = configlib.Chain
@@ -612,101 +613,6 @@ def stats_pnlinit():
     return flask.Response(image, mimetype='image/png')
 
 
-ACTIONS = {
-    'Closing': 1,
-    'Daytrade': 2,
-    'Adjusting': 3,
-    'Opening': 4,
-    'Opening_Earnings': 5,
-    'Closing_Earnings': 6,
-}
-
-def get_chains_at_date(date: datetime.date) -> Tuple[Table, Table]:
-    """Filter and identify chains active on a given date."""
-
-    # A set of chain ids with transactions on the date.
-    # This is used to figure out if an adjustment took place on a chain.
-    traded_chains = set(
-        STATE.transactions
-        .selectne('rowtype', 'Mark')
-        .select(lambda r: r.datetime.date() == date)
-        .values('chain_id'))
-
-    # Infer the action of the chain based on the status and date extents. Note
-    # that this may return None, in which case the chain is to be excluded.
-    def infer_action(r: Record) -> Optional[str]:
-        if date == r.maxdate and r.status in {'FINAL', 'CLOSED'}:
-            if date == r.mindate:
-                action = 'Daytrade'
-            # Break out 'Earnings' to its own table.
-            else:
-                action = 'Closing'
-        elif date == r.mindate:
-            action = 'Opening'
-        elif r.chain_id in traded_chains:
-            action = 'Adjusting'
-        else:
-            return None
-        if r.group == 'Earnings':
-            action += '_Earnings'
-        return action
-
-    # Join in the comments from the chain.
-    def get_comment(r: Record) -> str:
-        chain = STATE.chains_map.get(r.chain_id)
-        if not chain:
-            logging.error(f"Missing chain {r.chain_id}")
-        return chain.comment if chain else ''
-
-    # Filter commissions & fees per day.
-    commfees = (STATE.transactions
-                .select(lambda r: r.datetime.date() == date)
-                .aggregate('chain_id', {'commissions': ('commissions', sum),
-                                        'fees': ('fees', sum)}))
-
-    # Process the chains.
-    chains = (STATE.chains
-              .select(lambda r: r.mindate <= date <= r.maxdate)
-              .addfield('action', infer_action, index=0)
-              .selecttrue('action')
-              .addfield('k', lambda r: ACTIONS.get(r.action), index=0)
-              .sort(['k', 'chain_id'])
-              .cutout('k')
-              .addfield('comment', get_comment)
-              .leftjoin(commfees, key='chain_id', rprefix='day_')
-              .cutout('account', 'init_legs',
-                      'net_liq', 'net_win', 'net_loss',
-                      'commissions', 'fees')
-              .convert('chain_id', partial(AddUrl, 'chain', 'chain_id')))
-
-    return chains
-
-
-def get_summary(chains: Table) -> Table:
-    """Filter and identify chains active on a given date."""
-
-    # Calculate a sensible summary table. Note that we clear the adjusting and
-    # opening P/L, as they are not relevant to the day's action.
-    agg = {
-        'pnl_chain': ('pnl_chain', sum),
-        'day_commissions': ('day_commissions', sum),
-        'day_fees': ('day_fees', sum),
-    }
-
-    summary_actions = {'Closing', 'Closing_Earnings', 'Daytrade'}
-    def convert_agg_pnl(value, r: Record) -> str:
-        return value if r.action in summary_actions else 0
-    summary = (chains
-               .aggregate('action', agg)
-               .convert('pnl_chain', convert_agg_pnl, pass_row=True)
-               .addfield('k', lambda r: ACTIONS.get(r.action))
-               .sort('k')
-               .cutout('k'))
-
-    return summary
-
-
-
 @app.route('/recap')
 def recap_today():
     return flask.redirect(flask.url_for('recap', date=datetime.date.today().isoformat()))
@@ -715,8 +621,10 @@ def recap_today():
 @app.route('/recap/<date>')
 def recap(date: str):
     date = dateutil.parser.parse(date).date()
-    chains = get_chains_at_date(date)
-    summary = get_summary(chains)
+    chains = (recaplib.get_chains_at_date(STATE.transactions,
+                                          STATE.chains, STATE.chains_map, date)
+              .convert('chain_id', partial(AddUrl, 'chain', 'chain_id')))
+    summary = recaplib.get_summary(chains)
     params = GetNavigation()
     params['date'] = date
     day = datetime.timedelta(days=1)
@@ -725,7 +633,7 @@ def recap(date: str):
     params['weekday'] = date.strftime("%A")
     params['summary'] = ToHtmlString(summary, 'summary')
     if 1:
-        for action in ACTIONS:
+        for action in recaplib.ACTIONS:
             action_table = (chains
                             .selecteq('action', action)
                             .cutout('action'))
