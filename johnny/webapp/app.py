@@ -748,7 +748,7 @@ def timeline_png():
     exclude_mindate = datetime.date(2021, 4, 1)
     exclude_tag = '#bigloser'
 
-    if exclude_minddate:
+    if exclude_mindate:
         # Remove beginning.
         # TODO(blais): Add min date to config.
         chains = chains.selectge('maxdate', exclude_mindate)
