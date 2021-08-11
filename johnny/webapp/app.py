@@ -197,7 +197,8 @@ def RatioDistribution(num, denom, threshold=1000):
 
 
 def RenderHistogram(data: np.array, title: str) -> bytes:
-    fig, ax = pyplot.subplots()
+    fig, ax = pyplot.subplots(figsize=(6,3))
+    fig.tight_layout()
     ax.set_title(title)
     ax.hist(data, bins='fd', edgecolor='black', linewidth=0.5)
     buf = io.BytesIO()

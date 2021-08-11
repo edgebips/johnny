@@ -30,11 +30,17 @@
 {% include 'navigation.html' %}
 <h1>Statistics</h1>
 
+<table>
+  <tr>
+    <td>
 {{ stats_table|safe }}
+    </td>
 
-<img src="{{ pnlhist }}"></img>
-<img src="{{ pnlpctinit }}"></img>
-<img src="{{ pnlinit }}"></img>
+    <td><img src="{{ pnlhist }}"></img></td>
+    <td><img src="{{ pnlpctinit }}"></img></td>
+    <td><img src="{{ pnlinit }}"></img></td>
+  </tr>
+</table>
 
 {{ chains|safe }}
 
