@@ -735,12 +735,13 @@ def recap(date: str):
 def timeline():
     return flask.render_template(
         'timeline.html',
-        timeline_png=flask.url_for('timeline_png'),
+        timeline_group_png=flask.url_for('timeline_group_png'),
+        timeline_strategy_png=flask.url_for('timeline_strategy_png'),
         **GetNavigation())
 
 
-@app.route('/timeline.png')
-def timeline_png():
+def get_timeline_chains():
+    """Return a table of chains suitable to plotting a timeline."""
     chains = STATE.chains
 
     # TODO(blais): Move selection of groups to config.
@@ -766,29 +767,45 @@ def timeline_png():
     if exclude_groups:
         # Remove groups not interested in.
         data = (chains
-                .selectnotin('group', {'Error', 'Experiments', 'Synthetic'}))
+                .selectnotin('group', exclude_groups))
+
+    return (chains
+            .convert('pnl_chain', float)
+            .cut('maxdate', 'group', 'strategy', 'pnl_chain'))
+
+
+def plot_timeline(chains: Table, fieldname: str) -> flask.Response:
+    """Plot a timeline of one of a few supported breakdown types."""
 
     # Build a pivot table by date.
-    data = (chains
-            .convert('pnl_chain', float)
-            .cut('maxdate', 'pnl_chain'))
+    total = (chains
+             .cut('maxdate', 'pnl_chain'))
     pivot = (chains
-             .selectnotin('group', {'Error', 'Experiments', 'Synthetic'})
-             .convert('pnl_chain', float)
-             .pivot('maxdate', 'group', 'pnl_chain', sum)
+             .pivot('maxdate', fieldname, 'pnl_chain', sum)
              .replaceall(None, 0))
 
     # Convert to Pandas and plot.
-    df_data = data.todataframe().set_index('maxdate').cumsum()
+    df_total = total.todataframe().set_index('maxdate').cumsum()
     df_pivot = pivot.todataframe().set_index('maxdate').cumsum()
 
     fig, ax = pyplot.subplots()
     pyplot.tight_layout()
-    df_data.plot(ax=ax, figsize=(24, 12), linewidth=3)
+    df_total.plot(ax=ax, figsize=(24, 12), linewidth=3)
     df_pivot.plot(ax=ax, figsize=(24, 8))
     buf = io.BytesIO()
     FigureCanvas(fig).print_png(buf)
     return flask.Response(buf.getvalue(), mimetype='image/png')
+
+
+@app.route('/timeline_group.png')
+def timeline_group_png():
+    chains = get_timeline_chains()
+    return plot_timeline(chains, 'group')
+
+@app.route('/timeline_strategy.png')
+def timeline_strategy_png():
+    chains = get_timeline_chains()
+    return plot_timeline(chains, 'strategy')
 
 
 # Trigger the initialization on load (before even the first request).
