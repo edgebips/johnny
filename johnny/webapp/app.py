@@ -679,6 +679,12 @@ def get_chains_at_date(date: datetime.date) -> Tuple[Table, Table]:
                       'commissions', 'fees')
               .convert('chain_id', partial(AddUrl, 'chain', 'chain_id')))
 
+    return chains
+
+
+def get_summary(chains: Table) -> Table:
+    """Filter and identify chains active on a given date."""
+
     # Calculate a sensible summary table. Note that we clear the adjusting and
     # opening P/L, as they are not relevant to the day's action.
     agg = {
@@ -697,7 +703,7 @@ def get_chains_at_date(date: datetime.date) -> Tuple[Table, Table]:
                .sort('k')
                .cutout('k'))
 
-    return chains, summary
+    return summary
 
 
 
@@ -709,7 +715,8 @@ def recap_today():
 @app.route('/recap/<date>')
 def recap(date: str):
     date = dateutil.parser.parse(date).date()
-    chains, summary = get_chains_at_date(date)
+    chains = get_chains_at_date(date)
+    summary = get_summary(chains)
     params = GetNavigation()
     params['date'] = date
     day = datetime.timedelta(days=1)
