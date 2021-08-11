@@ -49,7 +49,9 @@ def main(config: Optional[str]):
     chains_db = configlib.ReadChains(config.input.chains_db)
 
     for chain in chains_db.chains:
-        if re.match(r".*\.(6[ABCEJ]|NQ|ES|RTY|NG|CL|GE|Z[TFNB])[FGHJKMNQUVXZ]21$", chain.chain_id):
+        if re.match(
+                r".*\.(6[ABCEJ]|NQ|ES|RTY|NG|CL|GC|SI|HG|PL|GE|Z[TFNB])[FGHJKMNQUVXZ]21$",
+                chain.chain_id):
             logging.info(f"Unfinalizing chain '{chain.chain_id}'")
             Unfinalize(chain)
 

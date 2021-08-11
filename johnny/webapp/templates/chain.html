@@ -40,17 +40,33 @@
 <body>
 {% include 'navigation.html' %}
 <h1>Chain Detail: {{ chain_id }}</h1>
+
+<!-- Link to render proto -->
 <a href="{{ chain_proto }}">Proto</a>
+
+<!-- Render comment -->
 <p class="comment">{{ comment }}</p>
 
+<!-- Render xrefs -->
+{% if xrefs %}
+<p id="xrefs">Xref:
+{% for xref in xrefs %}
+<a href="{{ url_for('chain', chain_id=xref) }}">{{ xref }}</a>
+{% endfor %}
+</p>
+{% endif %}
+
+<!-- Render a single row table for the chain's data -->
 <div id="_chain_summary">
 {{ chain|safe }}
 </div>
 
+<!-- Render a table of all the transactions involved -->
 <div id="_chain_transactions">
 {{ transactions|safe }}
 </div>
 
+<!-- Render bisected P/L between static and dynamic deltas -->
 <div id="_chain_pnl_split">
 <table id="pnl_split">
   <tr><td>Static P/L</td><td>{{pnl_static}}</td></tr>
@@ -58,10 +74,12 @@
 </table>
 </div>
 
+<!-- Render an abbreviated chain history -->
 <div id="_chain_history">
 {{ history|safe }}
 </div>
 
+<!-- Render a graphical chain history -->
 <div id="chain_graph">
 <img src="{{ graph }}"/>
 </div>

@@ -78,15 +78,55 @@ message Chain {
   // "LongStock".
   optional string group = 3;
 
-  // User-provided description. Free-form, may span multiple lines (include
-  // newlines).
-  optional string comment = 6;
-
   // Initial strategy used, e.g. "Strangle", "BrokenWingButterfly", etc. The
   // software may attempt to set a value for this, but you can override it in
   // the configuration file.
   optional string strategy = 4;
-  optional string auto_strategy = 5;
+
+  // User-provided description. Free-form, may span multiple lines (include
+  // newlines).
+  optional string comment = 5;
+
+  // Probability of profit of the strategy at entry, used to compute or set a
+  // target. This is very important, as it allows us to semi-automate trade
+  // management. We use Kelly's criterion to fill in the win/loss chain P/L
+  // targets from this.
+  //
+  // IMPORTANT: Note that this is not the same as the probability of profit of
+  // the options position itself (if they were held to expiration), but the POP
+  // related to the particulars of the underlying management strategy, e.g.,
+  // "P50" if you were to take your winners at 50% like TT does (they like to
+  // ride theta decay through the first half of the expiration time to avoid
+  // gamma risk). I do other things. But in any case, you input the POP here as
+  // per your forecast based on your strategy.
+  optional float pop = 6;
+
+  // Win target fraction. This declares out intended exit point for a winning
+  // trade. For instance, if this is set to 0.25, we're shooting to take the
+  // trade off at 25% of credit received (if selling options). This is then used
+  // to infer the win/loss chain P/L targets below. If this is unset, we assume
+  // a default value of 0.50 (50%), which is riding the first half of the
+  // remaining duration of the position.
+  optional float target = 7;
+
+  // Cross-reference chain ids. A list of chain ids that are related to the
+  // given chain. This can be used by a presentation layer. For example, a
+  // protective position can refer to the position it protects.
+  repeated string xrefs = 8;
+
+  // Explicit chain P/L win/loss targets. These can be input to override the
+  // computed targets derived by setting `pop`. For trading static deltas, you
+  // can express your view by selecting appropriate targets. Monitoring can then
+  // compute completion fractions and alerts when the P/L loss target is
+  // reached.
+  //
+  // Note that this is not the net-liq of the resultant position; the reason for
+  // this is to account for adjustments during the trade's lifetime. We bake our
+  // targets at the begininng of the chain, and derive further net-liq targets
+  // based on the Kelly-derived win/loss targets off of the total accumulated
+  // credits on the chain.
+  optional float pnl_win = 9;
+  optional float pnl_loss = 10;
 
   // If this is present, an explicit list of transaction ids that are part of
   // the trade. All the rows matching these transactions will be automatically
@@ -94,8 +134,8 @@ message Chain {
   // matches without these trades can resolve. `auto_ids` are fields for `ids`
   // but which were filled automatically. Remove the `auto_` prefix in order to
   // make these permanent.
-  repeated string ids = 7;
-  repeated string auto_ids = 8;
+  repeated string ids = 11;
+  repeated string auto_ids = 12;
 }
 
 // Declaration of asset vs. asset-class mapping.

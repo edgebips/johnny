@@ -45,7 +45,7 @@ class TestMatch2(unittest.TestCase):
         expected_output = petl.wrap([
             header,
             ('A', datetime.datetime(2021, 7, 1, 12, 10, 0), '00000001', None, 'Trade', 'AAPL_210925_C150', 'BUY', 'OPENING', Decimal('2'), Decimal('123.00'), 'Desc', ZERO, ZERO, ZERO, '&00000001'),
-            ('A', datetime.datetime(2021, 7, 10, 0, 0, 0), 'mark-d7183c', None, 'Mark', 'AAPL_210925_C150', 'SELL', 'CLOSING', Decimal('2'), ZERO, 'Mark for closing AAPL_210925_C150', ZERO, ZERO, ZERO, '&00000001'),
+            ('A', datetime.datetime(2021, 7, 10, 0, 0, 0), 'mark-d7183c', None, 'Mark', 'AAPL_210925_C150', 'SELL', 'CLOSING', Decimal('2'), ZERO, 'Mark for AAPL_210925_C150', ZERO, ZERO, ZERO, '&00000001'),
         ])
         print(expected_output.lookallstr())
         print(match.Process(transactions).lookallstr())

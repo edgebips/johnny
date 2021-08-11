@@ -146,11 +146,16 @@ def ToString(inst: Instrument) -> str:
     instype = inst.instype
     if instype == 'FutureOption':
         # Note: For options on futures, the correct expiration date isn't always
-        # available (e.g. from TOS). We ignore it for that reason, the date is
-        # implicit in the option code. It's not very precise, but better to be
-        # consistent.
+        # available (e.g. from TOS). We use it when it's available; ignore it
+        # otherwise for that reason, the date is implicit in the option code.
+        # Since the expiration date gets reduced and encoded into the symbol
+        # name, this means that for platforms that do not provide the expiration
+        # date (e.g. TOS), we may not be able to run some algorithms. One must
+        # always assume that the 'expiration' is not present (in which case the
+        # 'expcode' will always be).
+        expiration_str = inst.expiration.strftime('%y%m%d') if inst.expiration else inst.expcode
         return "{}_{}_{}{}".format(
-            inst.underlying, inst.expcode, inst.putcall, inst.strike)
+            inst.underlying, expiration_str, inst.putcall, inst.strike)
 
     elif instype == 'Future':
         return inst.underlying
@@ -176,17 +181,23 @@ def GetContractName(symbol: str) -> str:
         return underlying
 
 
-def Expand(table: Table, fieldname: str) -> Table:
+def ExpandInstrument(table: Table) -> Table:
     """Expand the symbol name into its component fields."""
     return (table
-            .addfield('_instrument', lambda r: FromString(getattr(r, fieldname)))
             .addfield('instype', lambda r: r._instrument.instype)
             .addfield('underlying', lambda r: r._instrument.underlying)
             .addfield('expiration', lambda r: r._instrument.expiration)
             .addfield('expcode', lambda r: r._instrument.expcode)
             .addfield('putcall', lambda r: r._instrument.putcall)
             .addfield('strike', lambda r: r._instrument.strike)
-            .addfield('multiplier', lambda r: r._instrument.multiplier)
+            .addfield('multiplier', lambda r: r._instrument.multiplier))
+
+
+def Expand(table: Table, fieldname: str) -> Table:
+    """Expand the symbol name into its component fields."""
+    return (table
+            .addfield('_instrument', lambda r: FromString(getattr(r, fieldname)))
+            .applyfn(ExpandInstrument)
             .cutout('_instrument'))
 
 

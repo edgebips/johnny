@@ -20,7 +20,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   syntax='proto2',
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_pb=b'\n\x18johnny/base/chains.proto\x12\x06johnny\"\'\n\x06\x43hains\x12\x1d\n\x06\x63hains\x18\x01 \x03(\x0b\x32\r.johnny.Chain\"\xa6\x01\n\x05\x43hain\x12\x10\n\x08\x63hain_id\x18\x01 \x01(\t\x12#\n\x06status\x18\x02 \x01(\x0e\x32\x13.johnny.ChainStatus\x12\r\n\x05group\x18\x03 \x01(\t\x12\x0f\n\x07\x63omment\x18\x06 \x01(\t\x12\x10\n\x08strategy\x18\x04 \x01(\t\x12\x15\n\rauto_strategy\x18\x05 \x01(\t\x12\x0b\n\x03ids\x18\x07 \x03(\t\x12\x10\n\x08\x61uto_ids\x18\x08 \x03(\t\":\n\x05\x41sset\x12\x12\n\ninstrument\x18\x01 \x01(\t\x12\r\n\x05\x63lass\x18\x02 \x01(\t\x12\x0e\n\x06\x66\x61\x63tor\x18\x03 \x01(\t*<\n\x0b\x43hainStatus\x12\n\n\x06\x41\x43TIVE\x10\x00\x12\n\n\x06\x43LOSED\x10\x01\x12\t\n\x05\x46INAL\x10\x02\x12\n\n\x06IGNORE\x10\x03'
+  serialized_pb=b'\n\x18johnny/base/chains.proto\x12\x06johnny\"\'\n\x06\x43hains\x12\x1d\n\x06\x63hains\x18\x01 \x03(\x0b\x32\r.johnny.Chain\"\xde\x01\n\x05\x43hain\x12\x10\n\x08\x63hain_id\x18\x01 \x01(\t\x12#\n\x06status\x18\x02 \x01(\x0e\x32\x13.johnny.ChainStatus\x12\r\n\x05group\x18\x03 \x01(\t\x12\x10\n\x08strategy\x18\x04 \x01(\t\x12\x0f\n\x07\x63omment\x18\x05 \x01(\t\x12\x0b\n\x03pop\x18\x06 \x01(\x02\x12\x0e\n\x06target\x18\x07 \x01(\x02\x12\r\n\x05xrefs\x18\x08 \x03(\t\x12\x0f\n\x07pnl_win\x18\t \x01(\x02\x12\x10\n\x08pnl_loss\x18\n \x01(\x02\x12\x0b\n\x03ids\x18\x0b \x03(\t\x12\x10\n\x08\x61uto_ids\x18\x0c \x03(\t\":\n\x05\x41sset\x12\x12\n\ninstrument\x18\x01 \x01(\t\x12\r\n\x05\x63lass\x18\x02 \x01(\t\x12\x0e\n\x06\x66\x61\x63tor\x18\x03 \x01(\t*<\n\x0b\x43hainStatus\x12\n\n\x06\x41\x43TIVE\x10\x00\x12\n\n\x06\x43LOSED\x10\x01\x12\t\n\x05\x46INAL\x10\x02\x12\n\n\x06IGNORE\x10\x03'
 )
 
 _CHAINSTATUS = _descriptor.EnumDescriptor(
@@ -53,8 +53,8 @@ _CHAINSTATUS = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   serialized_options=None,
-  serialized_start=306,
-  serialized_end=366,
+  serialized_start=362,
+  serialized_end=422,
 )
 _sym_db.RegisterEnumDescriptor(_CHAINSTATUS)
 
@@ -128,36 +128,64 @@ _CHAIN = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
-      name='comment', full_name='johnny.Chain.comment', index=3,
-      number=6, type=9, cpp_type=9, label=1,
-      has_default_value=False, default_value=b"".decode('utf-8'),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-    _descriptor.FieldDescriptor(
-      name='strategy', full_name='johnny.Chain.strategy', index=4,
+      name='strategy', full_name='johnny.Chain.strategy', index=3,
       number=4, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=b"".decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
-      name='auto_strategy', full_name='johnny.Chain.auto_strategy', index=5,
+      name='comment', full_name='johnny.Chain.comment', index=4,
       number=5, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=b"".decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
-      name='ids', full_name='johnny.Chain.ids', index=6,
-      number=7, type=9, cpp_type=9, label=3,
+      name='pop', full_name='johnny.Chain.pop', index=5,
+      number=6, type=2, cpp_type=6, label=1,
+      has_default_value=False, default_value=float(0),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='target', full_name='johnny.Chain.target', index=6,
+      number=7, type=2, cpp_type=6, label=1,
+      has_default_value=False, default_value=float(0),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='xrefs', full_name='johnny.Chain.xrefs', index=7,
+      number=8, type=9, cpp_type=9, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
-      name='auto_ids', full_name='johnny.Chain.auto_ids', index=7,
-      number=8, type=9, cpp_type=9, label=3,
+      name='pnl_win', full_name='johnny.Chain.pnl_win', index=8,
+      number=9, type=2, cpp_type=6, label=1,
+      has_default_value=False, default_value=float(0),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='pnl_loss', full_name='johnny.Chain.pnl_loss', index=9,
+      number=10, type=2, cpp_type=6, label=1,
+      has_default_value=False, default_value=float(0),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='ids', full_name='johnny.Chain.ids', index=10,
+      number=11, type=9, cpp_type=9, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='auto_ids', full_name='johnny.Chain.auto_ids', index=11,
+      number=12, type=9, cpp_type=9, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
@@ -175,7 +203,7 @@ _CHAIN = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=78,
-  serialized_end=244,
+  serialized_end=300,
 )
 
 
@@ -220,8 +248,8 @@ _ASSET = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=246,
-  serialized_end=304,
+  serialized_start=302,
+  serialized_end=360,
 )
 
 _CHAINS.fields_by_name['chains'].message_type = _CHAIN

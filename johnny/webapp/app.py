@@ -99,7 +99,11 @@ def Initialize():
             #price_map = mark.GetPriceMap(transactions, config)
             #transactions = mark.Mark(transactions, price_map)
 
-            chains_db = configlib.ReadChains(config.input.chains_db)
+            # Note: You have to use the output chains (as opposed to the input
+            # chain), because they have to match the imported table of data.
+            # Otherwise, brand new trades wouldn't show a corresponding chain
+            # object.
+            chains_db = configlib.ReadChains(config.output.chains_db)
             chains_map = {c.chain_id: c for c in chains_db.chains}
 
             ignore_groups = set(config.presentation.ignore_groups)
@@ -155,6 +159,7 @@ def GetNavigation() -> Dict[str, str]:
     """Get navigation bar."""
     return {
         'page_active': flask.url_for('active'),
+        'page_expiring': flask.url_for('expiring'),
         'page_recap': flask.url_for('recap_today'),
         'page_chains': flask.url_for('chains'),
         'page_transactions': flask.url_for('transactions'),
@@ -206,7 +211,7 @@ def RenderHistogram(data: np.array, title: str) -> bytes:
 
 @app.route('/')
 def home():
-    return flask.redirect(flask.url_for('chains'))
+    return flask.redirect(flask.url_for('active'))
 
 
 @app.route('/favicon.ico')
@@ -214,11 +219,7 @@ def favicon():
     return flask.redirect(flask.url_for('static', filename='favicon.ico'))
 
 
-def render_chains(status: set[str]):
-    chains = STATE.chains
-    if status:
-        chains = (STATE.chains
-                  .selectin('status', status))
+def render_chains(chains: Table) -> flask.Response:
     ids = chains.values('chain_id')
     chains = (chains
               .convert('chain_id', partial(AddUrl, 'chain', 'chain_id')))
@@ -230,12 +231,29 @@ def render_chains(status: set[str]):
 
 @app.route('/active')
 def active():
-    return render_chains({'ACTIVE'})
+    return render_chains(STATE.chains
+                         .selectin('status', {'ACTIVE'}))
+
+
+@app.route('/expiring')
+def expiring():
+    days = int(flask.request.args.get('days', 20))
+    today = datetime.date.today()
+    min_dte = (STATE.transactions
+               .selecteq('rowtype', 'Mark')
+               .applyfn(instrument.Expand, 'symbol')
+               .selecttrue('expiration')
+               .addfield('dte', lambda r: (r.expiration - today).days)
+               .selectle('dte', days)
+               .aggregate('chain_id', {'min_dte': ('dte', min)}))
+    return render_chains(STATE.chains
+                         .join(min_dte, 'chain_id')
+                         .movefield('min_dte', 1))
 
 
 @app.route('/chains')
 def chains():
-    return render_chains(None)
+    return render_chains(STATE.chains)
 
 
 @app.route('/chain/<chain_id>')
@@ -279,6 +297,7 @@ def chain(chain_id: str):
         transactions=ToHtmlString(txns, 'chain_transactions'),
         history=history_html,
         graph=flask.url_for('chain_graph', chain_id=chain_id),
+        xrefs=chain_obj.xrefs,
         pnl_static=pnl_static,
         pnl_dynamic=pnl_dynamic,
         **GetNavigation())
@@ -315,7 +334,6 @@ def chain_names():
     chains_table = FilterChains(STATE.chains)
     buf = io.StringIO()
     pr = functools.partial(print, file=buf)
-    print(chains_table.lookallstr())
     for rec in chains_table.sort('underlyings').records():
         pr(rec.chain_id)
     response = flask.make_response(buf.getvalue(), 200)
@@ -594,19 +612,20 @@ def stats_pnlinit():
 
 
 ACTIONS = {
-    'Earnings': 0,
     'Closing': 1,
     'Daytrade': 2,
     'Adjusting': 3,
     'Opening': 4,
+    'Opening_Earnings': 5,
+    'Closing_Earnings': 6,
 }
 
-def get_date_chains(date: datetime.date) -> Tuple[Table, Table]:
+def get_chains_at_date(date: datetime.date) -> Tuple[Table, Table]:
     """Filter and identify chains active on a given date."""
 
     # A set of chain ids with transactions on the date.
     # This is used to figure out if an adjustment took place on a chain.
-    date_chains = set(
+    traded_chains = set(
         STATE.transactions
         .selectne('rowtype', 'Mark')
         .select(lambda r: r.datetime.date() == date)
@@ -617,18 +636,19 @@ def get_date_chains(date: datetime.date) -> Tuple[Table, Table]:
     def infer_action(r: Record) -> Optional[str]:
         if date == r.maxdate and r.status in {'FINAL', 'CLOSED'}:
             if date == r.mindate:
-                return 'Daytrade'
+                action = 'Daytrade'
             # Break out 'Earnings' to its own table.
-            if r.group == 'Earnings':
-                return 'Earnings'
             else:
-                return 'Closing'
+                action = 'Closing'
         elif date == r.mindate:
-            return 'Opening'
-        elif r.chain_id in date_chains:
-            return 'Adjusting'
+            action = 'Opening'
+        elif r.chain_id in traded_chains:
+            action = 'Adjusting'
         else:
             return None
+        if r.group == 'Earnings':
+            action += '_Earnings'
+        return action
 
     # Join in the comments from the chain.
     def get_comment(r: Record) -> str:
@@ -652,8 +672,20 @@ def get_date_chains(date: datetime.date) -> Tuple[Table, Table]:
               .sort(['k', 'chain_id'])
               .cutout('k')
               .addfield('comment', get_comment)
-              .leftjoin(commfees, key='chain_id', rprefix='day_')
-              .cutout('account', 'init_legs', 'net_liq', 'commissions', 'fees')
+              .leftjoin(commfees, key='chain_id', rprefix='day_'))
+
+    # Exclude chains that are in background accounts.
+    exclude_accounts = {account.nickname
+                        for account in STATE.config.input.accounts
+                        if account.background}
+    if exclude_accounts:
+        chains = (chains
+                  .selectnotin('account', exclude_accounts))
+
+    chains = (chains
+              .cutout('account', 'init_legs',
+                      'net_liq', 'net_win', 'net_loss',
+                      'commissions', 'fees')
               .convert('chain_id', partial(AddUrl, 'chain', 'chain_id')))
 
     # Calculate a sensible summary table. Note that we clear the adjusting and
@@ -664,8 +696,9 @@ def get_date_chains(date: datetime.date) -> Tuple[Table, Table]:
         'day_fees': ('day_fees', sum),
     }
 
+    summary_actions = {'Closing', 'Closing_Earnings', 'Daytrade'}
     def convert_agg_pnl(value, r: Record) -> str:
-        return 0 if r.action in {'Adjusting', 'Opening'} else value
+        return value if r.action in summary_actions else 0
     summary = (chains
                .aggregate('action', agg)
                .convert('pnl_chain', convert_agg_pnl, pass_row=True)
@@ -685,7 +718,7 @@ def recap_today():
 @app.route('/recap/<date>')
 def recap(date: str):
     date = dateutil.parser.parse(date).date()
-    chains, summary = get_date_chains(date)
+    chains, summary = get_chains_at_date(date)
     params = GetNavigation()
     params['date'] = date
     day = datetime.timedelta(days=1)

@@ -18,7 +18,8 @@
       var summary_extra = Object.assign(extra, {bAutoWidth: false})
       CreateChainsTable('#summary', summary_extra);
 
-      var tables = ['#Earnings', '#Closing', '#Opening', '#Daytrade', '#Adjusting'];
+      var tables = ['#Closing', '#Opening', '#Daytrade', '#Adjusting',
+                    '#Closing_Earnings', '#Opening_Earnings'];
       $.each(tables, function(index, name) {
           CreateChainsTable(name, extra);
       });
@@ -56,9 +57,14 @@
 
 {{ summary|safe }}
 
-{% if Earnings %}
-<h2>Earnings</h2>
-{{ Earnings|safe }}
+{% if Closing_Earnings %}
+<h2>Closing Earnings</h2>
+{{ Closing_Earnings|safe }}
+{% endif %}
+
+{% if Opening_Earnings %}
+<h2>Opening Earnings</h2>
+{{ Opening_Earnings|safe }}
 {% endif %}
 
 <h2>Closing</h2>
