@@ -753,24 +753,32 @@ def timeline():
 def timeline_png():
     chains = STATE.chains
 
-    if 0:
+    # TODO(blais): Move selection of groups to config.
+    exclude_groups = {'Error', 'Experiments', 'Synthetic'}
+    exclude_mindate = datetime.date(2021, 4, 1)
+    exclude_tag = '#bigloser'
+
+    if exclude_minddate:
         # Remove beginning.
-        start_date = datetime.date(2021, 4, 1)
-        chains = chains.selectge('maxdate', start_date)
+        # TODO(blais): Add min date to config.
+        chains = chains.selectge('maxdate', exclude_mindate)
 
-    if 0:
+    if exclude_tag:
         # Remove dumb mistakes.
+        # TODO(blais): Move selection of tags to config.
+        exclude_biglosers = set(
+            chain.chain_id
+            for chain in STATE.chains_map.values()
+            if exclude_tag in chain.tags)
         chains = (chains
-                  .selectnotin('chain_id', {'x96.210405_120918.LEQ21.HEQ21',
-                                            'x18.210528_102003.AMC',
-                                            'x96.210602_125419.AMC'}))
+                  .selectnotin('chain_id', exclude_biglosers))
 
-    if 1:
+    if exclude_groups:
         # Remove groups not interested in.
         data = (chains
                 .selectnotin('group', {'Error', 'Experiments', 'Synthetic'}))
 
-
+    # Build a pivot table by date.
     data = (chains
             .convert('pnl_chain', float)
             .cut('maxdate', 'pnl_chain'))
@@ -780,6 +788,7 @@ def timeline_png():
              .pivot('maxdate', 'group', 'pnl_chain', sum)
              .replaceall(None, 0))
 
+    # Convert to Pandas and plot.
     df_data = data.todataframe().set_index('maxdate').cumsum()
     df_pivot = pivot.todataframe().set_index('maxdate').cumsum()
 
