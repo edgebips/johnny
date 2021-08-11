@@ -745,7 +745,7 @@ def timeline_png():
 
     # TODO(blais): Move selection of groups to config.
     exclude_groups = {'Error', 'Experiments', 'Synthetic'}
-    exclude_mindate = datetime.date(2021, 4, 1)
+    exclude_mindate = None # datetime.date(2021, 4, 1)
     exclude_tag = '#bigloser'
 
     if exclude_mindate:
@@ -756,12 +756,12 @@ def timeline_png():
     if exclude_tag:
         # Remove dumb mistakes.
         # TODO(blais): Move selection of tags to config.
-        exclude_biglosers = set(
+        exclude_chain_ids = set(
             chain.chain_id
             for chain in STATE.chains_map.values()
             if exclude_tag in chain.tags)
         chains = (chains
-                  .selectnotin('chain_id', exclude_biglosers))
+                  .selectnotin('chain_id', exclude_chain_ids))
 
     if exclude_groups:
         # Remove groups not interested in.
