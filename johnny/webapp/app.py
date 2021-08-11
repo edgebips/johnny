@@ -672,17 +672,7 @@ def get_chains_at_date(date: datetime.date) -> Tuple[Table, Table]:
               .sort(['k', 'chain_id'])
               .cutout('k')
               .addfield('comment', get_comment)
-              .leftjoin(commfees, key='chain_id', rprefix='day_'))
-
-    # Exclude chains that are in background accounts.
-    exclude_accounts = {account.nickname
-                        for account in STATE.config.input.accounts
-                        if account.background}
-    if exclude_accounts:
-        chains = (chains
-                  .selectnotin('account', exclude_accounts))
-
-    chains = (chains
+              .leftjoin(commfees, key='chain_id', rprefix='day_')
               .cutout('account', 'init_legs',
                       'net_liq', 'net_win', 'net_loss',
                       'commissions', 'fees')
