@@ -162,6 +162,7 @@ def GetNavigation() -> Dict[str, str]:
         'page_active': flask.url_for('active'),
         'page_expiring': flask.url_for('expiring'),
         'page_recap': flask.url_for('recap_today'),
+        'page_leverage': flask.url_for('leverage'),
         'page_chains': flask.url_for('chains'),
         'page_transactions': flask.url_for('transactions'),
         'page_positions': flask.url_for('positions'),
@@ -729,6 +730,80 @@ def timeline_strategy_png():
 def timeline_account_png():
     chains = get_timeline_chains()
     return plot_timeline(chains, 'account')
+
+
+def get_mark_position(r: Record) -> Decimal:
+    """Convert mark transaction to position (investing the sign)."""
+    sign = +1 if r.instruction == 'SELL' else -1
+    return sign * r.quantity
+
+
+def get_notional(r: Record) -> Decimal:
+    """Calculate the notional risk of the position."""
+    mquantity = r.position * r.multiplier
+    if r.instype in {'EquityOption', 'FutureOption'}:
+        return (mquantity * r.strike).quantize(Q)
+    elif r.instype in {'Equity'}:
+        return -mquantity * r.price
+    elif r.instype in {'Future'}:
+        return -mquantity * r.price
+    else:
+        return ZERO
+
+
+def get_downside_notional(r: Record) -> Decimal:
+    """Return downside (upside) risk notiona."""
+    if r.putcall in {'P', 'C'}:
+        return r.notional if r.putcall == 'P' else ZERO
+    return r.notional
+
+
+def get_upside_notional(r: Record) -> Decimal:
+    """Return downside (upside) risk notiona."""
+    if r.putcall in {'P', 'C'}:
+        return r.notional if r.putcall == 'C' else ZERO
+    return -r.notional
+
+
+@app.route('/leverage')
+def leverage():
+    # Calculate notional equivalent exposure for all positions.
+    notional = (STATE.positions
+
+                # Convert Mark rows to position quantities.
+                .applyfn(instrument.Expand, 'symbol')
+                .addfield('position', get_mark_position)
+                .cutout('instruction', 'quantity')
+
+                # Compute the put/call notional risks associated with the position.
+                .addfield('notional', get_notional))
+
+    # Aggregate all put and call notional risk per (account, underlying).
+    leverage = (notional
+                .addfield('down', get_downside_notional)
+                .addfield('up', get_upside_notional)
+                .aggregate(['account', 'underlying', 'instype'], {
+                    'price': ('price', first),
+                    'notional_down': ('down', sum),
+                    'notional_up': ('up', sum),
+                })
+                .sort(['account', 'underlying'])
+                .cut('account', 'underlying', 'price', 'instype',
+                     'notional_down', 'notional_up'))
+
+    # Aggregate all notional per account.
+    per_account = (leverage
+                   .aggregate('account', {
+                       'notional_down': ('notional_down', sum),
+                       'notional_up': ('notional_up', sum),
+                   })
+                   .sort(['account']))
+
+    return flask.render_template('leverage.html',
+                                 leverage=ToHtmlString(leverage, 'leverage'),
+                                 per_account=ToHtmlString(per_account, 'per_account'),
+                                 **GetNavigation())
+
 
 
 # Trigger the initialization on load (before even the first request).

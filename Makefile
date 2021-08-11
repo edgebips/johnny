@@ -45,6 +45,9 @@ config-commit commit:
 final accept-all:
 	./experiments/accept-all.py
 
+annotate:
+	./experiments/annotate.py
+
 accept-specific-chains:
 	cat | ./experiments/accept-chains.py -g Premium -s FINAL
 
