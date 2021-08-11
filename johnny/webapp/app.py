@@ -332,7 +332,6 @@ def chain_names():
     chains_table = FilterChains(STATE.chains)
     buf = io.StringIO()
     pr = functools.partial(print, file=buf)
-    print(chains_table.lookallstr())
     for rec in chains_table.sort('underlyings').records():
         pr(rec.chain_id)
     response = flask.make_response(buf.getvalue(), 200)
@@ -611,19 +610,20 @@ def stats_pnlinit():
 
 
 ACTIONS = {
-    'Earnings': 0,
     'Closing': 1,
     'Daytrade': 2,
     'Adjusting': 3,
     'Opening': 4,
+    'Opening_Earnings': 5,
+    'Closing_Earnings': 6,
 }
 
-def get_date_chains(date: datetime.date) -> Tuple[Table, Table]:
+def get_chains_at_date(date: datetime.date) -> Tuple[Table, Table]:
     """Filter and identify chains active on a given date."""
 
     # A set of chain ids with transactions on the date.
     # This is used to figure out if an adjustment took place on a chain.
-    date_chains = set(
+    traded_chains = set(
         STATE.transactions
         .selectne('rowtype', 'Mark')
         .select(lambda r: r.datetime.date() == date)
@@ -634,18 +634,19 @@ def get_date_chains(date: datetime.date) -> Tuple[Table, Table]:
     def infer_action(r: Record) -> Optional[str]:
         if date == r.maxdate and r.status in {'FINAL', 'CLOSED'}:
             if date == r.mindate:
-                return 'Daytrade'
+                action = 'Daytrade'
             # Break out 'Earnings' to its own table.
-            if r.group == 'Earnings':
-                return 'Earnings'
             else:
-                return 'Closing'
+                action = 'Closing'
         elif date == r.mindate:
-            return 'Opening'
-        elif r.chain_id in date_chains:
-            return 'Adjusting'
+            action = 'Opening'
+        elif r.chain_id in traded_chains:
+            action = 'Adjusting'
         else:
             return None
+        if r.group == 'Earnings':
+            action += '_Earnings'
+        return action
 
     # Join in the comments from the chain.
     def get_comment(r: Record) -> str:
@@ -669,7 +670,17 @@ def get_date_chains(date: datetime.date) -> Tuple[Table, Table]:
               .sort(['k', 'chain_id'])
               .cutout('k')
               .addfield('comment', get_comment)
-              .leftjoin(commfees, key='chain_id', rprefix='day_')
+              .leftjoin(commfees, key='chain_id', rprefix='day_'))
+
+    # Exclude chains that are in background accounts.
+    exclude_accounts = {account.nickname
+                        for account in STATE.config.input.accounts
+                        if account.background}
+    if exclude_accounts:
+        chains = (chains
+                  .selectnotin('account', exclude_accounts))
+
+    chains = (chains
               .cutout('account', 'init_legs',
                       'net_liq', 'net_win', 'net_loss',
                       'commissions', 'fees')
@@ -683,8 +694,9 @@ def get_date_chains(date: datetime.date) -> Tuple[Table, Table]:
         'day_fees': ('day_fees', sum),
     }
 
+    summary_actions = {'Closing', 'Closing_Earnings', 'Daytrade'}
     def convert_agg_pnl(value, r: Record) -> str:
-        return 0 if r.action in {'Adjusting', 'Opening'} else value
+        return value if r.action in summary_actions else 0
     summary = (chains
                .aggregate('action', agg)
                .convert('pnl_chain', convert_agg_pnl, pass_row=True)
@@ -704,7 +716,7 @@ def recap_today():
 @app.route('/recap/<date>')
 def recap(date: str):
     date = dateutil.parser.parse(date).date()
-    chains, summary = get_date_chains(date)
+    chains, summary = get_chains_at_date(date)
     params = GetNavigation()
     params['date'] = date
     day = datetime.timedelta(days=1)
