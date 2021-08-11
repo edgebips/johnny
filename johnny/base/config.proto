@@ -138,8 +138,4 @@ message Account {
   // will create these positions at the front of the transactions log history
   // import.
   optional string initial = 5;
-
-  // A flag indicating that this account is not an active trading account. This
-  // is used by the daily recap to exclude those transactions from it.
-  optional bool background = 6;
 }
