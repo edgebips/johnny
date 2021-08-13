@@ -74,14 +74,14 @@ def main(config: Optional[str],
     for row in changes:
         chain = chains_map.get(row.chain_id, None)
         if chain is None:
-            logging.error(f"Chain id '{chain_id}' not found.")
+            logging.error(f"Chain id '{row.chain_id}' not found.")
             continue
 
         # Override attributes.
         for attr in 'group', 'strategy', 'comment':
             value = getattr(row, attr)
-            if getattr(chain, attr) != value:
-                logging.info(f"Overriding {attr} on {chain.chain_id}")
+            if value and getattr(chain, attr) != value:
+                logging.info(f"Overriding '{attr}' on {chain.chain_id}")
                 if value:
                     setattr(chain, attr, value)
                 else:

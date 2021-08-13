@@ -15,7 +15,13 @@
           paging: false,
           info: false,
       };
-      var summary_extra = Object.assign(extra, {bAutoWidth: false})
+      var summary_extra = Object.assign(extra, {
+          bAutoWidth: false,
+          columnDefs: [
+              {targets: ['day_commissions', 'day_fees', 'pnl_chain'],
+               className: 'dt-body-right'},
+          ],
+      })
       CreateChainsTable('#summary', summary_extra);
 
       var tables = ['#Closing', '#Opening', '#Daytrade', '#Adjusting',

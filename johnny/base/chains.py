@@ -401,7 +401,7 @@ def _CalculateProbabilities(rec: Record) -> Optional[Decimal]:
     """Pull the explicit win target or compute it using simple Kelly criterion."""
     chain = rec.chain
     if chain is None:
-        return None, None
+        return None
     pop = chain.pop or DEFAULT_POP50
     assert 0 < pop < 1
     target_frac = chain.target or DEFAULT_TARGET_FRAC
@@ -505,10 +505,10 @@ def TransactionsTableToChainsTable(transactions: Table,
 
         # Probability & targets.
         .addfield('prob', _CalculateProbabilities)
-        .addfield('pop', lambda r: r.prob and r.prob.pop)
-        .addfield('target', lambda r: r.prob and r.prob.target)
-        .addfield('pnl_win', lambda r: r.prob and r.prob.pnl_win)
-        .addfield('pnl_loss', lambda r: r.prob and r.prob.pnl_loss)
+        .addfield('pop', lambda r: r.prob.pop if r.prob else ZERO)
+        .addfield('target', lambda r: r.prob.target if r.prob else ZERO)
+        .addfield('pnl_win', lambda r: r.prob.pnl_win if r.prob else ZERO)
+        .addfield('pnl_loss', lambda r: r.prob.pnl_loss if r.prob else ZERO)
         .addfield('pnl_frac', _CalculatePnlFrac)
 
         # Calculate net liq win/loss equivalent to match on the platform.
