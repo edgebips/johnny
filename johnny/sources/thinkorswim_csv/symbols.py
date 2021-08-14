@@ -4,7 +4,7 @@
 from decimal import Decimal
 import datetime
 
-from johnny.base import futures
+from mulmat import multipliers
 from johnny.base import instrument
 from johnny.base.etl import Record
 Instrument = instrument.Instrument
@@ -33,7 +33,7 @@ def ToInstrument(rec: Record) -> str:
 
     if rec.instype == 'Future':
         short_under = underlying[:-3]
-        multiplier = futures.MULTIPLIERS[short_under]
+        multiplier = multipliers.MULTIPLIERS[short_under]
         return instrument.Instrument(underlying=underlying,
                                      multiplier=multiplier)
 
@@ -44,14 +44,14 @@ def ToInstrument(rec: Record) -> str:
                                      expiration=expiration,
                                      strike=Decimal(rec.strike),
                                      putcall=rec.type[0],
-                                     multiplier=futures.OPTION_CONTRACT_SIZE)
+                                     multiplier=multipliers.OPTION_CONTRACT_SIZE)
 
     if rec.instype == 'Future Option':
         assert rec.exp.startswith('/')
         # TODO(blais): Infer the actual expiration date from CME specs. The
         # software does not provide it.
         short_under = underlying[:-3]
-        multiplier = futures.MULTIPLIERS[short_under]
+        multiplier = multipliers.MULTIPLIERS[short_under]
         return instrument.Instrument(underlying=underlying,
                                      expiration=None,
                                      expcode=rec.exp,

@@ -3,7 +3,7 @@ __license__ = "GNU GPLv2"
 
 import unittest
 
-from johnny.base import futures
+from mulmat import multipliers
 from johnny.base import config_pb2
 from johnny.sources.thinkorswim_csv import positions
 
@@ -82,7 +82,7 @@ def test_ParseInstrumentDescription():
                            ('/SO', 'M', '/SI', 'N')]:
         item = mapping.months.add(option_product=op, option_month=om,
                                   future_product=fp, future_month=fm)
-    mapper = futures.FutOptMonthMapper(mapping)
+    mapper = multipliers.FutOptMonthMapper(mapping)
 
     for (description, root), expected in _EXAMPLE_INSTRUMENTS:
         inst = positions.ParseInstrumentDescription(description, root, mapper)

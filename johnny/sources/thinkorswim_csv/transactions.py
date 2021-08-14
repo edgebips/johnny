@@ -37,9 +37,9 @@ import typing
 import click
 from dateutil import parser
 
+from mulmat import multipliers
 from johnny.base import config as configlib
 from johnny.base import discovery
-from johnny.base import futures
 from johnny.base import instrument
 from johnny.base import inventories
 from johnny.base import number
@@ -292,7 +292,7 @@ def FindMultiplierInDescription(string: str) -> Decimal:
             raise ValueError("No symbol to find multiplier: '{}'".format(string))
         symbol = match.group(1)
         try:
-            multiplier = futures.MULTIPLIERS[symbol]
+            multiplier = multipliers.MULTIPLIERS[symbol]
         except KeyError:
             raise ValueError("No multiplier for symbol: '{}'".format(symbol))
         return Decimal(multiplier)

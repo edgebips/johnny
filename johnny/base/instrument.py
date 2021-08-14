@@ -9,7 +9,7 @@ import re
 from decimal import Decimal
 from typing import NamedTuple, Optional
 
-from johnny.base import futures
+from mulmat import multipliers
 from johnny.base.etl import Table
 
 
@@ -99,11 +99,11 @@ def FromColumns(underlying: str,
 
         if calendar is None:
             if expiration is not None:
-                multiplier = futures.OPTION_CONTRACT_SIZE
+                multiplier = multipliers.OPTION_CONTRACT_SIZE
             else:
                 multiplier = 1
         else:
-            multiplier = futures.MULTIPLIERS[underlying[:-3]]
+            multiplier = multipliers.MULTIPLIERS[underlying[:-3]]
 
     return Instrument(underlying, expiration, expcode, putcall, strike, multiplier)
 

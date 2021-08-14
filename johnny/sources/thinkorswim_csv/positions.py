@@ -43,15 +43,14 @@ from dateutil.parser import parse
 import click
 from more_itertools import first
 
+from mulmat.multipliers import FutOptMonthMapper
 from johnny.base import config as configlib
 from johnny.base import discovery
-from johnny.base import futures
 from johnny.base import instrument
 from johnny.base import positions as poslib
 from johnny.base.etl import petl, WrapRecords
 from johnny.base.number import ToDecimal
 from johnny.sources.thinkorswim_csv import utils
-FutOptMonthMapper = futures.FutOptMonthMapper
 
 
 Table = petl.Table

@@ -8,7 +8,7 @@ import re
 from typing import Optional
 from decimal import Decimal
 
-from johnny.base import futures
+from mulmat import multipliers
 from johnny.base import instrument
 Instrument = instrument.Instrument
 
@@ -57,7 +57,7 @@ def _ParseEquityOptionSymbol(symbol: str) -> Instrument:
         expiration=datetime.date(int(symbol[6:8]), int(symbol[8:10]), int(symbol[10:12])),
         putcall=symbol[12],
         strike=_ParseStrikeAmount(symbol[13:21]),
-        multiplier=futures.OPTION_CONTRACT_SIZE)
+        multiplier=multipliers.OPTION_CONTRACT_SIZE)
 
 
 def _ParseStrikeAmount(string: str) -> Decimal:
@@ -79,7 +79,7 @@ def _ParseFuturesSymbol(symbol: str) -> Instrument:
     assert match, "Invalid futures options symbol: {}".format(symbol)
     root, fmonth, fyear = match.groups()
     underlying = f"/{root}{fmonth}{_DECADE}{fyear}"
-    multiplier = futures.MULTIPLIERS[underlying[:-3]]
+    multiplier = multipliers.MULTIPLIERS[underlying[:-3]]
     return Instrument(underlying=underlying,
                       multiplier=multiplier)
 
