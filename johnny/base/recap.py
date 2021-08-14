@@ -97,16 +97,23 @@ def get_summary(chains: Table) -> Table:
     # opening P/L, as they are not relevant to the day's action.
     agg = {
         'pnl_chain': ('pnl_chain', sum),
+        'credits': ('init', sum),
         'day_commissions': ('day_commissions', sum),
         'day_fees': ('day_fees', sum),
     }
 
-    summary_actions = {'Closing', 'Closing_Earnings', 'Daytrade'}
-    def convert_agg_pnl(value, r: Record) -> str:
-        return value if r.action in summary_actions else 0
+    pnl_actions = {'Closing', 'Closing_Earnings', 'Daytrade'}
+    def clean_pnl(value, r: Record) -> str:
+        return value if r.action in pnl_actions else 0
+
+    init_actions = {'Opening'}
+    def clean_init(value, r: Record) -> str:
+        return value if r.action in init_actions else 0
+
     summary = (chains
                .aggregate('action', agg)
-               .convert('pnl_chain', convert_agg_pnl, pass_row=True)
+               .convert('pnl_chain', clean_pnl, pass_row=True)
+               .convert('credits', clean_init, pass_row=True)
                .addfield('k', lambda r: ACTIONS.get(r.action))
                .sort('k')
                .cutout('k'))

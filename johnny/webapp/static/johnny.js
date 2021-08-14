@@ -14,6 +14,7 @@ function CreateChainsTable(id, extra_config) {
         net_liq: SumFloat,
         commissions: SumFloat,
         fees: SumFloat,
+        credits: SumFloat,
     }
 
     // Create the table instance.
