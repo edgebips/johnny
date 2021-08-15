@@ -107,13 +107,21 @@ def Group(transactions: Table,
 
     # Initialize the resulting mapping of transactions to chains with finalized
     # chains.
-    txn_chain_map = {transaction_id: chain.chain_id
-                     for chain in final_chains
-                     for transaction_id in chain.ids}
+    final_txn_chain_map = {transaction_id: chain.chain_id
+                           for chain in final_chains
+                           for transaction_id in chain.ids}
 
-    # Select only remaining transactions.
+    # Select only remaining transactions not account for by final chains.
     match_transactions = (transactions
-                          .selectnotin('transaction_id', txn_chain_map))
+                          .selectnotin('transaction_id', final_txn_chain_map))
+
+
+    # Update the chain mapping with chains that are active or closed, so
+    # explicit names can resolve.
+    txn_chain_map = final_txn_chain_map.copy()
+    txn_chain_map.update({transaction_id: chain.chain_id
+                          for chain in match_chains
+                          for transaction_id in chain.ids})
 
     # Create a graph and process each connected component to an individual trade.
     graph = CreateGraph(match_transactions, match_chains, by_match, by_order, by_time)
@@ -124,11 +132,9 @@ def Group(transactions: Table,
             try:
                 unused_node_type = node['type']
             except KeyError:
-                raise KeyError("Node with no type for transaction: {}".format(
-                    transaction_id))
+                raise KeyError("Node without type for: {}".format(transaction_id))
             if node['type'] == 'txn':
                 chain_txns.append(node['rec'])
-
         assert chain_txns, "Invalid empty chain: {}".format(chain_txns)
 
         chain_id = ChainName(chain_txns, txn_chain_map)
@@ -139,6 +145,8 @@ def Group(transactions: Table,
         # eventually just insert a random character here.
         assert chain_id not in final_chain_ids, (
             f"Collision with FINAL chain names at '{chain_id}'.")
+
+        # Add tagged transactions to the chain map.
         for rec in chain_txns:
             txn_chain_map[rec.transaction_id] = chain_id
 
@@ -164,9 +172,9 @@ def CreateGraph(transactions: Table,
                   ('underlying', str))
 
     # Create a mapping of transaction id to their chain id.
-    chain_map = {iid: chain.chain_id
+    chain_map = {transaction_id: chain.chain_id
                  for chain in chains
-                 for iid in chain.ids}
+                 for transaction_id in chain.ids}
 
     graph = nx.Graph()
     for rec in transactions.records():
@@ -314,12 +322,19 @@ def ChainName(txns: List[Record],
               chain_map: Mapping[str, str]):
     """Generate a unique chain name."""
 
-    # Look for an explicit chain id.
+    # Look for an explicit chain id from one of the transactions.
     sorted_txns = sorted(txns, key=lambda r: (r.datetime, r.underlying))
+    explicit_chain_ids = set()
     for txn in sorted_txns:
         explicit_chain_id = chain_map.get(txn.transaction_id, None)
         if explicit_chain_id is not None:
-            return explicit_chain_id
+            explicit_chain_ids.add(explicit_chain_id)
+    num_ids = len(explicit_chain_ids)
+    if num_ids == 1:
+        return first(explicit_chain_ids)
+    elif num_ids > 1:
+        logging.error("Multiple explicit chains for cluster {}: {}".format(
+            [t.transaction_id for t in txns], explicit_chain_ids))
 
     # Note: We don't know the max date, so we stick with the front date only in
     # the readable chain name.
