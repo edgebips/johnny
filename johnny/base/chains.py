@@ -39,6 +39,7 @@ import networkx as nx
 from johnny.base import config as configlib
 from johnny.base import strategy as strategylib
 from johnny.base import instrument
+from johnny.base import inventories
 from johnny.base import mark
 from johnny.base.etl import AssertColumns, Record, Table
 from johnny.utils import timing
@@ -381,6 +382,23 @@ def InitialCredits(rec: Record) -> Decimal:
     return sum(rec.cost for rec in rec.init_txns)
 
 
+def PositionCost(rec: Record) -> Decimal:
+    """Compute the cost of the position from a group of chain rows, using FIFO
+    matching."""
+    if not any(rec.rowtype == 'Mark' for rec in rec.txns):
+        return
+
+    inv = collections.defaultdict(inventories.FifoInventory)
+    for txn in rec.txns:
+        if txn.rowtype == 'Mark':
+            continue
+        sign = +1 if txn.instruction == 'SELL' else -1
+        unit_cost = abs(txn.cost / txn.quantity)
+        inv[txn.symbol].match(sign * txn.quantity, unit_cost, txn.transaction_id)
+
+    return sum(syminv.cost() for syminv in inv.values())
+
+
 def _CalculateNetLiq(pairs: Iterator[Tuple[str, Decimal]]):
     return Decimal(sum(cost
                        for rowtype, cost in pairs
@@ -506,6 +524,7 @@ def TransactionsTableToChainsTable(transactions: Table,
 
         # Add calculations off the initial position records.
         .addfield('init', InitialCredits)
+        .addfield('fifo_cost', PositionCost)
         .addfield('init_legs', lambda r: len(r.init_txns))
         .addfield('adjust', _NumAdjustments)
 
@@ -551,7 +570,7 @@ def TransactionsTableToChainsTable(transactions: Table,
                          'init', 'init_legs', 'adjust',
                          'pnl_win', 'pnl_chain', 'pnl_loss', 'pnl_frac',
                          'target', 'pop',
-                         'net_win', 'net_liq', 'net_loss',
+                         'net_win', 'net_liq', 'net_loss', 'fifo_cost',
                          'commissions', 'fees',
                          'group', 'strategy'))
 

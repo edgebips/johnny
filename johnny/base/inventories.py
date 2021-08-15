@@ -189,21 +189,25 @@ class FifoInventory:
         return +ONE if self.lots[0].quantity > 0 else -ONE
 
     def quantity(self) -> Quantity:
-        """Return the total quantity held in this inventory."""
+        """Return the unsigned total quantity held in this inventory."""
         return sum(lot.quantity for lot in self.lots) if self.lots else ZERO
 
     def cost(self) -> Amount:
-        """Return the total quantity held in this inventory."""
-        return sum(lot.cost for lot in self.lots) if self.lots else ZERO
+        """Return the total cost held in this inventory."""
+        return sum(lot.quantity * lot.cost for lot in self.lots) if self.lots else ZERO
 
     def match(self,
               quantity: Quantity,
-              cost: Amount,
+              unit_cost: Amount,
               transaction_id: TransactionId) -> Tuple[Quantity, Amount, Optional[MatchId]]:
         """Match the given change against the inventory state.
         Return the absolute matched size, absolute basis, and match id to apply.
+
+        Note that `quantity` is the signed quantity and `unit_cost` is the
+        unsigned cost per unit.
         """
         # Note: You could calculate unrealized P/L on matches.
+        assert unit_cost > ZERO
 
         # Add to the existing quantity; keep the same transaction id.
         if self.match_id is None:
@@ -214,13 +218,13 @@ class FifoInventory:
         matched = ZERO
         if not self.lots:
             # Adding to an empty inventory.
-            self.lots.append(Lot(quantity, cost))
+            self.lots.append(Lot(quantity, unit_cost))
         else:
             # Calculate the sign of the current position.
             sign = 1 if self.lots[0].quantity >= 0 else -1
             if sign * quantity >= ZERO:
                 # Augmentation on existing position.
-                self.lots.append(Lot(quantity, cost))
+                self.lots.append(Lot(quantity, unit_cost))
             else:
                 # Reduction in FIFO order.
                 # Notes: lot_matched` and `remaining` are positive.
@@ -240,7 +244,7 @@ class FifoInventory:
 
                 # Remaining quantity to insert to cross.
                 if remaining != ZERO:
-                    self.lots.append(Lot(-sign * remaining, cost))
+                    self.lots.append(Lot(-sign * remaining, unit_cost))
 
         match_id = self.match_id
         if not self.lots:
