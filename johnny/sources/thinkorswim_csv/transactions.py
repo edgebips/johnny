@@ -37,6 +37,7 @@ import typing
 import click
 from dateutil import parser
 
+import mulmat
 from mulmat import multipliers
 from johnny.base import config as configlib
 from johnny.base import discovery
@@ -516,6 +517,10 @@ def GetPutCall(rec: Record) -> str:
 def AccountTradeHistory_Prepare(table: Table) -> Table:
     """Prepare the account trade history table."""
 
+    # Read database for resolving expirations.
+    db = mulmat.read_cme_database()
+    db_lookup = mulmat.get_expirations_lookup(db)
+
     table = (
         table
 
@@ -544,7 +549,7 @@ def AccountTradeHistory_Prepare(table: Table) -> Table:
         .addfield('instype', InferInstrumentType)
 
         # Generate Beancount symbol from the row.
-        .addfield('_instrument', symbols.ToInstrument)
+        .addfield('_instrument', partial(symbols.ToInstrument, db_lookup))
         # TODO(blais): Can we simply replace this antiquated code by instrument.Expand()?
         .addfield('underlying', lambda r: r._instrument.underlying)
         .addfield('expiration', lambda r: r._instrument.expiration)

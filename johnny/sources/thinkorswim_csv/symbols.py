@@ -3,7 +3,9 @@
 
 from decimal import Decimal
 import datetime
+from typing import Mapping
 
+import mulmat
 from mulmat import multipliers
 from johnny.base import instrument
 from johnny.base.etl import Record
@@ -19,7 +21,7 @@ SYMBOL_NAME_CHANGES = {
 }
 
 
-def ToInstrument(rec: Record) -> str:
+def ToInstrument(db_lookup: Mapping[str, Record], rec: Record) -> str:
     """Generate an Instrument symbol from the row."""
 
     # Normalize and fixup the symbols to remove the multiplier and month
@@ -52,8 +54,9 @@ def ToInstrument(rec: Record) -> str:
         # software does not provide it.
         short_under = underlying[:-3]
         multiplier = multipliers.MULTIPLIERS[short_under]
+        expiration = mulmat.get_or_estimate_expiration(db_lookup, rec.exp)
         return instrument.Instrument(underlying=underlying,
-                                     expiration=None,
+                                     expiration=expiration,
                                      expcode=rec.exp,
                                      strike=Decimal(rec.strike),
                                      putcall=rec.type[0],
