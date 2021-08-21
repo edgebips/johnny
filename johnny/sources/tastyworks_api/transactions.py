@@ -72,23 +72,38 @@ def PreprocessTransactions(items: Iterator[Tuple[str, Json]]) -> Iterator[Json]:
 # A list of (transaction-type, transaction-sub-type) to process.
 # The other types are ignored.
 ALLOW_TYPES = {
+    # Futures trades.
     ('Trade', 'Buy'): 'Trade',
+    ('Trade', 'Sell'): 'Trade',
+
+    # Equity trades.
     ('Trade', 'Buy to Close'): 'Trade',
     ('Trade', 'Buy to Open'): 'Trade',
-    ('Trade', 'Sell'): 'Trade',
     ('Trade', 'Sell to Close'): 'Trade',
     ('Trade', 'Sell to Open'): 'Trade',
+
+    # Expirations.
     ('Receive Deliver', 'Expiration'): 'Expire',
-    ('Receive Deliver', 'Symbol Change'): 'Trade',
-    ('Receive Deliver', 'Symbol Change'): 'Trade',
-    ('Receive Deliver', 'ACAT'): 'Trade',
-    ('Receive Deliver', 'ACAT'): 'Trade',
-    ('Receive Deliver', 'Assignment'): 'Assign',
-    ('Receive Deliver', 'Cash Settled Assignment'): 'Assign',
-    ('Receive Deliver', 'Cash Settled Exercise'): 'Trade',
-    ('Receive Deliver', 'Exercise'): 'Trade',
+
+    # Stock actions.
     ('Receive Deliver', 'Forward Split'): 'Trade',
     ('Receive Deliver', 'Reverse Split'): 'Trade',
+    ('Receive Deliver', 'Symbol Change'): 'Trade',
+    ('Receive Deliver', 'Symbol Change'): 'Trade',
+
+    # Assignment and exercise.
+    ('Receive Deliver', 'Assignment'): 'Assign',
+    ('Receive Deliver', 'Exercise'): 'Exercise',
+    ('Receive Deliver', 'Cash Settled Assignment'): 'Assign',
+    ('Receive Deliver', 'Cash Settled Exercise'): 'Exercise',
+    ('Receive Deliver', 'Buy to Open'): 'Trade',
+    ('Receive Deliver', 'Sell to Open'): 'Trade',
+    ('Receive Deliver', 'Buy to Close'): 'Trade',
+    ('Receive Deliver', 'Sell to Close'): 'Trade',
+
+    # Transfers.
+    ('Receive Deliver', 'ACAT'): 'Trade',
+    ('Receive Deliver', 'ACAT'): 'Trade',
 }
 
 OTHER_TYPES = {
@@ -128,7 +143,7 @@ def ParseTime(row: Record):
 
 def GetPosEffect(rec: Record) -> Optional[str]:
     """Get position effect."""
-    if rec.rowtype == 'Expire':
+    if rec.rowtype in {'Expire', 'Exercise', 'Assign'}:
         return 'CLOSING'
     action = rec['action']
     if action.endswith('to Open'):

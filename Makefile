@@ -27,7 +27,7 @@ serve:
 config: config-gen config-diff
 earnings: config-earnings config-diff
 
-config-gen:
+import-light:
 	johnny-import -q
 
 config-earnings:

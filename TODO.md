@@ -1,5 +1,7 @@
 # General
 
+- Add colors
+
 - Idea: Compact file format for sharing full trade history.
 
 - Report P/L from equity and options separately (for covered calls)
@@ -50,6 +52,16 @@
 - Factor out ZERO in petl
 
 - Add best and worst chains in stats, for stocks, for sharing.
+
+
+# Tranactions Log
+
+- Reconsider whether to categorize the rowtype of underlying stock actions
+  resulting from assignment an exercise from 'Trade' and instead have dedicated
+  'Assign' and 'Exercise' be possible stock actions.
+
+- Set the match ids for assigments and exercises with their stock trades to
+  match each other.
 
 
 # Simplify and make State-based Processing more Robust

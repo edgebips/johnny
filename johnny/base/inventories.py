@@ -488,7 +488,8 @@ class OpenCloseFifoInventory:
 
     def expire(self,
                rec: Record,
-               accumfn: TxnAccumFn):
+               accumfn: TxnAccumFn,
+               rowtype: Optional[str] = 'Expire'):
         """Match the inventory state.
         Return the signed matched size and match id to apply.
         """
@@ -497,7 +498,7 @@ class OpenCloseFifoInventory:
 
         pquantity = self.quantity()
         instruction = 'SELL' if pquantity >= 0 else 'BUY'
-        accumfn(rec._replace(rowtype='Expire',
+        accumfn(rec._replace(rowtype=rowtype,
                              instruction=instruction,
                              effect='CLOSING',
                              quantity=abs(pquantity),

@@ -33,12 +33,17 @@ A normalized transactions table contains the following columns and data types.
     positions). The value will be one of
 
   * `Trade` (a purchase or sale),
-  * `Expire` (an expiration, a receive and deliver type of event),
+  * `Expire` (an expiration, a removal type of event),
+  * `Assign` (an assignment, a removal type of event),
+  * `Exercise` (an exercise, a removal type of event),
   * `Mark` (a virtual sale).
   * `Open` (a virtual transaction to create an opening balance)
 
   `Mark` is never inserted by the normalization code, that's something that is
   inserted by further processing code.
+
+  Also note that for 'Assign' and 'Exercise', the corresponding stock actions
+  are categorized as 'Trade'.
 
 - `order_id: str`: The order id used for the transaction, if there was an order.
   May include alphabetical characters. This is used to join together multiple

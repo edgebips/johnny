@@ -127,8 +127,8 @@ def Process(transactions: Table,
                 assert not rec.effect
                 inv.match(rec, accum)
 
-        elif rec.rowtype == 'Expire':
-            inv.expire(rec, accum)
+        elif rec.rowtype in {'Expire', 'Assign', 'Exercise'}:
+            inv.expire(rec, accum, rec.rowtype)
 
         else:
             raise ValueError(f"Invalid row type: {rec.rowtype}")
@@ -188,7 +188,7 @@ def _AddMissingExpirations(invs: Mapping[str, Decimal],
                 quantity=ZERO,
                 commissions=ZERO,
                 fees=ZERO)
-            inv.expire(rec, accum)
+            inv.expire(rec, accum, 'Expire')
 
 
 def _AddMarkTransactions(invs: Mapping[str, Decimal],
