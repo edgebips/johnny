@@ -2,6 +2,11 @@
 
 - Add colors
 
+- Compute the 70/30 equivalent performance on 100% invested net liq in the
+  market.
+
+- Compute beta-weighted gamma risk.
+
 - Idea: Compact file format for sharing full trade history.
 
 - Report P/L from equity and options separately (for covered calls)
