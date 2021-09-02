@@ -8,15 +8,12 @@ CHAINS_NEW = $(shell grep chains_db $(JOHNNY_CONFIG) | tail -n1 | sed  -e 's/.*c
 test:
 	python3 -m pytest -x johnny
 
-debug:
-	python3 ./experiments/johnny-debug
-
-move-files:
-	johnny-move-files
-
 update:
 	tastyworks-update -a Individual $(DOWNLOADS)/tastyworks-individual.db
 	tastyworks-update -a Roth       $(DOWNLOADS)/tastyworks-roth.db
+
+move-files:
+	johnny-move-files
 
 import: move-files
 	johnny-import

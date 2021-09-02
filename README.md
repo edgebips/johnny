@@ -15,16 +15,22 @@ point or other in the next couple of months.
 
 
 ## Setting up Johnny in a virtual environment
+
 From the Johnny source directory:
 
 1. Setup the virtual environment: `python3 -m venv venv`
 2. Activate it: `source venv/bin/activate`
 3. Install the package for local development into the virtual environment: `pip install --editable .`
-4. Run the web UI: `export JOHNNY_ROOT=/path/to/johnny/data && ./bin/johnny-web`
-4. Visit the web UI at http://localhost:5000
+4. Configure your environment: `export JOHNNY_CONFIG=/path/to/johnny/config.pbtxt`
+5. Run the importer to create or update your database of normalized transactions: `johnny-import`
+6. Run the web server to view: `johnny-web` and visit the web UI at http://localhost:5000
+
+See `Makefile` for the most up-to-date common commands the author uses.
 
 ## Graphviz (optional)
+
 Extra steps are required to install Graphviz: https://pygraphviz.github.io/documentation/stable/install.html
+
 
 ## Inputs
 
