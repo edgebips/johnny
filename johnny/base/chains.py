@@ -725,7 +725,7 @@ def InferStrategy(transactions_map: Dict[str, Record], chains_db: Chains):
 
 def AcceptChain(chain: Chain,
                 group: Optional[str]=None,
-                status: Optional[int]=ChainStatus.FINAL):
+                status: Optional[int]=None):
     """Mutate the chain to bake the ids and modify some of its attributes."""
 
     # Move `auto_ids` to `ids`.

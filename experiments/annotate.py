@@ -48,11 +48,24 @@ def main(config: Optional[str],
     chains_db = configlib.ReadChains(config.output.chains_db)
     chains_map = {c.chain_id: c for c in chains_db.chains}
 
+
     # Get today's chains from the recap, filter them out to include their
     # editable fields.
     date = datetime.date.today()
     todays_chains = (
-        recaplib.get_chains_at_date(transactions, chains_table, chains_map, date)
+        recaplib.get_chains_at_date(transactions, chains_table, chains_map, date))
+
+    # Get all chains without a group.
+    chain_ids = set(todays_chains.values('chain_id'))
+    nogroup_chains = (
+        chains_table
+        .selecteq('group', 'NoGroup')
+        .selectnotin('chain_id', chain_ids)
+        .addfield('action', 'MissingGroup'))
+
+    # Concatenate both groups together.
+    edit_chains = (
+        petl.cat(nogroup_chains, todays_chains)
         .convert('group', lambda group: '' if group == 'NoGroup' else group)
         .cut('action', 'chain_id', 'underlyings', 'days', 'group', 'strategy')
         .addfield('comment', lambda r: (chains_map[r.chain_id].comment
@@ -61,7 +74,7 @@ def main(config: Optional[str],
 
     # Spawn an editor.
     with tempfile.NamedTemporaryFile(suffix='.csv') as csvfile:
-        todays_chains.tocsv(csvfile.name)
+        edit_chains.tocsv(csvfile.name)
         csvfile.flush()
 
         editor = os.getenv("SHEETS_EDITOR", "vd")

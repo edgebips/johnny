@@ -42,7 +42,7 @@ config-clobber clobber:
 config-commit commit:
 	hg commit $(CHAINS)
 
-final accept-all:
+final:
 	./experiments/accept-all.py
 
 annotate:
