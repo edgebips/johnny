@@ -25,6 +25,7 @@ ACTIONS = {
     'Opening': 4,
     'Opening_Earnings': 5,
     'Closing_Earnings': 6,
+    'Adjusting_Earnings': 7,
 }
 
 def get_chains_at_date(transactions: Table,
