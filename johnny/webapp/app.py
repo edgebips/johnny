@@ -131,7 +131,8 @@ def ToHtmlString(table: Table, cls: str, ids: List[str] = None) -> bytes:
     sink = petl.MemorySource()
     table.tohtml(sink, vrepr=vrepr)
     html = sink.getvalue().decode('utf8')
-    html = re.sub("class='petl'", f"class='display compact nowrap cell-border' id='{cls}'", html)
+    html = re.sub("class='petl'",
+                  f"class='display compact nowrap cell-border' id='{cls}'", html)
 
     # Add class to <th> tags.
     fnames = iter(table.fieldnames())
@@ -160,7 +161,8 @@ def ToHtmlString(table: Table, cls: str, ids: List[str] = None) -> bytes:
 def vrepr(value: Any) -> str:
     """Universal rendering function, rendering decimals with commas."""
     if isinstance(value, Decimal):
-        return "{:,.2f}".format(value)
+        sign, digits, exp = value.normalize().as_tuple()
+        return "{value:,.{width}f}".format(width=max(2, -exp), value=value)
     return str(value)
 
 
