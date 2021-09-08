@@ -43,7 +43,7 @@ from dateutil.parser import parse
 import click
 from more_itertools import first
 
-from mulmat.multipliers import FutOptMonthMapper
+from mulmat import months
 from johnny.base import config as configlib
 from johnny.base import discovery
 from johnny.base import instrument
@@ -142,11 +142,10 @@ def SplitGroups(lines: List[str]) -> List[Group]:
     return group_list
 
 
-_FUTSYM = "/([A-Z0-9]+[FGHJKMNQUVXZ]2[0-9])"
+_FUTSYM = "(/[A-Z0-9]+[FGHJKMNQUVXZ]2[0-9])"
 
 def ParseInstrumentDescription(
-        string: str, symroot: str,
-        month_mapper: FutOptMonthMapper) -> instrument.Instrument:
+        string: str, symroot: str) -> instrument.Instrument:
     """Parse an instrument description to a Beansym."""
 
     # Handle Future Option, e.g.,
@@ -157,18 +156,8 @@ def ParseInstrumentDescription(
         (multiplier, month, year, subtype,
          expcode,
          strike, putcall) = match.groups()
-        try:
-            underlying, month = month_mapper.get('/{}'.format(expcode[:-3]), expcode[-3])
-        except KeyError as exc:
-            raise KeyError("Missing underlying/month {} from {}, {}".format(
-                exc, string, symroot)) from exc
-        assert underlying == symroot
 
-        # TODO(blais): If the month is straddling the year, we will have to
-        # advance by one here. Do this later. Write unit test.
-        year = expcode[-2:]
-
-        underlying = "{}{}{}".format(underlying, month, year)
+        underlying = months.get_underlying(expcode)
         return instrument.Instrument(underlying=underlying,
                                      expcode=expcode,
                                      putcall=putcall[0],
@@ -217,7 +206,7 @@ def InferCostFromTradePrice(rec: Record) -> Decimal:
     return -rec.quantity * rec._instrument.multiplier * rec.price
 
 
-def FoldInstrument(table: Table, month_mapper: FutOptMonthMapper) -> Table:
+def FoldInstrument(table: Table) -> Table:
     """Given a group table, remove and fold the underlying row into a replicated
     column. This function removes redundant grouping rows, folding their unique
     values as columns.
@@ -254,8 +243,7 @@ def FoldInstrument(table: Table, month_mapper: FutOptMonthMapper) -> Table:
 
              # Synthetize our symbol.
              .addfield('_instrument',
-                       lambda r: ParseInstrumentDescription(r.Instrument, r.symroot,
-                                                            month_mapper))
+                       lambda r: ParseInstrumentDescription(r.Instrument, r.symroot))
              .addfield('symbol',
                        lambda r: str(r._instrument))
 
@@ -305,7 +293,7 @@ def ReduceFragmentedPositions(table: Table) -> Table:
     return table.aggregate('symbol', agg)
 
 
-def GetPositions(filename: str, month_mapper: FutOptMonthMapper) -> Table:
+def GetPositions(filename: str) -> Table:
     """Read and parse the positions statement."""
 
     # Read the positions table.
@@ -321,7 +309,7 @@ def GetPositions(filename: str, month_mapper: FutOptMonthMapper) -> Table:
         if x.table.nrows() == 0:
             continue
 
-        gtable = (FoldInstrument(x.table, month_mapper)
+        gtable = (FoldInstrument(x.table)
                   .addfield('group', x.name, index=0))
 
         tables.append(gtable)
@@ -337,8 +325,7 @@ def GetPositions(filename: str, month_mapper: FutOptMonthMapper) -> Table:
 def Import(source: str, config: configlib.Config) -> Table:
     """Process the filename, normalize, and output as a table."""
     filename = discovery.GetLatestFile(source)
-    month_mapper = FutOptMonthMapper(config.futures_option_month_mapping)
-    return GetPositions(filename, month_mapper)
+    return GetPositions(filename)
 
 
 @click.command()
