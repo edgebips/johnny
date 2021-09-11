@@ -10,9 +10,8 @@ https://docs.google.com/document/d/18AfWSRhQ1sWr0S4rd0GvQFy_7bXxCod-TC1qNrPHCEM/
 
 ## Status
 
-Heavily under development. Assume everything will be moved and broken at some
-point or other in the next couple of months.
-
+There is no release on PyPI. You have to install or run this from the Git
+repositories.
 
 ## Setting up Johnny in a virtual environment
 
@@ -27,9 +26,25 @@ From the Johnny source directory:
 
 See `Makefile` for the most up-to-date common commands the author uses.
 
-## Graphviz (optional)
+### Graphviz (optional)
 
 Extra steps are required to install Graphviz: https://pygraphviz.github.io/documentation/stable/install.html
+
+
+## Development Environment
+
+The most flexible way to setup Johnny is to clone the required repositories and
+setup your environment accordingly:
+
+    cd $WORK
+    git clone http://github.com/beancount/johnny
+    git clone http://github.com/blais/mulmat
+    git clone http://github.com/blais/goodkids
+    export PYTHONPATH=$PYTHONPATH:$WORK/johnny/johnny:$WORK/mulmat/mulmat:$WORK/goodkids/goodkids
+    export PATH=$PATH:$WORK/johnny/bin:$WORK/mulmat/bin:$WORK/goodkids/bin
+
+You can then `git pull` from those repositories to update to the latest,
+in-development versions.
 
 
 ## Inputs
