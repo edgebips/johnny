@@ -22,9 +22,10 @@ message Config {
   optional Outputs output = 2;
 
   // Mapping of futures options months to their corresponding underlying options
-  // months. This is a temporary mapping we use until we code up the rules from
-  // the CME contracts.
-  optional FutOptMonthMapping futures_option_month_mapping = 3;
+  // months. This is deprecated. Make sure you have a recent version of the
+  // 'mulmat' library installed in order to transaction options codes to
+  // corresponding underlying codes.
+  optional FutOptMonthMapping futures_option_month_mapping = 3 [deprecated = true];
 
   // Options for the presentation of results.
   optional Presentation presentation = 4;
@@ -83,7 +84,14 @@ message FutOptMonthMapping {
 message Presentation {
   // Groups whose chains to ignore for presentation. This can be used to exclude
   // regular (i.e., non-trading) investments.
-  repeated string ignore_groups = 4;
+  repeated string ignore_groups = 1;
+
+  // Tags whose chains to ignore for presentation. This can be used to exclude
+  // particular trade chains.
+  repeated string ignore_tags = 2;
+
+  // Minimum date before which the chains must be excluded.
+  optional string ignore_mindate = 3;
 }
 
 // The declaration of an account source. Only declared accounts are ingested.

@@ -102,17 +102,25 @@ def Initialize():
 
             # Filter the chains table removing ignored groups.
             ignore_groups = set(config.presentation.ignore_groups)
+            ignore_tags = set(config.presentation.ignore_tags)
             ignore_chains = set(chain.chain_id
                                 for chain in chains_db.chains
-                                if chain.group in ignore_groups)
+                                if (chain.group in ignore_groups or
+                                    set(chain.tags) & ignore_tags))
             chains_table = (
                 petl.frompickle(config.output.chains)
                 .selectnotin('chain_id', ignore_chains))
 
+            if config.presentation.ignore_mindate:
+                mindate = dateutil.parser.parse(config.presentation.ignore_mindate).date()
+                chains_table = chains_table.selectge('maxdate', mindate)
+
+            chain_ids = set(chains_table.values('chain_id'))
+
             # Filter the transactions table removing ignored chains (from above).
             transactions = (
                 petl.frompickle(config.output.transactions)
-                .selectnotin('chain_id', ignore_chains))
+                .selectin('chain_id', chain_ids))
 
             # Extract current positions from marks.
             positions = (transactions
@@ -670,34 +678,7 @@ def timeline():
 
 def get_timeline_chains():
     """Return a table of chains suitable to plotting a timeline."""
-    chains = STATE.chains
-
-    # TODO(blais): Move selection of groups to config.
-    exclude_groups = {'Error', 'Experiments', 'Synthetic'}
-    exclude_mindate = None # datetime.date(2021, 4, 1)
-    exclude_tag = '#bigloser'
-
-    if exclude_mindate:
-        # Remove beginning.
-        # TODO(blais): Add min date to config.
-        chains = chains.selectge('maxdate', exclude_mindate)
-
-    if exclude_tag:
-        # Remove dumb mistakes.
-        # TODO(blais): Move selection of tags to config.
-        exclude_chain_ids = set(
-            chain.chain_id
-            for chain in STATE.chains_map.values()
-            if exclude_tag in chain.tags)
-        chains = (chains
-                  .selectnotin('chain_id', exclude_chain_ids))
-
-    if exclude_groups:
-        # Remove groups not interested in.
-        data = (chains
-                .selectnotin('group', exclude_groups))
-
-    return (chains
+    return (STATE.chains
             .convert('pnl_chain', float)
             .cut('maxdate', 'account', 'group', 'strategy', 'pnl_chain'))
 

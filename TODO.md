@@ -1,5 +1,11 @@
 # General
 
+- Implement `init_ids` to allow explicitly overriding the initial credits
+  transactions.
+
+- Add sets of equivalent underlyings to the configuration and use those
+  equivalents to join together trade chains automatically.
+
 - Add colors
 
 - Compute the 70/30 equivalent performance on 100% invested net liq in the
