@@ -3,9 +3,13 @@
 ## Overview
 
 This is code that can ingest transactions logs and positions log from various
-discount brokers, normalize it, and run various analyses on it. See this
-document for more details:
+discount brokers, normalize it, and run various analyses on it.
+
+See this document for more details:
 https://docs.google.com/document/d/18AfWSRhQ1sWr0S4rd0GvQFy_7bXxCod-TC1qNrPHCEM/
+
+See these corresponding presentation slides:
+https://docs.google.com/presentation/d/1nTzfQp_cVDHdW5sJ8oVdB-G3r7UcD9vvQVZ-BvZ4s1s/
 
 
 ## Status
