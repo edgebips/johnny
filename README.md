@@ -52,7 +52,7 @@ You will need both a positions file and a transactions log downloads.
   include the lines in the output, this is a known issue in TW), save file to a
   directory. If you have multiple accounts, do this for each account.
 
-### thinkorswim
+### Think-or-Swim (TD Ameritrade)
 
 - **Positions** Go to the `Monitor >> Activity and Positions` tab, make sure all
   sections are expanded, make sure from the hamburger menu of the `Position
@@ -76,6 +76,144 @@ You will need both a positions file and a transactions log downloads.
 ### Interactive Brokers
 
 This is not done yet, but will be integrate with Flex reports.
+
+
+## Configuration
+
+In order to work with Johnny, you have to provide a list of inputs and outputs.
+
+Two types of inputs can be specified: transaction sources and position sources.
+
+* Transaction sources are logs of transactions that occurred in an account.
+* Position sources are lists of positions that provide updated prices. They are
+  only used to mark open positions.
+
+Here's an example of an input setup for a Tastyworks account:
+
+    input {
+      accounts {
+        nickname: "x18"
+        logtype: TRANSACTIONS
+        module: "johnny.sources.tastyworks_api.transactions"
+        source: "/home/user/trading/tastyworks-individual.db"
+      }
+      accounts {
+        nickname: "x20"
+        logtype: TRANSACTIONS
+        module: "johnny.sources.tastyworks_api.transactions"
+        source: "/home/user/trading/tastyworks-roth.db"
+      }
+      accounts {
+        nickname: "twpos"
+        logtype: POSITIONS
+        module: "johnny.sources.tastyworks_csv.positions"
+        source: "/home/user/trading/tastyworks_positions_*_*.csv"
+      }
+      ...
+    }
+
+Note how you can have multiple transactions logs for different subaccounts.
+
+Here's an example of an input setup for a thinkorswim (TD) account:
+
+    input {
+      accounts {
+        nickname: "x96"
+        logtype: TRANSACTIONS
+        module: "johnny.sources.thinkorswim_csv.transactions"
+        source: "/home/user/Downloads/*-AccountStatement.csv"
+        initial: "/home/user/trading/initial_positions.csv"
+      }
+      accounts {
+        nickname: "tdpos"
+        logtype: POSITIONS
+        module: "johnny.sources.thinkorswim_csv.positions"
+        source: "/home/user/Downloads/*-PositionStatement.csv"
+      }
+    }
+
+If you don't start at the beginning of your account with no position, the list
+of initial positions that are to be included can be specified in the `initial`
+flag.
+
+Johnny involves a database of chains, which gets updated as a by-product of
+importing transactions. At the moment this database is read from a single
+`pbtxt` file, the location of which you must specify:
+
+    input {
+      ...
+      chains_db:    "/home/user/trading/chains.pbtxt"
+    }
+
+The modified database will be produced at the `chains_db` in the output:
+
+    output {
+      chains_db:    "/home/user/trading/chains.pbtxt.new"
+      transactions: "/home/user/trading/transactions.pickledb"
+      chains:       "/home/user/trading/chains.pickledb"
+    }
+
+The two other outputs from the import are a table of normalized transactions and
+a table of trade chains. Note that after importing, you must manually copy the
+updated chains db file to its input location:
+
+    cp "/home/user/trading/chains.pbtxt.new" "/home/user/trading/chains.pbtxt"
+
+This is probably temporary. I've been diffing the two files and copying manually
+to confirm the correctness of the output.
+
+Here's what a full input configuration might look like:
+
+    input {
+      accounts {
+        nickname: "x18"
+        logtype: TRANSACTIONS
+        module: "johnny.sources.tastyworks_api.transactions"
+        source: "/home/user/trading/tastyworks-individual.db"
+      }
+      accounts {
+        nickname: "x20"
+        logtype: TRANSACTIONS
+        module: "johnny.sources.tastyworks_api.transactions"
+        source: "/home/user/trading/tastyworks-roth.db"
+      }
+      accounts {
+        nickname: "twpos"
+        logtype: POSITIONS
+        module: "johnny.sources.tastyworks_csv.positions"
+        source: "/home/user/trading/tastyworks_positions_*_*.csv"
+      }
+      accounts {
+        nickname: "x96"
+        logtype: TRANSACTIONS
+        module: "johnny.sources.thinkorswim_csv.transactions"
+        source: "/home/user/Downloads/*-AccountStatement.csv"
+        initial: "/home/user/trading/initial_positions.csv"
+      }
+      accounts {
+        nickname: "tdpos"
+        logtype: POSITIONS
+        module: "johnny.sources.thinkorswim_csv.positions"
+        source: "/home/user/Downloads/*-PositionStatement.csv"
+      }
+
+      chains_db:    "/home/user/trading/chains.pbtxt"
+    }
+
+    output {
+      chains_db:    "/home/user/trading/chains.pbtxt.new"
+      transactions: "/home/user/trading/transactions.pickledb"
+      chains:       "/home/user/trading/chains.pickledb"
+    }
+
+In addition, you can provide a list groups and/or tags to ignore from the
+web output (for presenting to others):
+
+    presentation {
+      ignore_groups: "Investment"
+      ignore_groups: "Protective"
+      ignore_tags: "#bigloser"
+    }
 
 
 ## Basic Usage
