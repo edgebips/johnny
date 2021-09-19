@@ -1,5 +1,13 @@
 # General
 
+- Add output identical to this (from @LeaderL):
+
+  * 33 Total Closed Trades
+  * 28 Wins to 5 Losses (84%)
+  * All delta neutral strangles except for 1 Jade Lizard
+  * Largest Loss is 60.5% (from Jade Lizard in ZM before earnings)
+  * Was able to keep 25% of theta
+
 - Implement `init_ids` to allow explicitly overriding the initial credits
   transactions.
 

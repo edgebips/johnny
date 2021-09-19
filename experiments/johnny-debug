@@ -28,7 +28,6 @@ from typing import List, Optional, Mapping
 
 from more_itertools import first, last
 import click
-import ameritrade as td
 
 from johnny.base import config as configlib
 from johnny.base import chains as chainslib
