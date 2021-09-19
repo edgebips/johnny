@@ -141,7 +141,7 @@ def main(config: Optional[str],
                                          startDate=start, endDate=end)
             if IsRateLimited(hist):
                 logging.info("Throttling for a few seconds; not retrying failed query.")
-                time.sleep(2)
+                time.sleep(5)
                 continue
             if not ('candles' in hist and hist['candles']):
                 logging.info(f"Empty for {symbol}, {dtime}: {hist}")
@@ -151,12 +151,11 @@ def main(config: Optional[str],
             # Compute the price.
             candles = price_history_to_arrays(hist)
             price = interpolate_price(candles, dtime.timestamp())
-            logging.info(f"Storing for {symbol}, {dtime}: {price}")
+            logging.info(f"Storing for  {symbol}, {dtime}: {price}")
             pricedb[key] = (price, hist)
 
             # Address rate limitations in the API.
             time.sleep(0.1)
-
 
 
 if __name__ == '__main__':
