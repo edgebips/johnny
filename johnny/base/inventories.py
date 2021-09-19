@@ -207,7 +207,7 @@ class FifoInventory:
         unsigned cost per unit.
         """
         # Note: You could calculate unrealized P/L on matches.
-        assert unit_cost > ZERO
+        assert unit_cost >= ZERO
 
         # Add to the existing quantity; keep the same transaction id.
         if self.match_id is None:
