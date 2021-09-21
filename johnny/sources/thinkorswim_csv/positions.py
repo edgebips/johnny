@@ -162,7 +162,7 @@ def ParseInstrumentDescription(
                                      expcode=expcode,
                                      putcall=putcall[0],
                                      strike=Decimal(strike),
-                                     multiplier=int(multiplier))
+                                     multiplier=float(multiplier))
 
     # Handle Equity Option, e.g.,
     # 100 (Weeklys) 4 JUN 21 4130 CALL

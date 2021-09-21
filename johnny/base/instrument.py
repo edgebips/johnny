@@ -50,7 +50,8 @@ class Instrument(NamedTuple):
     strike: Optional[Decimal] = None
 
     # The multiplier for the quantity of the instrument. Always set.
-    multiplier: int = 1
+    # Some products require a fractional one unfortunately, e.g. `/BTC`.
+    multiplier: float = 1
 
 
     @property
@@ -81,7 +82,7 @@ def FromColumns(underlying: str,
                 expcode: Optional[str],
                 putcall: Optional[str],
                 strike: Optional[Decimal],
-                multiplier: int) -> Instrument:
+                multiplier: float) -> Instrument:
     """Build an Instrument from column values."""
 
     assert not expcode or not expcode.startswith('/')
