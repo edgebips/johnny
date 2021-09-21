@@ -176,7 +176,9 @@ def ConvertSafeInteger(value_str: str) -> int:
     value_str = re.sub(r'\.0$', '', value_str)
     value = Decimal(value_str)
     int_value = int(value)
-    assert value == int_value
+    value_str_type = type(value_str)
+    assert value == int_value, (
+        f"Invalid integer value conversion: {value_str} ({value_str_type})")
     return value  # int_value ?
 
 
