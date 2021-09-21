@@ -122,7 +122,7 @@ def GetMultiplier(rec: Record) -> Decimal:
         approx_multiplier = abs(rec['Average Price']) / rec.price
         assert 0.9995 < (multiplier / approx_multiplier) < 1.0005, (
             multiplier, rec['Average Price'], rec.price)
-    assert isinstance(multiplier, float)
+    assert isinstance(multiplier, Decimal)
     return multiplier
 
 

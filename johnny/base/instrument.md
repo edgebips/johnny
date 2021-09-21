@@ -44,7 +44,7 @@ needed on its own.
 
 - `strike: Optional[Decimal]`: The strike price of an option (Decimal).
 
-- `multiplier: float`: A multiplier for the contract, i.e., the contract size.
+- `multiplier: Decimal`: A multiplier for the contract, i.e., the contract size.
   Some products require a fractional one unfortunately, e.g. `/BTC`, `/MYM`.
 
   This is a multiplier for the quantity. For equities, this is 1. For equity
