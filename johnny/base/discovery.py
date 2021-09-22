@@ -93,8 +93,20 @@ def ReadConfiguredInputs(
         # Import module transactions.
         module = importlib.import_module(account.module)
         table = module.Import(account.source, config)
-        if table is not None:
-            output_tables.append(table.update('account', account.nickname))
+        if table is None:
+            continue
+
+        # Filter out instrument types.
+        if account.exclude_instrument_types:
+            exclude_instrument_types = set(
+                configlib.InstrumentType.Name(instype)
+                for instype in account.exclude_instrument_types)
+            table = (table
+                     .applyfn(instrument.Expand, 'symbol')
+                     .selectnotin('instype', exclude_instrument_types)
+                     .applyfn(instrument.Shrink))
+
+        output_tables.append(table.update('account', account.nickname))
 
     # Concatenate tables for each logtype.
     bytype = {}

@@ -146,4 +146,19 @@ message Account {
   // will create these positions at the front of the transactions log history
   // import.
   optional string initial = 5;
+
+  // Asset types to exclude from the given source. This can be used to
+  // selectively remove some types of assets, like, crypto.
+  repeated InstrumentType exclude_instrument_types = 6;
+}
+
+// Instrument types. These values correspond to the strings in the `instype`
+// columns. See the `instype` column definition for details.
+enum InstrumentType {
+  Unknown = 0;
+  Equity = 1;
+  EquityOption = 2;
+  Future = 3;
+  FutureOption = 4;
+  Crypto = 5;
 }

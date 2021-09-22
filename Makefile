@@ -37,7 +37,7 @@ config-clobber clobber:
 	cp $(CHAINS_NEW) $(CHAINS)
 
 config-commit commit:
-	hg commit $(CHAINS)
+	hg commit -m "(Trading update)" $(CHAINS)
 
 final:
 	./experiments/accept-all.py

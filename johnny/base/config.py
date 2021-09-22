@@ -12,6 +12,7 @@ from typing import Mapping, Optional, Tuple
 from johnny.base.config_pb2 import Config, Account
 from johnny.base.chains_pb2 import Chains, Chain, ChainStatus
 from johnny.base.config_pb2 import FutOptMonthMapping
+from johnny.base.config_pb2 import InstrumentType
 from johnny.base.etl import petl, Table
 
 from google.protobuf import text_format
