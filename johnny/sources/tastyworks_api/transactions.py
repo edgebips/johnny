@@ -171,14 +171,14 @@ def GetInstruction(rec: Record) -> Optional[str]:
         raise NotImplementedError("Unknown instruction: '{}'".format(rec.Action))
 
 
-def ConvertSafeInteger(value_str: str) -> int:
+def ConvertSafeInteger(value_str: str, rec: Record) -> int:
     """Convert an integer safely, ensuring no truncation of fraction occurred."""
     value_str = re.sub(r'\.0$', '', value_str)
     value = Decimal(value_str)
     int_value = int(value)
     value_str_type = type(value_str)
     assert value == int_value, (
-        f"Invalid integer value conversion: {value_str} ({value_str_type})")
+        f"Invalid integer value conversion: {value_str} ({value_str_type} for row {rec}")
     return value  # int_value ?
 
 
@@ -259,7 +259,7 @@ def GetTransactions(filename: str) -> Tuple[Table, Table]:
              .addfield('instruction', GetInstruction)
 
              # Safely convert quantity field to a numerical value.
-             .convert('quantity', ConvertSafeInteger)
+             .convert('quantity', ConvertSafeInteger, pass_row=True)
 
              # Rename commissions.
              .rename('commission', 'commissions')
