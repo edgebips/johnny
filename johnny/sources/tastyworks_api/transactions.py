@@ -171,7 +171,7 @@ def GetInstruction(rec: Record) -> Optional[str]:
         raise NotImplementedError("Unknown instruction: '{}'".format(rec.Action))
 
 
-def ConvertSafeInteger(value_str: str, rec: Record) -> Decimal:
+def ConvertSafeInteger(value_str: str) -> Decimal:
     """Convert and round integer values to decimal and leave fractional alone.
     This is only used to trim unnecessary trailing ".0" suffixes.
     """
@@ -256,7 +256,7 @@ def GetTransactions(filename: str) -> Tuple[Table, Table]:
              .addfield('instruction', GetInstruction)
 
              # Safely convert quantity field to a numerical value.
-             .convert('quantity', ConvertSafeInteger, pass_row=True)
+             .convert('quantity', ConvertSafeInteger)
 
              # Rename commissions.
              .rename('commission', 'commissions')
