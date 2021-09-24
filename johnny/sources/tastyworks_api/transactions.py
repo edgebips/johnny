@@ -171,15 +171,12 @@ def GetInstruction(rec: Record) -> Optional[str]:
         raise NotImplementedError("Unknown instruction: '{}'".format(rec.Action))
 
 
-def ConvertSafeInteger(value_str: str, rec: Record) -> int:
-    """Convert an integer safely, ensuring no truncation of fraction occurred."""
-    value_str = re.sub(r'\.0$', '', value_str)
-    value = Decimal(value_str)
-    int_value = int(value)
-    value_str_type = type(value_str)
-    assert value == int_value, (
-        f"Invalid integer value conversion: {value_str} ({value_str_type} for row {rec}")
-    return value  # int_value ?
+def ConvertSafeInteger(value_str: str, rec: Record) -> Decimal:
+    """Convert and round integer values to decimal and leave fractional alone.
+    This is only used to trim unnecessary trailing ".0" suffixes.
+    """
+    rounded_value_str = re.sub(r'\.0$', '', value_str)
+    return Decimal(rounded_value_str)
 
 
 def CalculateFees(rec: Record) -> Decimal:
