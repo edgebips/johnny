@@ -116,6 +116,7 @@ def main(config: Optional[str],
     transactions = (
         petl.frompickle(config.output.transactions)
         .applyfn(instrument.Expand, 'symbol')
+        .selectne('rowtype', 'Mark')
         .selectin('instype', {'Equity', 'EquityOption'})
         .cut('underlying', 'datetime'))
     if 0:
