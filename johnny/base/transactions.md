@@ -42,6 +42,8 @@ A normalized transactions table contains the following columns and data types.
   `Mark` is never inserted by the normalization code, that's something that is
   inserted by further processing code.
 
+  Future values will include `Dividend`.
+
   Also note that for 'Assign' and 'Exercise', the corresponding stock actions
   are categorized as 'Trade'.
 
@@ -84,7 +86,10 @@ A normalized transactions table contains the following columns and data types.
   code.
 
 - `quantity: Decimal`: The quantity bought or sold. This number should always be
-  positive; the 'instruction' field will provide the sign.
+  positive; the 'instruction' field will provide the sign. Note that for
+  expirations we will ignore the value of this field, as some sources do not
+  provide a quantity of options expiring. Sources thus need to dedup their
+  expiration messages.
 
 - `price: Decimal`: The per-contract price for the instrument. Multiply this by
   the `quantity` and the `multiplier` to get the `cost`.
