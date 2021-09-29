@@ -47,7 +47,7 @@ _STRIKE_PRICE_DIVISOR = Decimal('1000')
 
 def _ParseEquitySymbol(symbol: str) -> Instrument:
     return Instrument(underlying=symbol,
-                      multiplier=1)
+                      multiplier=Decimal(1))
 
 
 def _ParseEquityOptionSymbol(symbol: str) -> Instrument:
@@ -121,4 +121,4 @@ def _ParseCrypto(symbol: str) -> Instrument:
     assert match
     base, quote = match.groups()
     return Instrument(underlying='{}_{}'.format(base, quote),
-                      multiplier=1)
+                      multiplier=Decimal(1))
