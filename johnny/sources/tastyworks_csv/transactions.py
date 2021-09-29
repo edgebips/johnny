@@ -11,9 +11,10 @@ __license__ = "GNU GPLv2"
 
 import collections
 import decimal
+import functools
 from decimal import Decimal
 from os import path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Mapping
 import datetime
 import hashlib
 import logging
@@ -36,11 +37,11 @@ ZERO = Decimal(0)
 ONE = Decimal(1)
 
 
-def GetSequence(prv: Record, cur: Record, nxt: Record) -> int:
+def GetSequence(sequence_dict: Mapping[str, int], rec: Record) -> int:
     """Make up a unique sequence id for orders."""
-    return (prv.sequence + 1
-            if prv is not None and prv.order_id == cur.order_id
-            else 1)
+    sequence_dict[rec.order_id] += 1
+    return sequence_dict[rec.order_id]
+
 
 def GetTransactionId(rec: Record) -> int:
     if rec.order_id is None:
@@ -58,7 +59,7 @@ def GetTransactionId(rec: Record) -> int:
 
 _ROW_TYPES = {
     'Trade': 'Trade',
-     'Receive Deliver': 'Expire',
+    'Receive Deliver': 'Expire',
 }
 
 def GetRowType(rowtype: str, rec: Record) -> str:
@@ -73,6 +74,12 @@ def GetRowType(rowtype: str, rec: Record) -> str:
             return 'Trade'
         elif re.match(r"Symbol change", rec.Description):
             return 'Trade'
+        elif re.match(r"Bought.*Awarded .* Long", rec.Description):
+            return 'Trade'
+        elif re.match(r"Special dividend: (Open|Close)", rec.Description):
+            return 'Trade'
+        elif re.match(r".* cost basis adjustment", rec.Description):
+            return 'Other'
     return KeyError("Invalid rowtype '{}'; description: '{}'".format(
         rowtype, rec.Description))
 
@@ -82,7 +89,7 @@ def GetOrderId(value: str, rec: Record) -> str:
     # If the row is a name change, we convert that to a trade that links
     # together the in and out legs with a uniquely generated order id. The time
     # appears to be unique, and we use that as a hash for the id.
-    if re.match(r"Symbol change", rec.Description):
+    if not value:
         h = hashlib.blake2s(digest_size=3)
         h.update(rec['Date'].encode('ascii'))
         return "nam{}".format(h.hexdigest())
@@ -93,15 +100,24 @@ def GetOrderId(value: str, rec: Record) -> str:
 
 def GetPrice(rec: Record) -> Decimal:
     """Get the per-contract price."""
+
+    # If this is an expiration, the price is always zero.
     if rec.rowtype == 'Expire':
         return ZERO
-    match = re.search(r"@ ([0-9.]+)$", rec.Description)
+
+    # Try to find the price from the description. Note that this isn't always
+    # possible.
+    match = re.search(r"@ ([0-9.]+)($| - .*)", rec.Description)
     if match:
         return Decimal(match.group(1))
-    if re.match(r"Symbol change", rec.Description):
+
+    # Where there isn't any price in the description, infer it from the other
+    # numerical fields.
+    if re.match(r"Symbol change|Special dividend", rec.Description):
         assert rec.instype == 'EquityOption'
         # Note: This will work for the equity option case.
         return abs(rec.Value) / (rec.Quantity * rec.Multiplier)
+
     raise ValueError("Could not infer price from description: {}".format(rec))
 
 
@@ -120,9 +136,12 @@ def GetMultiplier(rec: Record) -> Decimal:
     # library. This is a cross-check for the futures library code.
     if rec['instype'] != 'Future' and rec['Average Price'] != ZERO:
         approx_multiplier = abs(rec['Average Price']) / rec.price
-        assert 0.9995 < (multiplier / approx_multiplier) < 1.0005, (
-            multiplier, rec['Average Price'], rec.price)
-    assert isinstance(multiplier, Decimal)
+        valid_multiplier = (0.99 < (multiplier / approx_multiplier) < 1.01)
+        if not valid_multiplier:
+            raise AssertionError("Invalid multiplier check: {} {} ({} / {})".format(
+                multiplier, approx_multiplier, rec['Average Price'], rec.price))
+    assert isinstance(multiplier, Decimal), (
+        "Invalid type for {}: {}".format(multiplier, type(multiplier)))
     return multiplier
 
 
@@ -152,7 +171,7 @@ def GetInstruction(rec: Record) -> Optional[str]:
     elif rec.rowtype == 'Expire':
         # The signs aren't set. We're going to use this value temporarily, and
         # once the stream is done, we compute and map the signs {e80fcd889943}.
-        return 'EXPI'
+        return ''
     else:
         raise NotImplementedError("Unknown instruction: '{}'".format(rec.Action))
 
@@ -198,8 +217,35 @@ def GetFuturesCost(rec: Record) -> Decimal:
         return rec.Value
 
 
+def DeduplicateExpirations(table: Table) -> Table:
+    """Sum expiration messages by symbol."""
+
+    expiration_txns = {}  # symbol -> txn-id
+    expiration_quantities = {}  # symbol -> quantity
+    remove_transactions = set()  # txn-id
+    for rec in table.records():
+        if rec.rowtype == 'Expire':
+            if rec.symbol not in expiration_txns:
+                expiration_txns[rec.symbol] = rec.transaction_id
+                expiration_quantities[rec.symbol] = rec.quantity
+            else:
+                remove_transactions.add(rec.transaction_id)
+                expiration_quantities[rec.symbol] += rec.quantity
+
+    quantities = {
+        transaction_id: expiration_quantities[symbol]
+        for symbol, transaction_id in expiration_txns.items()}
+    def convert_expiration_quantity(quantity: Decimal, rec: Record) -> Decimal:
+        return quantities.get(rec.transaction_id, rec.quantity)
+
+    return (table
+            .convert('quantity', convert_expiration_quantity, pass_row=True)
+            .selectnotin('transaction_id', remove_transactions))
+
+
 def NormalizeTrades(table: petl.Table, account: str) -> petl.Table:
     """Prepare the table for processing."""
+
     table = (table
              # Convert fields to Decimal values.
              .convert(['Value',
@@ -231,6 +277,8 @@ def NormalizeTrades(table: petl.Table, account: str) -> petl.Table:
              # Normalize the type.
              .rename('Type', 'rowtype')
              .convert('rowtype', GetRowType, pass_row=True)
+             # Ignore dividends for now. TODO(blais): Implement those.
+             .selectnotin('rowtype', {'Dividend', 'Other'})
 
              # Parse the date into datetime.
              .addfield('datetime', lambda r: parser.parse(r.Date).replace(tzinfo=None))
@@ -261,7 +309,8 @@ def NormalizeTrades(table: petl.Table, account: str) -> petl.Table:
              # (for transaction ids).
              .rename('Order #', 'order_id')
              .convert('order_id', GetOrderId, pass_row=True)
-             .addfieldusingcontext('sequence', GetSequence)
+             .addfield('sequence',
+                       functools.partial(GetSequence, collections.defaultdict(int)))
              .addfield('transaction_id', GetTransactionId)
 
              # Rename some of the columns to be passed through.
@@ -291,11 +340,24 @@ def NormalizeTrades(table: petl.Table, account: str) -> petl.Table:
 
              # See transactions.md.
              .cut(txnlib.FIELDS)
+
+             # Ensure the state updated in GetSequence occurs exactly only once.
+             .cache()
              )
+
+    # Deduplicate expiration messages, summing up the quantities.
+    table = DeduplicateExpirations(table)
 
     # Note: The sign of the expirations isn't provided by the input file. It
     # gets inferred here.
-    return table.sort(['datetime', 'order_id'])
+    return (table
+            # In case of opening/closing pairs occurring over assignment and
+            # exercise at the same time (expiration), we want to make sure the
+            # opening and closing occur in the correct order for inventory
+            # matching.
+            .addfield('effect_key', lambda r: 0 if r.effect == 'OPENING' else 1)
+            .sort(['datetime', 'order_id', 'effect_key'])
+            .cutout('effect_key'))
 
 
 def SplitTables(table: Table) -> Tuple[Table, Table]:
@@ -309,7 +371,8 @@ def GetAccount(filename: str) -> str:
                      r'(\d{4}-\d{2}-\d{2})_(\d{4}-\d{2}-\d{2}).csv',
                      path.basename(filename))
     if not match:
-        logging.error("Could not figure out the account name from the filename")
+        logging.warning("Could not figure out the account name from the "
+                        "transactions filename patern.")
         account = None
     else:
         account = match.group(1)
@@ -320,18 +383,6 @@ def GetTransactions(filename: str) -> Tuple[Table, Table]:
     """Process the filename, normalize, and produce tables."""
     table = petl.fromcsv(filename)
     trades_table, other_table = SplitTables(table)
-
-    # TODO(blais): Figure out Cryptocurrency awards. What are these? They are
-    # recorded as 'Receive and Deliver' and not trades. Are these transfers in
-    # kind? I'm not sure what to do with them yet.
-    award_table, trades_table = (
-        trades_table
-        .biselect(lambda r: (r['Instrument Type'] == 'Cryptocurrency' and
-                             re.search('Awarded', r.Description))))
-    if award_table.nrows() > 0:
-        logging.error("You have Cryptocurrency Awarded rows; skipping those rows:\n{}"
-                      .format(award_table.lookallstr()))
-
     norm_trades_table = NormalizeTrades(trades_table, GetAccount(filename))
     return norm_trades_table, other_table
 
