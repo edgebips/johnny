@@ -79,6 +79,8 @@ def InferStrategy(init_transactions: list[Record]) -> Tuple[str, Any]:
     # Calculate GCD to normalize sizes for signature.
     # Note: Requires Python 3.9.x or above.
     gcd = math.gcd(*map(int, quantities_map.values()))
+    if gcd == 0:
+        return None, None
 
     # Expand instruments.
     inst_map = {symbol: instrument.FromString(symbol)
