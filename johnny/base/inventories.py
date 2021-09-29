@@ -492,6 +492,7 @@ class OpenCloseFifoInventory:
                rowtype: Optional[str] = 'Expire'):
         """Match the inventory state.
         Return the signed matched size and match id to apply.
+        Note that we ignore the value of the `quantity` field of the expiration message.
         """
         if not self.lots:
             raise MatchError(f"Invalid expiration with no lots: {rec}")
