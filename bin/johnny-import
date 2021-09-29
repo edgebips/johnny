@@ -13,6 +13,7 @@ __copyright__ = "Copyright (C) 2021  Martin Blais"
 __license__ = "GNU GPLv2"
 
 import contextlib
+import collections
 import functools
 import logging
 import traceback
@@ -48,11 +49,11 @@ def ImportTransactions(config: configlib.Config,
     # Check that the imports are sound before we process them and ensure that
     # the transaction ids are unique.
     with log('ImportTransactions.validate'):
-        unique_ids = set()
+        unique_ids = collections.defaultdict(int)
         num_txns = 0
         try:
             for rec in transactions.records():
-                unique_ids.add(rec.transaction_id)
+                unique_ids[rec.transaction_id] += 1
                 num_txns += 1
                 txnlib.ValidateTransactionRecord(rec)
         except Exception as exc:
@@ -60,7 +61,12 @@ def ImportTransactions(config: configlib.Config,
                 traceback.print_last()
             else:
                 raise
-        assert num_txns == len(unique_ids)
+        if num_txns != len(unique_ids):
+            for key, value in unique_ids.items():
+                if value > 1:
+                    print("Duplicate id '{}', {} times".format(key, value))
+            raise AssertionError("Transaction ids aren't unique: {} != {}".format(
+                num_txns, len(unique_ids)))
 
     # Match transactions to each other, synthesize opening balances, and mark
     # ending positions.
