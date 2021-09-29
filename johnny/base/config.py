@@ -4,6 +4,7 @@ __copyright__ = "Copyright (C) 2021  Martin Blais"
 __license__ = "GNU GPLv2"
 
 import os
+from os import path
 import re
 import logging
 from typing import Mapping, Optional, Tuple
@@ -61,6 +62,8 @@ def Validate(config: Config):
 
 def ReadChains(filename: str) -> Chains:
     """Parse a text-formatted chains poor man's db file."""
-    with open(filename) as infile:
-        config = text_format.Parse(infile.read(), Chains())
-    return config
+    chains = Chains()
+    if path.exists(filename):
+        with open(filename) as infile:
+            text_format.Parse(infile.read(), chains)
+    return chains
