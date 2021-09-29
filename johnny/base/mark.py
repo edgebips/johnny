@@ -71,7 +71,7 @@ def GetPriceMap(transactions: Table,
     # with those prices where present.
     logtables = discovery.ReadConfiguredInputs(
         config, configlib.Account.LogType.POSITIONS)
-    positions = logtables[configlib.Account.LogType.POSITIONS]
+    positions = logtables.get(configlib.Account.LogType.POSITIONS, None)
     if positions:
         pos_price_map = (positions
                          .convert('mark', abs)
