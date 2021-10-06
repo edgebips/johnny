@@ -1,9 +1,9 @@
 #!/bin/bash
 
 # Set JOHNNY_CONFIG in order for this to work.
-DOWNLOADS = $(HOME)/trading/downloads
-CHAINS = $(shell grep chains_db $(JOHNNY_CONFIG) | head -n1 | sed  -e 's/.*chains_db: "//;s/"//')
-CHAINS_NEW = $(shell grep chains_db $(JOHNNY_CONFIG) | tail -n1 | sed  -e 's/.*chains_db: "//;s/"//')
+DOWNLOADS = $(HOME)/r/q/johnny-data/downloads
+CHAINS = $(shell grep chains_db $(JOHNNY_CONFIG) | head -n1 | sed  -e 's/.*chains_db: *"//;s/"//')
+CHAINS_NEW = $(shell grep chains_db $(JOHNNY_CONFIG) | tail -n1 | sed  -e 's/.*chains_db: *"//;s/"//')
 
 test:
 	python3 -m pytest -x johnny
@@ -32,6 +32,9 @@ config-earnings:
 
 config-diff diff:
 	-xxdiff -D -B $(CHAINS) $(CHAINS_NEW)
+
+tmux-diff tdiff:
+	tmux-diff $(CHAINS) $(CHAINS_NEW)
 
 config-clobber clobber:
 	cp $(CHAINS_NEW) $(CHAINS)

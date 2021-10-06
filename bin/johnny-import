@@ -116,8 +116,14 @@ def import_(config: Optional[str], force: bool, light: bool):
 
     # Write out the imported databases.
     with log('output_tables'):
-        ctransactions.topickle(config.output.transactions)
-        chains.topickle(config.output.chains)
+        if config.output.transactions:
+            ctransactions.topickle(config.output.transactions)
+        if config.output.transactions_csv:
+            ctransactions.tocsv(config.output.transactions_csv)
+        if config.output.chains:
+            chains.topickle(config.output.chains)
+        if config.output.chains_csv:
+            chains.tocsv(config.output.chains_csv)
 
     with log('output_config'):
         with open(config.output.chains_db, 'w') as outfile:
