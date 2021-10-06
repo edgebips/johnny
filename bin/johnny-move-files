@@ -13,6 +13,7 @@ __license__ = "GNU GPLv2"
 import os
 import re
 import logging
+import shutil
 from os import path
 from typing import Optional
 
@@ -64,7 +65,7 @@ def main(config: Optional[str], extra_downloads: Optional[str]):
                     src = path.join(directory, filename)
                     dst = path.join(destination, filename)
                     logging.info(f"Moving {src} to {dst}")
-                    os.rename(src, dst)
+                    shutil.move(src, dst)
 
 
 if __name__ == '__main__':
