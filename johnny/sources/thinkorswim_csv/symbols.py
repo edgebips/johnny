@@ -18,6 +18,9 @@ Instrument = instrument.Instrument
 SYMBOL_NAME_CHANGES = {
     # https://investorplace.com/2021/03/chpt-stock-12-things-to-know-as-chargepoint-trading-spac-merger-sbe-stock/
     'CHPT': 'SBE',
+
+    # 2021-08-03 - L will be split into 25% Victoria's Secret, 75% VSCO.
+    # 'LB': 'BBWI'
 }
 
 
