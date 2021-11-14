@@ -14,20 +14,21 @@ import logging
 import shelve
 import os
 from decimal import Decimal
-from typing import List, Optional, Mapping
+from typing import Any, List, Optional, Mapping, Tuple
 
 from more_itertools import first, last
 import click
 import ameritrade
 from ameritrade.utils import IsRateLimited
 import numpy
+import requests
+import yfinance
 
 from johnny.base import config as configlib
 from johnny.base import chains as chainslib
 from johnny.base import mark
 from johnny.base import instrument
 from johnny.base.etl import petl
-
 
 
 Candle = collections.namedtuple('Candle', 'timestamp open low high close volume')
@@ -96,6 +97,44 @@ def clear_missing(database):
             del pricedb[key]
 
 
+# _SPLITS_URL = 'https://query1.finance.yahoo.com/v7/finance/download/{symbol}'
+# ##'?period1=1128297600&period2=1633219200&interval=capitalGain%7Cdiv%7Csplit&filter=split&frequency=1d&includeAdjustedClose=true
+
+# _DEFAULT_PARAMS = {
+#     'lang': 'en-US',
+#     'corsDomain': 'finance.yahoo.com',
+#     '.tsrc': 'finance',
+# }
+
+# Request the CSV file.
+# timestamp_now = int(datetime.datetime.now().timestamp())
+# params = {'period1': str(int(dtime.timestamp())),
+#           'period2': str(timestamp_now),
+#           'interval': '1d',
+#           'events': 'split',
+#           'includeAdjustedClose': 'true'}
+# params.update(_DEFAULT_PARAMS)
+
+
+_SPLITS_CACHE = {}
+_STOCK_RENAMES = {'LB': ('BBWI', datetime.date(2021, 8, 3))}
+
+def get_splits(underlying: str) -> List[Tuple[int, float]]:
+    """Get split adjustment information as per the time of fetching."""
+    underlying = _STOCK_RENAMES.get(underlying, underlying)
+    try:
+        splits = _SPLITS_CACHE[underlying]
+    except KeyError:
+        ticker = yfinance.Ticker(underlying)
+        if ticker.splits.empty:
+            splits = []
+        else:
+            timestamps = [int(dt.timestamp()) for dt in ticker.splits.index.to_pydatetime()]
+            split = list(ticker.splits.array)
+            splits = list(zip(timestamps, split))
+            _SPLITS_CACHE[underlying] = splits
+    return splits
+
 
 @click.command()
 @click.option('--config', '-c', type=click.Path(exists=True),
@@ -130,10 +169,20 @@ def main(config: Optional[str],
             dtime = row['datetime']
             symbol = row['underlying']
             key = "{}.{}".format(symbol, dtime)
-            if key in pricedb:
-                logging.info(f"Skipping for {symbol}, {dtime}")
+            if key.startswith('CLOV'):
+                print(key)
+            if pricedb.get(key, None) is not None:
+                # value = pricedb[key]
+                # if value is not None and len(value) == 2:
+                #     splits = get_splits(symbol)
+                #     price, json = value
+                #     pricedb[key] = (price, json, splits)
+                #     logging.info(f"Updated splits for {symbol}")
+
+                #logging.info(f"Skipping for {symbol}, {dtime}")
                 continue
 
+            # Get price history.
             delta = datetime.timedelta(minutes=15)
             start = int((dtime - delta).timestamp() * 1000)
             end = int((dtime + delta).timestamp() * 1000)
@@ -153,9 +202,15 @@ def main(config: Optional[str],
             candles = price_history_to_arrays(hist)
             price = interpolate_price(candles, dtime.timestamp())
             logging.info(f"Storing for  {symbol}, {dtime}: {price}")
-            pricedb[key] = (price, hist)
+
+            # Get splits.
+            splits = get_splits(symbol)
+
+            # Store in cache.
+            pricedb[key] = (price, hist, splits)
 
             # Address rate limitations in the API.
+            # TODO(blais): Do this properly from within the API.
             time.sleep(0.1)
 
 

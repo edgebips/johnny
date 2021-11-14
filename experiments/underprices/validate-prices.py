@@ -1,12 +1,26 @@
 #!/usr/bin/env python3
 """Validate parameters of the prices pulled from the database and produce a
 table.
+
+Problems:
+
+- Stock name changes are problematic, as the upstream retail APIs simply aren't
+  designed to handle this well.
+
+- Stock splits are handled by pulling data from Yahoo and correcting the prices.
+
+- The pricing VIX options requires treatment beyond that of BSM as intrinsic
+  values don't respect the usual basic constraints.
+
+- Chains containing stocks aren't handled for now.
+
 """
 
 import collections
 import functools
 import datetime
 import time
+import re
 from functools import partial
 import logging
 import shelve
@@ -19,16 +33,24 @@ import click
 import ameritrade
 from ameritrade.utils import IsRateLimited
 import numpy
+import py_vollib.black_scholes.implied_volatility
+from py_vollib import black_scholes
+from py_lets_be_rational import exceptions
 
 from johnny.base import config as configlib
 from johnny.base import chains as chainslib
 from johnny.base import mark
 from johnny.base import instrument
 from johnny.base.etl import petl
-1
+from johnny.base.etl import Record
+
+
+STOCK_RENAMES = {'LB': ('BBWI', datetime.date(2021, 8, 3))}
+
 
 Candle = collections.namedtuple('Candle', 'timestamp open low high close volume')
 Q = Decimal('0.00001')
+Q2 = Decimal('0.01')
 
 
 def price_history_to_arrays(history):
@@ -93,6 +115,134 @@ def clear_missing(database):
             del pricedb[key]
 
 
+ONE = Decimal(1)
+
+
+def get_split_adjustment(rec: Record) -> Decimal:
+    """Compute the split adjustment."""
+    multiplier = 1
+    if rec.db is not None:
+        splits = rec.db[2]
+        if splits:
+            timestamp = int(rec.datetime.timestamp())
+            for split_timestamp, split in splits:
+                if split_timestamp > timestamp:
+                    multiplier *= split
+    return multiplier
+
+def get_stock_price(rec: Record) -> Decimal:
+    return (Decimal(rec.db[0] * rec.split_adj).quantize(Q2)
+            if rec.db is not None and rec.db[0] is not None
+            else Decimal(0))
+
+
+EXPIRATION_TIME = datetime.time(16, 0, 0)
+DAY_SECS = 24 * 60 * 60
+RISK_FREE_RATE = 0.0050
+
+
+def get_days_to_expiration(rec: Record) -> Decimal:
+    """Return the time to expiration in days."""
+    if not rec.expiration:
+        return rec.expiration
+    dt_expiration = datetime.datetime.combine(rec.expiration, EXPIRATION_TIME)
+    time_secs = (dt_expiration - rec.datetime).total_seconds()
+    return time_secs / DAY_SECS
+
+
+def get_implied_volatility(rec: Record) -> Decimal:
+    """If possible, compute the IV."""
+    if (not re.match('.*Option$', rec.instype) or
+        not (rec.expi_days and rec.stock_price)):
+        return None
+
+    time_annual = rec.expi_days / 365
+    flag = rec.putcall[0].lower()
+    option_price = float(rec.price)
+    if option_price <= 0:
+        vol = 0
+    else:
+        stock_price = float(rec.stock_price)
+        strike_price = float(rec.strike)
+        try:
+            vol = black_scholes.implied_volatility.implied_volatility(
+                option_price, stock_price, strike_price,
+                time_annual, RISK_FREE_RATE, flag)
+        except exceptions.VolatilityValueException as exc:
+            logging.debug("Skip chain with invalid constraint: {} ({})".format(
+                rec.chain_id, (
+                    option_price, stock_price, strike_price, '|',
+                    time_annual, RISK_FREE_RATE, flag, ':', exc)))
+            vol = None
+    return vol
+
+
+def print_group(giter):
+    """Print a group iterator."""
+    rows = list(giter)
+    table = petl.wrap([rows[0].flds] + rows)
+    print(table.lookallstr())
+
+
+def process_matches(greeks_mapping, miter):
+    rows = list(miter)
+    table = petl.wrap([rows[0].flds] + rows)
+
+    # Fail chains with positions other than equity options. We don't have
+    # futures outrights pricing data, and don't support static deltas just yet.
+    if set(table.values('rowtype')) != {'EquityOption'}:
+        logging.debug("Invalid chain with non equity options")
+        return None
+
+    # Fail chains with missing IV.
+    if table.select('iv', None).nrows() > 0:
+        logging.debug("Invalid chain with missing implied volatilities")
+        return None
+
+    stack = []
+    for rec in table.namedtuples():
+        if rec.effect == 'OPENING':
+            stack.append(rec)
+        elif rec.effect == 'CLOSING':
+            quantity = rec.quantity
+            while quantity != 0:
+                if not stack:
+                    return None
+                rec_last = stack.pop()
+                match_quantity = min(quantity, rec_last.quantity)
+                if match_quantity < rec_last.quantity:
+                    stack.append(rec_last._replace(
+                        quantity=rec_last.quantity - match_quantity))
+                quantity -= match_quantity
+                opening = rec_last._replace(quantity=match_quantity)
+                closing = rec._replace(quantity=match_quantity)
+                if 0:
+                    print(match_quantity, quantity)
+                    print(opening)
+                    print(closing)
+                    print()
+                greeks = compute_greek_differentials(opening, closing)
+                greeks_mapping[closing.transaction_id] = greeks
+
+    assert quantity == float(0
+
+
+def process_chain(giter):
+    """Process an entire chain."""
+    rows = list(giter)
+    table = petl.wrap([rows[0].flds] + rows)
+    print('-' * 120)
+    print(table.lookallstr())
+
+                            greeks_mapping
+    matches = (table
+               .aggregate('match_id', partial(process_matches, greeks_mapping)))
+    _ = list(matches)
+
+
+def compute_greek_differentials(opening, closing):
+
+
 
 @click.command()
 @click.option('--config', '-c', type=click.Path(exists=True),
@@ -105,34 +255,143 @@ def main(config: Optional[str],
          database: str):
     logging.basicConfig(level=logging.INFO, format='%(levelname)-8s: %(message)s')
 
-    ## if retry:
-    ##     clear_missing(database)
-    ##
-    ## filename = configlib.GetConfigFilenameWithDefaults(config)
-    ## config = configlib.ParseFile(filename)
-    ## transactions = (
-    ##     petl.frompickle(config.output.transactions)
-    ##     .applyfn(instrument.Expand, 'symbol')
-    ##     .selectne('rowtype', 'Mark')
-    ##     .selectin('instype', {'Equity', 'EquityOption'})
-    ##     .cut('underlying', 'datetime'))
-    ## if 0:
-    ##     print(transactions.lookallstr())
-    ##     raise SystemExit
-    ##
-    ## tdapi = ameritrade.open(ameritrade.config_from_dir())
-
     with shelve.open(database, 'r') as pricedb:
-        for key, hist in sorted(pricedb.items()):
-            if hist is None:
-                print(key, 'EMPTY')
-            elif 'error' in hist:
-                print(key)
-                print(hist)
-            continue
+
+        fields = ('chain_id', 'rowtype', 'datetime', 'symbol', 'underlying',
+                  'price', 'strike', 'expiration', 'putcall')
+
+        filename = configlib.GetConfigFilenameWithDefaults(config)
+        config = configlib.ParseFile(filename)
+        transactions = (
+            petl.frompickle(config.output.transactions)
+            .applyfn(instrument.Expand, 'symbol')
+
+            # Fetch the database.
+            .addfield('db', lambda r: pricedb.get(
+                "{}.{}".format(r.underlying, r.datetime), None))
+
+            # Compute the split adjustment and split adjusted stock price.
+            .addfield('split_adj', get_split_adjustment)
+            .addfield('stock_price', get_stock_price)
+
+            # Compute days to expiration.
+            .addfield('expi_days', get_days_to_expiration)
+
+            # Compute implied volatility.
+            .addfield('iv', get_implied_volatility)
+
+            .cutout('db')
+            )
+
+        #print(transactions.aggregate('match_id', print_group).lookallstr())
+
+
+        chains = (
+            transactions
+
+            # Process entire chains.
+            .aggregate('chain_id', process_chain)
+            )
+
+            # # Move these filters in the chain aggregator.
+            # .selectin('instype', {'Equity', 'EquityOption'})
+            # # TODO(blais): Replace this with 'IndexOption'.
+            # .selectnotin('underlying', {'VIX'})
+
+            # .cut(fields)
+            # .aggregate('chain_id', process_chain))
+
+        _ = list(chains.records())
+
+        if 0:
+
+            # def process_chain(giter):
+            #     table = petl.wrap([fields] + list(giter))
+
+            #     # Note: This is largely uncompromising; we still have to handle all
+            #     # the corner cases: active positions, missing data, prices which
+            #     # fail constraints implicit in BSM (e.g. intrinsic value), chains
+            #     # with static deltas, etc.
+
+            #     # Skip chains with marks, because we don't have live prices.
+            #     first_row = next(iter(table.records()))
+            #     if table.selecteq('rowtype', 'Mark').nrows() > 0:
+            #         logging.info("Skip active chain: {}".format(first_row.chain_id))
+            #         return
+
+            #     # # Join table data. If some of the rows have some unavailable data,
+            #     # # skip them.
+            #     # table = (table
+            #     #          # Fetch the database data.
+            #     #          .addfield('price_key',
+            #     #                    lambda r: "{}.{}".format(r.underlying, r.datetime))
+            #     #          .addfield('db', lambda r: pricedb[r.price_key]))
+            #     # if table.select(lambda r: r.db is None or r.db[0] is None).nrows() > 0:
+            #     #     logging.info("Skip chain with no data: {}".format(first_row.chain_id))
+            #     #     return
+
+            #     # # Compute split-adjusted price.
+            #     # table = (table
+            #     #          .addfield('split_adj', split_adjustment)
+            #     #          .addfield('stock_price',
+            #     #                    lambda r: Decimal(r.db[0] * r.split_adj).quantize(Q2))
+            #     #          .cutout('price_key', 'db'))
+
+            #     # Skip chains containing stocks for now.
+            #     if table.selectin('rowtype', {'Equity', 'Future'}).nrows() > 0:
+            #         logging.info("Skip chain with static deltas: {}".format(first_row.chain_id))
+            #         return
+
+            #     # Process each of the options positions.
+
+            #     ## TODO(blais): Add BSM implied vol as column
+
+            #     invalid = False
+            #     for rec in table.records():
+            #         dt_expiration = datetime.datetime.combine(rec.expiration, expiration_time)
+            #         time_secs = (dt_expiration - rec.datetime).total_seconds()
+            #         time_annual = time_secs / year_secs
+            #         flag = rec.putcall[0].lower()
+            #         option_price = float(rec.price)
+            #         stock_price = float(rec.stock_price)
+            #         strike_price = float(rec.strike)
+
+            #         if option_price <= 0:
+            #             ivol = 0
+            #         else:
+            #             try:
+            #                 ivol = black_scholes.implied_volatility.implied_volatility(
+            #                     option_price, stock_price, strike_price,
+            #                     time_annual, risk_free_rate, flag)
+            #             except exceptions.VolatilityValueException as exc:
+            #                 logging.info("Skip chain with invalid constraint: {} ({})".format(
+            #                     first_row.chain_id, (
+            #                         option_price, stock_price, strike_price, '|',
+            #                         time_annual, risk_free_rate, flag, ':', exc)))
+            #                 invalid = True
+            #                 break
+            #     if invalid:
+            #         return
 
 
 
+
+            filename = configlib.GetConfigFilenameWithDefaults(config)
+            config = configlib.ParseFile(filename)
+            transactions = (
+                petl.frompickle(config.output.transactions)
+                .applyfn(instrument.Expand, 'symbol')
+
+                # Move these filters in the chain aggregator.
+                .selectin('instype', {'Equity', 'EquityOption'})
+                # TODO(blais): Replace this with 'IndexOption'.
+                .selectnotin('underlying', {'VIX'})
+
+                .cut(fields)
+                .aggregate('chain_id', process_chain))
+            if 1:
+                print(transactions.lookallstr())
+                raise SystemExit
 
 
     if 0:
