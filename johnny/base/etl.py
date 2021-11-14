@@ -7,8 +7,10 @@ from decimal import Decimal
 from typing import Any, List, Set, Tuple, Union
 
 import petl
+import petl.config
+import petl.compat
+import petl.util.vis
 petl.config.look_style = 'minimal'
-petl.compat.numeric_types = petl.compat.numeric_types + (Decimal,)
 petl.config.failonerror = True
 
 Table = petl.Table
