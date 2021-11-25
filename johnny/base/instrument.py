@@ -21,7 +21,7 @@ from johnny.base.etl import Table
 # is currently lost.
 
 
-# A representation of an option.
+# A representation of an instrument.
 class Instrument(NamedTuple):
     """An instrument broken down by its component fields.
     See instrument.md for details.

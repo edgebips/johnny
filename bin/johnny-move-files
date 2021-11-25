@@ -10,6 +10,7 @@ for import.
 __copyright__ = "Copyright (C) 2021  Martin Blais"
 __license__ = "GNU GPLv2"
 
+import datetime
 import os
 import re
 import logging
@@ -40,9 +41,10 @@ def main(config: Optional[str], extra_downloads: Optional[str]):
     config = configlib.ParseFile(filename)
 
     regexps = {
-        "johnny.sources.thinkorswim_csv.transactions": "tasty.*\.csv$",
-        "johnny.sources.thinkorswim_csv.positions": ".*AccountStatement.csv$",
-        "johnny.sources.tastyworks_csv.positions": ".*PositionStatement.csv$",
+        "johnny.sources.tastyworks_csv.transactions": "tasty.*\.csv$",
+        "johnny.sources.thinkorswim_csv.transactions": ".*AccountStatement\.csv$",
+        "johnny.sources.thinkorswim_csv.positions": ".*PositionStatement\.csv$",
+        "johnny.sources.interactive_csv.transactions": ".*_flex\.csv$",
     }
 
     download_dirs = DOWNLOAD_DIRS
@@ -56,15 +58,21 @@ def main(config: Optional[str], extra_downloads: Optional[str]):
             continue
         assert not path.isdir(account.source)
         destination = path.dirname(account.source)
-        assert path.isdir(destination)
 
         # Look for them in all downloads directories.
         for directory in download_dirs:
             for filename in os.listdir(directory):
                 if re.match(regexp, filename):
                     src = path.join(directory, filename)
+
+                    # If there's no date in the filename, add one as prefix.
+                    if not re.search(r"(\d\d\d\d.\d\d.\d\d|\d\d.\d\d.\d\d\d\d)", filename):
+                        date = datetime.datetime.fromtimestamp(path.getmtime(src)).date()
+                        filename = "{:%Y-%m-%d}.{}".format(date, filename)
                     dst = path.join(destination, filename)
+
                     logging.info(f"Moving {src} to {dst}")
+                    os.makedirs(path.dirname(dst), exist_ok=True)
                     shutil.move(src, dst)
 
 
