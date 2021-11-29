@@ -194,9 +194,6 @@ def GetTransactions(filename: str) -> Tuple[Table, Table]:
     # The table of commission details is used to split up commissions and fees.
     tablemap = SplitTables(filename)
     assert(set(tablemap) == {'STFU', 'TRNT', 'UNBC'})
-    if 0:
-        for key, table in tablemap.items():
-            print(table.lookallstr())
 
     # Check that the list of trades matches the subset of trade rows from the
     # statement of funds.
@@ -246,10 +243,6 @@ def GetTransactions(filename: str) -> Tuple[Table, Table]:
     # Important note: for now, dividends aren't incorporated; they need to be
     # added to Johnny in the long run.
     trade, nontrade = table.biselect(lambda r: r.ActivityCode in {'BUY', 'SELL'})
-    if 0:
-        print(trade.lookallstr())
-        print(nontrade.lookallstr())
-        raise SystemExit
 
     # Join some of the rows rom the trades table.
     trnt = (tablemap['TRNT']
@@ -321,10 +314,6 @@ def GetTransactions(filename: str) -> Tuple[Table, Table]:
 
     # Reorder the final fields.
     trade = trade.cut(txnlib.FIELDS)
-
-    if 0:
-        print(trade.lookallstr())
-        raise SystemExit
 
     return trade, nontrade
 
