@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Set JOHNNY_CONFIG in order for this to work.
-DOWNLOADS = $(HOME)/q/johnny-data/downloads
+DOWNLOADS = $(HOME)/q/johnny-data/downloads/tastyworks_api
 CHAINS = $(shell grep chains_db $(JOHNNY_CONFIG) | head -n1 | sed  -e 's/.*chains_db: *"//;s/"//')
 CHAINS_NEW = $(shell grep chains_db $(JOHNNY_CONFIG) | tail -n1 | sed  -e 's/.*chains_db: *"//;s/"//')
 
