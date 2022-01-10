@@ -17,6 +17,7 @@ import os
 import re
 import threading
 import logging
+import tempfile
 
 import dateutil.parser
 import numpy as np
@@ -451,7 +452,6 @@ def RenderHistorySVG(txns: Table) -> str:
     return svg.getvalue()
 
 
-import tempfile
 @app.route('/chain/<chain_id>/graph.png')
 def chain_graph(chain_id: str):
     txns = (STATE.transactions
@@ -773,8 +773,6 @@ def leverage():
                 .leftjoin(STATE.chains
                           .cut('chain_id', 'group', 'strategy'), 'chain_id')
                 )
-
-    print(notional.lookallstr())
 
     # Aggregate all put and call notional risk per (account, underlying).
     per_underlying = (notional
