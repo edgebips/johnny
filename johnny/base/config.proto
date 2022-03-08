@@ -114,6 +114,9 @@ message Account {
   // account number will be kept as is.
   optional string nickname = 1;
 
+  // Short name alternative, e.g. for tabs in a spreadsheet.
+  optional string sheetname = 7;
+
   // Importer type: transactions or positions.
   enum LogType {
     TRANSACTIONS = 1;

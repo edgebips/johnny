@@ -40,10 +40,8 @@ def GetLatestFile(source: str) -> Optional[str]:
 def ReadInitialPositions(filename: str) -> Table:
     """Read a table of initial positions."""
     table = (petl.fromcsv(filename)
-            .cut('datetime', 'symbol', 'instruction', 'quantity', 'cost')
-
-            .addfield('transaction_id', lambda r: 'open-{}'.format(r.symbol))
-            .addfield('order_id', lambda r: 'openord-{}'.format(r.symbol))
+            .cut('transaction_id', 'datetime', 'symbol', 'instruction', 'quantity', 'cost')
+            .addfield('order_id', lambda r: 'o{}'.format(r.transaction_id))
             .addfield('account', '')
             .convert('datetime', lambda v: parser.parse(v))
             .addfield('rowtype', 'Open')
@@ -62,7 +60,7 @@ def ReadInitialPositions(filename: str) -> Table:
         sign = -1 if rec.instruction == 'BUY' else +1
         cost = sign * rec.quantity * rec.multiplier * rec.price
         if cost != rec.cost:
-            raise ValueError(f"Invalid cost for {rec}")
+            raise ValueError(f"Invalid cost for {rec}: {cost} != {rec.cost}")
 
     # TODO(blais): Support multiplier in here. In the meantime, detect and fail
     # if present.
@@ -110,11 +108,11 @@ def ReadConfiguredInputs(
 
     # Concatenate tables for each logtype.
     bytype = {}
-    for logtype, tables in tablemap.items():
+    for t_logtype, tables in tablemap.items():
         table = petl.cat(*tables)
-        if account.logtype == configlib.Account.LogType.TRANSACTIONS:
-            bytype[logtype] = table.sort(('account', 'datetime'))
-        elif account.logtype == configlib.Account.LogType.POSITIONS:
-            bytype[logtype] = table.sort(('account', 'symbol'))
+        if t_logtype == configlib.Account.LogType.TRANSACTIONS:
+            bytype[t_logtype] = table.sort(('account', 'datetime'))
+        elif t_logtype == configlib.Account.LogType.POSITIONS:
+            bytype[t_logtype] = table.sort(('account', 'symbol'))
 
     return bytype

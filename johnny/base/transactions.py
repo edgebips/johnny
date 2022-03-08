@@ -85,7 +85,7 @@ def ValidateTransactionRecord(r: Record):
 
     # A quantity of 'None' is allowed if the logs don't include the expiration
     # quantity, and is filled in automatically by matching code.
-    assert r.quantity is None or (isinstance(r.quantity, Decimal) and r.quantity >= ZERO)
+    assert r.quantity is None or (isinstance(r.quantity, Decimal) and r.quantity >= ZERO), r
     assert isinstance(r.price, Decimal)
     assert isinstance(r.cost, Decimal)
     assert isinstance(r.commissions, Decimal)

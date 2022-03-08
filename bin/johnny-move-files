@@ -24,17 +24,22 @@ from johnny.base import config as configlib
 
 
 HOME = os.getenv("HOME")
-DOWNLOAD_DIRS = [
-    HOME,
-    path.join(HOME, "Downloads")
-]
+DOWNLOAD_DIRS = [HOME, path.join(HOME, "Downloads")]
 
 
 @click.command()
-@click.option('--config', '-c', type=click.Path(exists=True),
-              help="Configuration filename. Default to $JOHNNY_CONFIG")
-@click.option('--extra-downloads', '-d', type=click.Path(exists=True),
-              help="An extra download directory to look into.")
+@click.option(
+    "--config",
+    "-c",
+    type=click.Path(exists=True),
+    help="Configuration filename. Default to $JOHNNY_CONFIG",
+)
+@click.option(
+    "--extra-downloads",
+    "-d",
+    type=click.Path(exists=True),
+    help="An extra download directory to look into.",
+)
 def main(config: Optional[str], extra_downloads: Optional[str]):
     # Read the input configuration.
     filename = configlib.GetConfigFilenameWithDefaults(config)
@@ -44,7 +49,8 @@ def main(config: Optional[str], extra_downloads: Optional[str]):
         "johnny.sources.tastyworks_csv.transactions": "tasty.*\.csv$",
         "johnny.sources.thinkorswim_csv.transactions": ".*AccountStatement\.csv$",
         "johnny.sources.thinkorswim_csv.positions": ".*PositionStatement\.csv$",
-        "johnny.sources.interactive_csv.transactions": ".*_flex\.csv$",
+        "johnny.sources.interactive_csv.transactions": "funds_and_trades_for_johnny\.csv$",
+        "johnny.sources.interactive_csv.positions": "positions_for_johnny\.csv$",
     }
 
     download_dirs = DOWNLOAD_DIRS
@@ -66,8 +72,12 @@ def main(config: Optional[str], extra_downloads: Optional[str]):
                     src = path.join(directory, filename)
 
                     # If there's no date in the filename, add one as prefix.
-                    if not re.search(r"(\d\d\d\d.\d\d.\d\d|\d\d.\d\d.\d\d\d\d)", filename):
-                        date = datetime.datetime.fromtimestamp(path.getmtime(src)).date()
+                    if not re.search(
+                        r"(\d\d\d\d.\d\d.\d\d|\d\d.\d\d.\d\d\d\d)", filename
+                    ):
+                        date = datetime.datetime.fromtimestamp(
+                            path.getmtime(src)
+                        ).date()
                         filename = "{:%Y-%m-%d}.{}".format(date, filename)
                     dst = path.join(destination, filename)
 
@@ -76,6 +86,6 @@ def main(config: Optional[str], extra_downloads: Optional[str]):
                     shutil.move(src, dst)
 
 
-if __name__ == '__main__':
-    logging.basicConfig(level=logging.INFO, format='%(levelname)-8s: %(message)s')
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format="%(levelname)-8s: %(message)s")
     main()

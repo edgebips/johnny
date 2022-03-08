@@ -1,6 +1,6 @@
 """Interactive Brokers - Parse account statement CSV files.
 
-  Login > Reports > Flex Report > (period) > Run
+  Login > Performance & Statements > Reports > Flex Queries > (period) > Run
 
 You need to select
 
@@ -263,7 +263,7 @@ def GetTransactions(filename: str) -> Tuple[Table, Table]:
     # the fields away.
     trade = (trade
 
-             # Compute normalized instrumen ttype.
+             # Compute normalized instrument type.
              .convert('AssetClass', GetAssetClass)
              .rename('AssetClass', 'instype')
 
@@ -301,6 +301,9 @@ def GetTransactions(filename: str) -> Tuple[Table, Table]:
                  'ActivityDescription': 'description',
              })
 
+             # Absolute value for quantity.
+             .convert("quantity", abs)
+
              # Verify the trade commission.
              .addfield('cdiff', lambda r: (
                  r['TradeCommission'] - (r['commissions'] + r['fees']))
@@ -321,24 +324,22 @@ def GetTransactions(filename: str) -> Tuple[Table, Table]:
 def Import(source: str, config: configlib.Config) -> Table:
     """Process the filename, normalize, and output as a table."""
     filename = discovery.GetLatestFile(source)
-    table = GetTransactions(filename)
+    table, non_trades = GetTransactions(filename)
     return table
 
 
 @click.command()
-@click.argument('directory', type=click.Path(resolve_path=True, exists=True))
+@click.argument('filename', type=click.Path(resolve_path=True, exists=True))
 @click.option('--cash', is_flag=True, help="Print out cash transactions.")
-def main(directory: List[str], cash):
+def main(filename: str, cash):
     """Simple local runner for this translator."""
-
-    filenames = [path.join(directory, x) for x in os.listdir(directory)]
     trades_tables = []
-    for filename in filenames:
-        logging.info(filename)
-        trades_table, other_table = GetTransactions(filename)
-        trades_tables.append(trades_table)
+    logging.info(filename)
+    trades_table, other_table = GetTransactions(filename)
+    trades_tables.append(trades_table)
     trades = petl.cat(*trades_tables)
     print(trades.lookallstr())
+    print(other_table.lookallstr())
 
 
 if __name__ == '__main__':
