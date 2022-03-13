@@ -74,18 +74,8 @@ _EXAMPLE_INSTRUMENTS = [
 
 
 def test_ParseInstrumentDescription():
-    mapping = config_pb2.FutOptMonthMapping()
-    for op, om, fp, fm in [('/OG', 'N','/GC', 'Q'),
-                           ('/EUU', 'M', '/6E', 'M'),
-                           ('/OZC', 'N', '/ZC', 'N'),
-                           ('/OZS', 'N', '/ZS', 'N'),
-                           ('/SO', 'M', '/SI', 'N')]:
-        item = mapping.months.add(option_product=op, option_month=om,
-                                  future_product=fp, future_month=fm)
-    mapper = multipliers.FutOptMonthMapper(mapping)
-
     for (description, root), expected in _EXAMPLE_INSTRUMENTS:
-        inst = positions.ParseInstrumentDescription(description, root, mapper)
+        inst = positions.ParseInstrumentDescription(description, root)
         assert expected == str(inst)
 
 

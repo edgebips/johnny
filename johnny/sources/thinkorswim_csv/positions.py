@@ -159,7 +159,7 @@ def ParseInstrumentDescription(
 
         underlying = months.get_underlying(expcode)
         return instrument.Instrument(underlying=underlying,
-                                     expcode=expcode,
+                                     expcode=expcode[1:],
                                      putcall=putcall[0],
                                      strike=Decimal(strike),
                                      multiplier=Decimal(multiplier))
