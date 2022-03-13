@@ -58,7 +58,9 @@ class Instrument(NamedTuple):
     @property
     def instype(self) -> str:
         """Return the instrument type."""
-        if self.underlying.startswith('/'):
+        if self.underlying in multipliers.CBOE_MULTIPLIERS:
+            return 'IndexOption'
+        elif self.underlying.startswith('/'):
             return 'FutureOption' if self.putcall else 'Future'
         else:
             return 'EquityOption' if self.putcall else 'Equity'
@@ -162,7 +164,7 @@ def ToString(inst: Instrument) -> str:
     elif instype == 'Future':
         return inst.underlying
 
-    elif instype == 'EquityOption':
+    elif instype in {'EquityOption', 'IndexOption'}:
         return "{}_{:%y%m%d}_{}{}".format(
             inst.underlying, inst.expiration, inst.putcall, inst.strike)
 
@@ -208,3 +210,9 @@ def Shrink(table: Table) -> Table:
     return (table
             .cutout('instype', 'underlying', 'expiration', 'expcode',
                     'putcall', 'strike', 'multiplier'))
+
+
+def IsSection1256(symbol: str) -> bool:
+    """Return true if this is a section 1256 instrument."""
+    inst = FromString(symbol)
+    return inst.instype in {"Future", "FutureOption", "IndexOption"}

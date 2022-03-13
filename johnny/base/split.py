@@ -10,6 +10,9 @@ from johnny.base.chains_pb2 import SplitTransaction
 from johnny.base.etl import Table, WrapRecords, Replace
 
 
+Q = Decimal("0.01")
+
+
 def SplitTransactions(splits: List[SplitTransaction], transactions: Table) -> Table:
     """Process transactions to split based on manual splittin rules.
     Returns a new table of transactions.
@@ -23,9 +26,9 @@ def SplitTransactions(splits: List[SplitTransaction], transactions: Table) -> Ta
             for part in split.parts:
                 quantity = Decimal(part.quantity)
                 fraction = quantity / row.quantity
-                part_cost = fraction * row.cost
-                part_commissions = fraction * row.commissions
-                part_fees = fraction * row.fees
+                part_cost = (fraction * row.cost).quantize(Q)
+                part_commissions = (fraction * row.commissions).quantize(Q)
+                part_fees = (fraction * row.fees).quantize(Q)
                 nrow = Replace(
                     row,
                     transaction_id=part.id,

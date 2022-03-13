@@ -115,5 +115,15 @@ def chains(ctx: click.Context):
     print(chains.lookallstr())
 
 
+@cli.command()
+@click.pass_context
+def multi(ctx: click.Context):
+    "Print out chains with multiple underlyings."
+    config = ctx.obj['config']
+    chains = (petl.frompickle(config.output.chains)
+              .select(lambda r: ',' in r.underlyings))
+    print(chains.lookallstr())
+
+
 if __name__ == '__main__':
     cli(obj={})

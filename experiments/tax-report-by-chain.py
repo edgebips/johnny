@@ -1,6 +1,17 @@
 #!/usr/bin/env python3
 """Produce a report suitable for accountant/taxes.
+
+TODO (extras):
+
+- Find a way to check that the stocks reported haven't split an ensure correct
+  cost basis (splits should be represented in the flow but still).
+
+- Make sure ACTIVE chains don't have any closed bits to report.
+
+- Detect mixed 1256 and normal trades.
+
 """
+
 
 import contextlib
 import collections
@@ -31,21 +42,6 @@ from johnny.base.etl import Table
 from johnny.utils import timing
 
 from mulmat import multipliers
-
-
-# TODO(blais): Move this to Mulmat.
-def is_index_option(symbol: str) -> bool:
-    """Return true if this is an index optin."""
-    return symbol in multipliers.CBOE_MULTIPLIERS
-
-
-# TODO(blais): Move this to Mulmat.
-def is_section_1256(symbol: str) -> bool:
-    """Return true if this is a section 1256 instrument."""
-    inst = instrument.FromString(symbol)
-    return inst.instype in {"Future", "FutureOption"} or is_index_option(
-        inst.underlying
-    )
 
 
 @click.command()
@@ -82,14 +78,16 @@ def main(config: Optional[str], sheets_id: Optional[str], output_dir: str):
     max_date = dt.date(2022, 1, 1)
 
     acc_map = {acc.nickname: acc.sheetname for acc in config.input.accounts}
-    chains = chains.select(
-        lambda c: not (c.maxdate < min_date or c.mindate > max_date)
-    ).addfield("category", functools.partial(categorize_chain, acc_map))
+    chains = (
+        chains.select(lambda c: not (c.maxdate < min_date or c.mindate > max_date))
+        .selectne("account", "x20")
+        .selectne("status", "ACTIVE")
+        .addfield("category", functools.partial(categorize_chain, acc_map))
+    )
 
     # Group each trade.
     group_map = prepare_groups(txns, chains, min_date, max_date)
 
-    # Make sure the cost basis is right (!) for LT investments.
     # Make sure the start date is right for LT.
     # Split up LT from CC positions (account for them differently).
     # TODO
@@ -161,23 +159,23 @@ def make_chain_filter(min_date, max_date):
     return filter_chain
 
 
+TERM = {"TaxST": "ShortTerm", "TaxLT": "LongTerm"}
+
+
 def categorize_chain(acc_map, chain) -> str:
     """Create a unique reporting category for this chain."""
     # Segment out investments
     # TODO(blais): Maybe generalized this?
-    if re.match("Invest.*", chain.group):
-        category = "LT_Investments"
-    else:
-        category = acc_map[chain.account]
+    category = acc_map[chain.account]
 
     # Segment out Sec1256.
     underlyings = chain.underlyings.split(",")
-    if all(is_section_1256(u) for u in underlyings):
-        suffix = "_sec1256"
-    elif all(not is_section_1256(u) for u in underlyings):
-        suffix = ""
+    if all(instrument.IsSection1256(u) for u in underlyings):
+        suffix = "_Sec1256"
+    elif all(not instrument.IsSection1256(u) for u in underlyings):
+        suffix = "_{}".format(TERM[chain.term])
     else:
-        suffix = "_mixed"
+        suffix = "_MIXED"
     category += suffix
     # category = ",".join(sorted(set(ctxns.values("account"))))
     return category
@@ -209,6 +207,7 @@ def prepare_groups(
             "commissions",
             "fees",
             "strategy",
+            "term",
         )
 
         # Clean up transactions detail.

@@ -26,6 +26,7 @@ needed on its own.
   * `EquityOption`
   * `Future`
   * `FutureOption`
+  * `IndexOption`
   * `Crypto`
 
 - `underlying: str`: The underlying instrument, with normalized name. If this is
