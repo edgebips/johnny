@@ -63,6 +63,7 @@ enum ChainStatus {
 // A database of chains, just a container for the chains db file.
 message Chains {
   repeated Chain chains = 1;
+  repeated SplitTransaction split_transactions = 2;
 }
 
 // A trade chain.
@@ -119,6 +120,25 @@ message Chain {
   // protective position can refer to the position it protects.
   repeated string xrefs = 9;
 
+  // Join id. An optional alternative chain id that can be used to join together
+  // multiple chains. This exists because we need to keep certain chains
+  // separate from each other for taxe purposes, though logically they are
+  // considered together. For example, a taxable long-term position will be
+  // treated from a tax standpoint as its covered calls, which will be treated
+  // as short term gain/loss. So in that case, you would create two distinct
+  // chains to use for taxation, and trigger an option to join those chains
+  // together while reporting trade pnls.
+  //
+  // This id will take the place of the chain_id, and join together the list of
+  // transactions with the same join ids. If it is not set, the chain is not
+  // joined.
+  optional string join_id = 14;
+
+  // Manual long-term or short-term tax identification for the IRS. Normally we
+  // can identify LT/ST automatically for each match, but this is a flag the
+  // user can insert for validation. Default is false.
+  optional bool long_term = 15;
+
   // Explicit chain P/L win/loss targets. These can be input to override the
   // computed targets derived by setting `pop`. For trading static deltas, you
   // can express your view by selecting appropriate targets. Monitoring can then
@@ -156,4 +176,24 @@ message Asset {
   // class would be "Metals", and factor might be "Copper" for FCX, COPX and
   // /HG.
   optional string factor = 3;
+}
+
+// A transaction to be split manually into two, in order to handle long-term vs.
+// short-term positions. (In theory this would be possible to do automatically
+// but at the time of taxation I hadn't implemented this feature and had few
+// enough long-term positions I could handle them explicitly like this. If we
+// make this automatic eventually this should be made to go away.)
+message SplitTransaction {
+  // The original transaction id to split.
+  optional string id = 1;
+
+  // The amounts to split it into. Note that the sum of those amounts must be
+  // the same as that of the original transaction.
+  message Part {
+    // The new transaction id.
+    optional string id = 1;
+    // The size it is for.
+    optional int32 quantity = 2;
+  }
+  repeated Part parts = 2;
 }

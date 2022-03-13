@@ -27,8 +27,9 @@ from johnny.base import chains as chainslib
 from johnny.base import config as configlib
 from johnny.base import discovery
 from johnny.base import instrument
-from johnny.base import match
 from johnny.base import mark
+from johnny.base import match
+from johnny.base import split
 from johnny.base import transactions as txnlib
 from johnny.base.etl import Table
 from johnny.utils import timing
@@ -124,6 +125,9 @@ def import_(config: Optional[str], force: bool, light: bool):
     # Calculate the chains and partial sums.
     with log("read_chains"):
         chains_db = configlib.ReadChains(config.input.chains_db)
+    with log("split_positions"):
+        ptransactions = split.SplitTransactions(chains_db.split_transactions, ptransactions)
+
     with log("chains"):
         ctransactions, cchains_db = chainslib.ChainTransactions(
             ptransactions, chains_db

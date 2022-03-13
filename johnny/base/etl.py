@@ -89,3 +89,12 @@ def applyfn(table: Table, function, *args, **kwargs) -> Table:
 
 
 petl.Table.applyfn = applyfn
+
+
+def Replace(rec: Record, **kwargs) -> Record:
+    """Replace a field from a record, returning a new record."""
+    lrec = list(rec)
+    for key, value in kwargs.items():
+        idx = rec.flds.index(key)
+        lrec[idx] = value
+    return type(rec)(lrec, rec.flds)

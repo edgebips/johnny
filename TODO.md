@@ -1,5 +1,10 @@
 # General
 
+- In order to report, a mixed trade between regular equity and a section 1256
+  instrument will be problematic. It needs to be split up for tax reporting (due
+  to differential tax treatment). However, it would be nice to be able to
+  consider this as a single trade at the same time.
+
 - Add output identical to this (from @LeaderL):
 
   * 33 Total Closed Trades

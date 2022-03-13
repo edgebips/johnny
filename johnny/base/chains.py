@@ -536,6 +536,7 @@ def TransactionsTableToChainsTable(transactions: Table,
         .convert('status', lambda e: ChainStatus.Name(e) if e is not None else 'NoStatus')
         .addfield('group', partial(_GetChainAttribute, 'group'))
         .addfield('strategy', partial(_GetChainAttribute, 'strategy'))
+        .addfield('term', lambda r: 'TaxLT' if _GetChainAttribute('long_term', r) else 'TaxST')
 
         # Probability & targets.
         .addfield('prob', _CalculateProbabilities)
@@ -572,7 +573,7 @@ def TransactionsTableToChainsTable(transactions: Table,
                          'target', 'pop',
                          'net_win', 'net_liq', 'net_loss', 'fifo_cost',
                          'commissions', 'fees',
-                         'group', 'strategy'))
+                         'group', 'strategy', 'term'))
 
     return chains_table, itransactions
 
