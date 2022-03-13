@@ -92,6 +92,12 @@ def main(config: Optional[str], sheets_id: Optional[str], output_dir: str):
         .addfield("category", functools.partial(categorize_chain, acc_map))
     )
 
+    # Filter the list of transactions from the chains.
+    valid_chains = set(chains.values("chain_id"))
+    print('BEFORE', txns.nrows())
+    txns = txns.selectin("chain_id", valid_chains)
+    print('AFTER', txns.nrows())
+
     # Group each trade.
     detail_map, final_map = prepare_groups(txns, chains, min_date, max_date)
 
