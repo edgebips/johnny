@@ -22,6 +22,7 @@ import datetime as dt
 import functools
 import logging
 import os
+import pprint
 import re
 import shutil
 import subprocess
@@ -72,6 +73,10 @@ Q = Decimal("0.01")
 def main(config: Optional[str], sheets_id: Optional[str], output_dir: str):
     logging.basicConfig(level=logging.INFO, format="%(levelname)-8s: %(message)s")
 
+    # if 0
+    # final_verification(output_dir)
+    # raise SystemExit
+
     # Read the input configuration.
     filename = configlib.GetConfigFilenameWithDefaults(config)
     config = configlib.ParseFile(filename)
@@ -83,38 +88,35 @@ def main(config: Optional[str], sheets_id: Optional[str], output_dir: str):
     # Filter and categorize the chains.
     min_date = dt.date(2021, 1, 1)
     max_date = dt.date(2022, 1, 1)
-
     acc_map = {acc.nickname: acc.sheetname for acc in config.input.accounts}
     chains = (
         chains.select(lambda c: not (c.maxdate < min_date or c.mindate > max_date))
+        # Remove Roth IRA account.
         .selectne("account", "x20")
-        .selectne("status", "ACTIVE")
-        .addfield("category", functools.partial(categorize_chain, acc_map))
+        # Remove open positions.
+        .selectne("status", "ACTIVE").addfield(
+            "category", functools.partial(categorize_chain, acc_map)
+        )
     )
 
     # Filter the list of transactions from the chains.
     valid_chains = set(chains.values("chain_id"))
-    print('BEFORE', txns.nrows())
     txns = txns.selectin("chain_id", valid_chains)
-    print('AFTER', txns.nrows())
 
     # Group each trade.
     detail_map, final_map = prepare_groups(txns, chains, min_date, max_date)
 
-    # Make sure the start date is right for LT.
-    # Split up LT from CC positions (account for them differently).
-    # TODO
-
-    # Remove open positions.
-    # TODO
-
-    # Identify wash sales (tightly, like TradeLog).
+    # Identify wash sales (tightly).
+    # TODO.
 
     # Write out to a spreadsheet.
     write_output(
-        detail_map, path.join(output_dir, "detail"), sheets_id, chains=chains, txns=txns
+        detail_map, path.join(output_dir, "detail"), None, chains=chains, txns=txns
     )
     write_output(final_map, path.join(output_dir, "final"), sheets_id)
+
+    # Perform final checks on the ultimate files.
+    final_verification(output_dir)
 
 
 def rmtree_contents(directory: str):
@@ -273,10 +275,10 @@ def prepare_groups(
             "cost",
             "proceeds",
             "pnl",
-            #"chain_id",
-            #"account",
-            #"match_id",
-            #"symbol",
+            # "chain_id",
+            # "account",
+            # "match_id",
+            # "symbol",
         )
         cmatches = (
             ctxns.aggregate("match_id", funcs)
@@ -285,7 +287,6 @@ def prepare_groups(
             .convert("proceeds", lambda v: v.quantize(Q))
             # Flip the signs on cost, so that pnl = proceeds - cost, not proceeds + cost.
             .convert("cost", lambda v: -v.quantize(Q))
-
             # Fetch a readable instrument description.
             .applyfn(instrument.Expand, "symbol")
             .addfield("description", partial(get_description, contract_getter))
@@ -304,7 +305,7 @@ def prepare_groups(
             tuple(
                 Replace(
                     check_row,
-                    #chain_id="TOTAL",
+                    # chain_id="TOTAL",
                     cost=matches_cost,
                     proceeds=matches_proceeds,
                     pnl=matches_pnl,
@@ -374,6 +375,42 @@ def cost_opened(rows: List[Record]) -> str:
 
 def cost_closed(rows: List[Record]) -> str:
     return sum((r.cost + r.commissions + r.fees) for r in rows if r.effect == "CLOSING")
+
+
+def final_verification(output_dir: str):
+    """Final verifications off the generated files.
+    Just to be extra sure."""
+
+    txns = (
+        petl.fromcsv(path.join(output_dir, "detail/transactions.csv"))
+        .cut("cost", "commissions", "fees")
+        .convertall(Decimal)
+    )
+    txns_pnl = (
+        sum(txns.values("cost"))
+        + sum(txns.values("commissions"))
+        + sum(txns.values("fees"))
+    )
+    print("transactions_pnl: {}".format(txns_pnl))
+
+    final_dir = path.join(output_dir, "final")
+    pnl_map = {}
+    for filename in os.listdir(final_dir):
+        pnl_map[filename] = (
+            petl.fromcsv(path.join(final_dir, filename))
+            .convert("pnl", Decimal)
+            .values("pnl")
+            .sum()
+        )
+    pprint.pprint(pnl_map)
+    print("breakdowns_pnl: {}".format(sum(pnl_map.values())))
+
+    lt_pnl = sum(value for key, value in pnl_map.items() if re.match(".*LongTerm", key))
+    st_pnl = sum(
+        value for key, value in pnl_map.items() if not re.match(".*LongTerm", key)
+    )
+    print("LongTerm pnl: {}".format(lt_pnl))
+    print("Trading pnl: {}".format(st_pnl))
 
 
 if __name__ == "__main__":
