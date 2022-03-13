@@ -26,6 +26,7 @@ needed on its own.
   * `EquityOption`
   * `Future`
   * `FutureOption`
+  * `Index` (not tradeable)
   * `IndexOption`
   * `Crypto`
 

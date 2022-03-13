@@ -69,7 +69,7 @@ class Instrument(NamedTuple):
         return self.underlying.startswith('/')
 
     def is_option(self) -> bool:
-        return bool(self.putcall)
+        return bool(self.putcall) or self.instype.endswith("Option")
 
     def __str__(self):
         """Convert an instrument to a string code."""

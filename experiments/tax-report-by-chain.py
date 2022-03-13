@@ -12,36 +12,43 @@ TODO (extras):
 
 """
 
-
-import contextlib
-import collections
-import functools
-import logging
-import datetime as dt
-import re
-import traceback
-import time
-import shutil
-import subprocess
-import os
+from decimal import Decimal
+from functools import partial
 from os import path
 from typing import Any, List, Optional, Tuple, Mapping
+import collections
+import contextlib
+import datetime as dt
+import functools
+import logging
+import os
+import re
+import shutil
+import subprocess
+import time
+import traceback
 
+from more_itertools import first
 import click
-import simplejson
 import petl
+import simplejson
+import mulmat
 
 from johnny.base import chains as chainslib
 from johnny.base import config as configlib
 from johnny.base import discovery
 from johnny.base import instrument
-from johnny.base import match
 from johnny.base import mark
+from johnny.base import match
 from johnny.base import transactions as txnlib
-from johnny.base.etl import Table
+from johnny.base.etl import Table, Record, Replace
 from johnny.utils import timing
-
 from mulmat import multipliers
+
+import tax_description
+
+
+Q = Decimal("0.01")
 
 
 @click.command()
@@ -86,7 +93,7 @@ def main(config: Optional[str], sheets_id: Optional[str], output_dir: str):
     )
 
     # Group each trade.
-    group_map = prepare_groups(txns, chains, min_date, max_date)
+    detail_map, final_map = prepare_groups(txns, chains, min_date, max_date)
 
     # Make sure the start date is right for LT.
     # Split up LT from CC positions (account for them differently).
@@ -98,19 +105,31 @@ def main(config: Optional[str], sheets_id: Optional[str], output_dir: str):
     # Identify wash sales (tightly, like TradeLog).
 
     # Write out to a spreadsheet.
-    write_output(chains, txns, group_map, output_dir, sheets_id)
+    write_output(
+        detail_map, path.join(output_dir, "detail"), sheets_id, chains=chains, txns=txns
+    )
+    write_output(final_map, path.join(output_dir, "final"), sheets_id)
+
+
+def rmtree_contents(directory: str):
+    for root, dirs, files in os.walk(directory):
+        for f in files:
+            os.unlink(path.join(root, f))
+        for d in dirs:
+            shutil.rmtree(path.join(root, d), ignore_errors=True)
+        break
 
 
 def write_output(
-    chains: petl.Table,
-    txns: petl.Table,
     group_map: Mapping[str, List[Any]],
     output_dir: str,
     sheets_id: Optional[str],
+    chains: Optional[petl.Table] = None,
+    txns: Optional[petl.Table] = None,
 ):
     """Write out CSV files."""
-    shutil.rmtree(output_dir, ignore_errors=True)
-    os.makedirs(output_dir)
+    rmtree_contents(output_dir)
+    os.makedirs(output_dir, exist_ok=True)
 
     filenames = []
 
@@ -120,11 +139,16 @@ def write_output(
         table.tocsv(fn)
         filenames.append(fn)
 
-    write_table(chains, "chains.csv")
-    write_table(txns, "transactions.csv")
+    if chains is not None:
+        write_table(chains, "chains.csv")
+    if txns is not None:
+        write_table(txns, "transactions.csv")
 
     for group_name, rows in sorted(group_map.items()):
-        write_table(petl.wrap(rows), f"{group_name}.csv")
+        if isinstance(rows, list):
+            rows = petl.wrap(rows)
+        assert isinstance(rows, Table)
+        write_table(rows, f"{group_name}.csv")
 
     if isinstance(sheets_id, str):
         logging.info("Creating sheets doc")
@@ -183,12 +207,18 @@ def categorize_chain(acc_map, chain) -> str:
 
 def prepare_groups(
     txns, chains, min_date: dt.date, max_date: dt.date
-) -> Mapping[str, List[Any]]:
+) -> Tuple[Mapping[str, List[Any]], Mapping[str, List[Any]]]:
     """Join chains and transactions and combine them."""
+
+    db = mulmat.read_cme_database()
+    contract_getter = tax_description.build_contract_getter(db, dt.date.today().year)
+
+    all_matches = []
 
     # A mapping of category (sheet) to a list of prepared combined chains tables.
     txns_chain_map = petl.recordlookup(txns, "chain_id")
-    group_map = collections.defaultdict(list)
+    detail_map = collections.defaultdict(list)
+    final_map = collections.defaultdict(list)
     for chain in chains.records():
         # Pretty up chains row.
         cchains = petl.wrap([chains.fieldnames(), chain]).cut(
@@ -217,16 +247,127 @@ def prepare_groups(
             .movefield("chain_id", 0)
             .movefield("account", 1)
             .convert("chain_id", lambda _: "")
-            .cutout("match_id")
+            .sort(["match_id", "datetime"])
         )
 
-        # Append a combined table to a list.
-        rows = list(cchains) + list(ctxns)
-        accounts_list = group_map[chain.category]
-        accounts_list.extend(rows)
-        accounts_list.append([])
+        # Append a list of aggregated matches for the purpose of reporting.
+        funcs = {
+            "date_opened": partial(date_sub, "OPENING"),
+            "date_closed": partial(date_sub, "CLOSING"),
+            "cost": cost_opened,
+            "proceeds": cost_closed,
+            "account": ("account", first),
+            "symbol": ("symbol", lambda g: next(iter(set(g)))),
+            "quantity": estimate_match_quantity,
+        }
+        mheaders = (
+            "description",
+            "date_opened",
+            "date_closed",
+            "cost",
+            "proceeds",
+            "pnl",
+            #"chain_id",
+            #"account",
+            #"match_id",
+            #"symbol",
+        )
+        cmatches = (
+            ctxns.aggregate("match_id", funcs)
+            .addfield("chain_id", chain.chain_id)
+            .addfield("pnl", lambda r: (r.proceeds + r.cost).quantize(Q))
+            .convert("proceeds", lambda v: v.quantize(Q))
+            # Flip the signs on cost, so that pnl = proceeds - cost, not proceeds + cost.
+            .convert("cost", lambda v: -v.quantize(Q))
 
-    return group_map
+            # Fetch a readable instrument description.
+            .applyfn(instrument.Expand, "symbol")
+            .addfield("description", partial(get_description, contract_getter))
+            .applyfn(instrument.Shrink)
+            .cut(*mheaders)
+        )
+
+        flds = cmatches.fieldnames()
+        check_row = Record([""] * len(flds), flds)
+        matches_cost = sum(cmatches.values("cost"))
+        matches_proceeds = sum(cmatches.values("proceeds"))
+        matches_pnl = matches_proceeds - matches_cost
+        matches_pnl2 = sum(cmatches.values("pnl"))
+        chain_pnl = chain.pnl_chain + chain.commissions + chain.fees
+        check_row = (
+            tuple(
+                Replace(
+                    check_row,
+                    #chain_id="TOTAL",
+                    cost=matches_cost,
+                    proceeds=matches_proceeds,
+                    pnl=matches_pnl,
+                )
+            )
+            + (matches_pnl, chain_pnl)
+        )
+        for mpnl in [matches_pnl, matches_pnl2]:
+            diff = abs(chain_pnl - mpnl)
+            # Note: If you don't quantize these match perfectly at 1 penny
+            if diff > Decimal("0.05"):
+                raise ValueError(f"Invalid matches_pnl for {chain}: {diff}")
+
+        # Form 8949
+        # (a) Description of property (Example: 100 sh. XYZ Co.)
+        # (b) Date acquired (Mo., day, yr.)
+        # (c) Date sold or disposed of (Mo., day, yr.)
+        # (d) Proceeds (sales price) (see instructions)
+        # (e) Cost or other basis. See the Note below and see Column (e) in the separate instructions Adjustment, if any, to gain or loss. If you enter an amount in column (g), enter a code in column (f). See the separate instructions.
+        # (f) Code(s) from instructions
+        # (g) Amount of adjustment
+        # (h) Gain or (loss). Subtract column (e) from column (d) and combine the result with column (g)
+
+        # Form 6781
+        # (a) Description of property
+        # (b) Date entered into or acquired
+        # (c) Date closed out or sold
+        # (d) Gross sales price
+        # (e) Cost or other basis plus expense of sale
+        # (f) Loss. If column (e) is more than (d), enter difference. Otherwise, enter -0-.
+        # (g) Unrecognized gain on offsetting positions
+        # (h) Recognized loss. If column (f) is more than (g), enter difference. Otherwise, enter -0
+
+        # Append a combined table to a list.
+        rows = list(cchains) + list(ctxns) + list(cmatches) + [check_row, [], []]
+        detail_map[chain.category].extend(rows)
+        final_map[chain.category].append(cmatches)
+
+    for key, tables in final_map.items():
+        table = petl.cat(*tables)
+        final_map[key] = petl.cat(*tables)
+
+    return detail_map, final_map
+
+
+def date_sub(effect: str, rows: List[Record]) -> str:
+    dtimes = set([r.datetime.date() for r in rows if r.effect == effect])
+    if len(dtimes) > 1:
+        return "Various"
+    else:
+        return next(iter(dtimes)).isoformat()
+
+
+def estimate_match_quantity(rows: List[Record]) -> int:
+    return sum(r.quantity for r in rows if r.effect == "OPENING")
+
+
+def get_description(contract_getter, r: Record) -> str:
+    description = tax_description.get_description(contract_getter, r)
+    match_id = r.match_id.strip("&")
+    return f"{r.quantity} {description} (id:{match_id})"
+
+
+def cost_opened(rows: List[Record]) -> str:
+    return sum((r.cost + r.commissions + r.fees) for r in rows if r.effect == "OPENING")
+
+
+def cost_closed(rows: List[Record]) -> str:
+    return sum((r.cost + r.commissions + r.fees) for r in rows if r.effect == "CLOSING")
 
 
 if __name__ == "__main__":
