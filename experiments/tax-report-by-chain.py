@@ -62,6 +62,8 @@ import click
 import petl
 import simplejson
 import mulmat
+import pandas as pd
+import numpy as np
 
 from johnny.base import chains as chainslib
 from johnny.base import config as configlib
@@ -71,6 +73,7 @@ from johnny.base import mark
 from johnny.base import match
 from johnny.base import transactions as txnlib
 from johnny.base.etl import Table, Record, Replace
+from johnny.base.number import ToDecimal
 from johnny.utils import timing
 from mulmat import multipliers
 
@@ -100,10 +103,16 @@ Grouper = itertools._grouper
     is_flag=True,
     help="Include Roth and check for wash sales to it.",
 )
+@click.option(
+    "--summaries-dir",
+    default=path.join(path.dirname(os.getenv("L")), "trading/taxes"),
+    help="Directory where summaries for verification can be found.",
+)
 def main(
     config: Optional[str],
     output_dir: str,
     include_roth: bool,
+    summaries_dir: str,
 ):
     logging.basicConfig(level=logging.INFO, format="%(levelname)-8s: %(message)s")
 
@@ -137,7 +146,7 @@ def main(
 
     # Group each trade.
     acc_map = {acc.nickname: acc.sheetname for acc in config.input.accounts}
-    detail_map, final_map, matches = prepare_groups(
+    bychain_map, final_map, matches = prepare_groups(
         txns, chains, min_date, max_date, acc_map
     )
 
@@ -147,16 +156,15 @@ def main(
 
     # Write out to a spreadsheet.
     write_outputs(
-        detail_map,
+        bychain_map,
         path.join(output_dir, "detail"),
         chains=chains,
         transactions=txns,
         matches=matches,
     )
 
-    # Produce aggregate reports of proceeds and cost for each category for 1099
-    # cross-checking.
-    cat_summary = matches.applyfn(instrument.Expand, "symbol").aggregate(
+    # Compare our calculations against manually picked summaries.
+    cat_summary = matches.aggregate(
         "category",
         {
             "proceeds": ("proceeds", sum),
@@ -164,8 +172,6 @@ def main(
             "gain_loss": ("gain_loss", sum),
         },
     )
-    print(cat_summary.lookallstr())
-
     cat_instype_summary = matches.applyfn(instrument.Expand, "symbol").aggregate(
         ["category", "instype"],
         {
@@ -174,7 +180,9 @@ def main(
             "gain_loss": ("gain_loss", sum),
         },
     )
-    print(cat_instype_summary.lookallstr())
+    validate_numbers_against_manual(
+        matches, cat_summary, cat_instype_summary, summaries_dir
+    )
 
     write_outputs(
         final_map,
@@ -285,7 +293,7 @@ def prepare_groups(
 
     # A mapping of category (sheet) to a list of prepared combined chains tables.
     txns_chain_map = petl.recordlookup(txns, "chain_id")
-    detail_map = collections.defaultdict(list)
+    bychain_map = collections.defaultdict(list)
     final_map = collections.defaultdict(list)
     for chain in sorted_chains.records():
         # Pretty up chains row.
@@ -326,13 +334,34 @@ def prepare_groups(
             "date_max": ("datetime", lambda g: max(g).date()),
             "cost": cost_opened,
             "proceeds": cost_closed,
+            "futures_notional_open": futures_notional_open,
             "account": ("account", first),
             "symbol": ("symbol", lambda g: next(iter(set(g)))),
             "quantity": estimate_match_quantity,
         }
+        cmatches = ctxns.applyfn(instrument.Expand, "symbol").aggregate(
+            "match_id", funcs
+        )
+
+        # For futures contracts, remove notional value from cost and add the
+        # corresponding notional to proceeds. Opening futures positions should
+        # have 0 cost (excluding commissions and fees) and closing positions
+        # should be the matched P/L. This should produce proceeds and cost
+        # numbers much closer to those on the 1099s.
+        denotionalize_futures = True
+        if denotionalize_futures:
+            cmatches = cmatches.convert(
+                "cost",
+                lambda _, r: r.cost - r.futures_notional_open,
+                pass_row=True,
+            ).convert(
+                "proceeds",
+                lambda _, r: r.proceeds + r.futures_notional_open,
+                pass_row=True,
+            )
+
         cmatches = (
-            ctxns.aggregate("match_id", funcs)
-            .addfield("chain_id", chain.chain_id)
+            cmatches.addfield("chain_id", chain.chain_id)
             .addfield("pnl", lambda r: (r.proceeds + r.cost).quantize(Q))
             .convert("proceeds", lambda v: v.quantize(Q))
             # Flip the signs on cost, so that pnl = proceeds - cost, not proceeds + cost.
@@ -348,6 +377,7 @@ def prepare_groups(
             # particular, this detects long-term and short-term, and section
             # 1256 or not.
             .addfield("category", lambda r: categorize_chain(acc_map, chain.term, r))
+            .addfield("inst_type", lambda r: r.instype)
             .applyfn(instrument.Shrink)
             .addfield("*", "  ")
             .cut(
@@ -359,12 +389,13 @@ def prepare_groups(
                 "pnl",
                 # Fields used for wash sales.
                 "*",
+                "match_id",
                 "symbol",
                 "und",
-                "match_id",
                 "date_min",
                 "date_max",
                 # "sec1256",
+                "inst_type",
                 "category",
             )
         )
@@ -426,7 +457,7 @@ def prepare_groups(
 
         # Append a combined table to a list.
         rows = list(cchains) + list(ctxns) + list(cmatches) + [check_row, [], []]
-        detail_map[category].extend(rows)
+        bychain_map[category].extend(rows)
         final_map[category].append(cmatches)
 
     for key, tables in final_map.items():
@@ -435,7 +466,7 @@ def prepare_groups(
 
     all_matches = petl.cat(*final_map.values())
 
-    return detail_map, final_map, all_matches
+    return bychain_map, final_map, all_matches
 
 
 def date_sub(effect: str, rows: List[Record]) -> str:
@@ -463,6 +494,10 @@ def cost_opened(rows: List[Record]) -> str:
 
 def cost_closed(rows: List[Record]) -> str:
     return sum((r.cost + r.commissions + r.fees) for r in rows if r.effect == "CLOSING")
+
+
+def futures_notional_open(rows: List[Record]) -> Decimal:
+    return sum(r.cost for r in rows if r.instype == "Future" and r.effect == "OPENING")
 
 
 def identify_wash_sales(chains: Table, matches: Table):
@@ -534,6 +569,63 @@ def check_wash_und(g: Grouper):
     return total_disallowed
 
 
+def validate_numbers_against_manual(
+    matches: Table,
+    cat_summary: Table,
+    cat_instype_summary: Table,
+    summaries_dir: str,
+) -> Tuple[Table, Table]:
+
+    df_man_summary = (
+        petl.fromcsv(path.join(summaries_dir, "summary-from-1099.csv"))
+        .cutout("wash_sales", "wash_gain_loss")
+        .convert(["proceeds", "cost", "gain_loss"], ToDecimal)
+        .select("category", lambda v: bool(v) and not re.match("Note:", v))
+        .todataframe()
+        .set_index("category")
+        .sort_index()
+    )
+    df_man_summary_instype = (
+        petl.fromcsv(path.join(summaries_dir, "summary-instype-from-1099.csv"))
+        .convert(["proceeds", "cost", "gain_loss"], ToDecimal)
+        .todataframe()
+        .sort_index()
+    )
+
+    # Produce aggregate reports of proceeds and cost for each category for 1099
+    # cross-checking.
+    df_cat_summary = cat_summary.todataframe().set_index("category")
+    print()
+    print("Manual")
+    print(df_man_summary)
+    print()
+    print("FromJohnny")
+    print(df_cat_summary)
+    df_diff_summary = df_cat_summary - df_man_summary
+    df_diff_summary[df_man_summary == 0] = np.nan
+    # df_pct_summary = df_diff_summary / df_man_summary.max(0.0001)
+    print()
+    print("Difference")
+    print(df_diff_summary)
+    # print(df_pct_summary)
+
+    print()
+    print("Total")
+    df_man_sum = df_man_summary.sum()
+    df_cat_sum = df_cat_summary.sum()
+    df = pd.DataFrame([df_man_sum,
+                       df_cat_sum,
+                       df_man_sum - df_cat_sum])
+    print(df)
+
+    # print()
+    df_cat_instype_summary = cat_instype_summary.todataframe()
+    # # print(df_man_instype_summary)
+    # print(df_cat_instype_summary)
+
+    return df_cat_summary, df_cat_instype_summary
+
+
 def final_verification(output_dir: str):
     """Final verifications off the generated files.
     Just to be extra sure."""
@@ -560,15 +652,15 @@ def final_verification(output_dir: str):
             .values("pnl")
             .sum()
         )
-    pprint.pprint(pnl_map)
-    print("Breakdowns pnl: {}".format(sum(pnl_map.values())))
+    # pprint.pprint(pnl_map)
+    # print("Breakdowns pnl: {}".format(sum(pnl_map.values())))
 
     lt_pnl = sum(value for key, value in pnl_map.items() if re.match(".*LongTerm", key))
     st_pnl = sum(
         value for key, value in pnl_map.items() if not re.match(".*LongTerm", key)
     )
-    print("LongTerm pnl: {}".format(lt_pnl))
-    print("Trading pnl: {}".format(st_pnl))
+    # print("LongTerm pnl: {}".format(lt_pnl))
+    # print("Trading pnl: {}".format(st_pnl))
 
 
 if __name__ == "__main__":
