@@ -1,6 +1,33 @@
 #!/usr/bin/env python3
 """Produce a report suitable for accountant/taxes.
 
+    Form 8949
+    (a) Description of property (Example: 100 sh. XYZ Co.)
+    (b) Date acquired (Mo., day, yr.)
+    (c) Date sold or disposed of (Mo., day, yr.)
+    (d) Proceeds (sales price) (see instructions)
+    (e) Cost or other basis. See the Note below and see Column (e) in the
+        separate instructions Adjustment, if any, to gain or loss. If you
+        enter an amount in column (g), enter a code in column (f). See the
+        separate instructions.
+    (f) Code(s) from instructions
+    (g) Amount of adjustment
+    (h) Gain or (loss). Subtract column (e) from column (d) and combine
+        the result with column (g)
+
+    Form 6781
+    (a) Description of property
+    (b) Date entered into or acquired
+    (c) Date closed out or sold
+    (d) Gross sales price
+    (e) Cost or other basis plus expense of sale
+    (f) Loss. If column (e) is more than (d), enter difference. Otherwise,
+        enter -0-.
+    (g) Unrecognized gain on offsetting positions
+    (h) Recognized loss. If column (f) is more than (g), enter difference.
+        Otherwise, enter -0
+
+
 TODO (extras):
 
 - Find a way to check that the stocks reported haven't split an ensure correct
@@ -15,7 +42,8 @@ TODO (extras):
 from decimal import Decimal
 from functools import partial
 from os import path
-from typing import Any, List, Optional, Tuple, Mapping
+from typing import Any, Dict, List, Optional, Tuple, Mapping
+import itertools
 import collections
 import contextlib
 import datetime as dt
@@ -49,7 +77,9 @@ from mulmat import multipliers
 import tax_description
 
 
+ZERO = Decimal(0)
 Q = Decimal("0.01")
+Grouper = itertools._grouper
 
 
 @click.command()
@@ -60,17 +90,21 @@ Q = Decimal("0.01")
     help="Configuration filename. Default to $JOHNNY_CONFIG",
 )
 @click.option(
-    "--sheets-id",
-    "-i",
-    help="Id of sheets doc to write the final output to",
-)
-@click.option(
     "--output-dir",
     "-o",
     default="/tmp/taxes-trades",
-    help="Id of sheets doc to write the final output to",
+    help="Output directory root",
 )
-def main(config: Optional[str], sheets_id: Optional[str], output_dir: str):
+@click.option(
+    "--include-roth",
+    is_flag=True,
+    help="Include Roth and check for wash sales to it.",
+)
+def main(
+    config: Optional[str],
+    output_dir: str,
+    include_roth: bool,
+):
     logging.basicConfig(level=logging.INFO, format="%(levelname)-8s: %(message)s")
 
     # if 0
@@ -88,32 +122,66 @@ def main(config: Optional[str], sheets_id: Optional[str], output_dir: str):
     # Filter and categorize the chains.
     min_date = dt.date(2021, 1, 1)
     max_date = dt.date(2022, 1, 1)
-    acc_map = {acc.nickname: acc.sheetname for acc in config.input.accounts}
     chains = (
         chains.select(lambda c: not (c.maxdate < min_date or c.mindate > max_date))
-        # Remove Roth IRA account.
-        .selectne("account", "x20")
         # Remove open positions.
-        .selectne("status", "ACTIVE").addfield(
-            "category", functools.partial(categorize_chain, acc_map)
-        )
+        .selectne("status", "ACTIVE")
     )
+    if not include_roth:
+        # Remove Roth IRA account.
+        chains = chains.selectne("account", "x20")
 
     # Filter the list of transactions from the chains.
     valid_chains = set(chains.values("chain_id"))
     txns = txns.selectin("chain_id", valid_chains)
 
     # Group each trade.
-    detail_map, final_map = prepare_groups(txns, chains, min_date, max_date)
+    acc_map = {acc.nickname: acc.sheetname for acc in config.input.accounts}
+    detail_map, final_map, matches = prepare_groups(
+        txns, chains, min_date, max_date, acc_map
+    )
 
-    # Identify wash sales (tightly).
-    # TODO.
+    if not include_roth:
+        # Identify wash sales (tightly).
+        identify_wash_sales(chains, matches)
 
     # Write out to a spreadsheet.
-    write_output(
-        detail_map, path.join(output_dir, "detail"), None, chains=chains, txns=txns
+    write_outputs(
+        detail_map,
+        path.join(output_dir, "detail"),
+        chains=chains,
+        transactions=txns,
+        matches=matches,
     )
-    write_output(final_map, path.join(output_dir, "final"), sheets_id)
+
+    # Produce aggregate reports of proceeds and cost for each category for 1099
+    # cross-checking.
+    cat_summary = matches.applyfn(instrument.Expand, "symbol").aggregate(
+        "category",
+        {
+            "proceeds": ("proceeds", sum),
+            "cost": ("cost", sum),
+            "gain_loss": ("gain_loss", sum),
+        },
+    )
+    print(cat_summary.lookallstr())
+
+    cat_instype_summary = matches.applyfn(instrument.Expand, "symbol").aggregate(
+        ["category", "instype"],
+        {
+            "proceeds": ("proceeds", sum),
+            "cost": ("cost", sum),
+            "gain_loss": ("gain_loss", sum),
+        },
+    )
+    print(cat_instype_summary.lookallstr())
+
+    write_outputs(
+        final_map,
+        path.join(output_dir, "final"),
+        summary=cat_summary,
+        summary_instype=cat_instype_summary,
+    )
 
     # Perform final checks on the ultimate files.
     final_verification(output_dir)
@@ -128,12 +196,10 @@ def rmtree_contents(directory: str):
         break
 
 
-def write_output(
+def write_outputs(
     group_map: Mapping[str, List[Any]],
     output_dir: str,
-    sheets_id: Optional[str],
-    chains: Optional[petl.Table] = None,
-    txns: Optional[petl.Table] = None,
+    **extra_tables: Dict[str, petl.Table],
 ):
     """Write out CSV files."""
     rmtree_contents(output_dir)
@@ -147,10 +213,8 @@ def write_output(
         table.tocsv(fn)
         filenames.append(fn)
 
-    if chains is not None:
-        write_table(chains, "chains.csv")
-    if txns is not None:
-        write_table(txns, "transactions.csv")
+    for name, xtable in extra_tables.items():
+        write_table(xtable, f"{name}.csv")
 
     for group_name, rows in sorted(group_map.items()):
         if isinstance(rows, list):
@@ -158,13 +222,13 @@ def write_output(
         assert isinstance(rows, Table)
         write_table(rows, f"{group_name}.csv")
 
-    if isinstance(sheets_id, str):
-        logging.info("Creating sheets doc")
-        title = "Trades by Types"
-        command = ["upload-to-sheets", "-v", f"--title={title}"]
-        if sheets_id:
-            command.append(f"--id={sheets_id}")
-        subprocess.check_call(command + filenames)
+    # if isinstance(sheets_id, str):
+    #     logging.info("Creating sheets doc")
+    #     title = "Trades by Types"
+    #     command = ["upload-to-sheets", "-v", f"--title={title}"]
+    #     if sheets_id:
+    #         command.append(f"--id={sheets_id}")
+    #     subprocess.check_call(command + filenames)
 
 
 def make_chain_filter(min_date, max_date):
@@ -194,40 +258,36 @@ def make_chain_filter(min_date, max_date):
 TERM = {"TaxST": "ShortTerm", "TaxLT": "LongTerm"}
 
 
-def categorize_chain(acc_map, chain) -> str:
+def categorize_chain(acc_map, term: str, row: Record) -> str:
     """Create a unique reporting category for this chain."""
-    # Segment out investments
-    # TODO(blais): Maybe generalized this?
-    category = acc_map[chain.account]
-
     # Segment out Sec1256.
-    underlyings = chain.underlyings.split(",")
-    if all(instrument.IsSection1256(u) for u in underlyings):
-        suffix = "_Sec1256"
-    elif all(not instrument.IsSection1256(u) for u in underlyings):
-        suffix = "_{}".format(TERM[chain.term])
+    if instrument.IsSection1256(row.instype, row.underlying):
+        suffix = "Sec1256"
+    elif instrument.IsCollectible(row.instype, row.underlying):
+        suffix = "Collectible"
     else:
-        suffix = "_MIXED"
-    category += suffix
-    # category = ",".join(sorted(set(ctxns.values("account"))))
+        # Note: Right now the LT/ST nature of the trade is manual.
+        suffix = TERM[term]
+    category = "{}_{}".format(acc_map[row.account], suffix)
     return category
 
 
 def prepare_groups(
-    txns, chains, min_date: dt.date, max_date: dt.date
+    txns, chains, min_date: dt.date, max_date: dt.date, acc_map: Mapping[str, str]
 ) -> Tuple[Mapping[str, List[Any]], Mapping[str, List[Any]]]:
     """Join chains and transactions and combine them."""
 
     db = mulmat.read_cme_database()
     contract_getter = tax_description.build_contract_getter(db, dt.date.today().year)
 
-    all_matches = []
+    # Sort by (und, date).
+    sorted_chains = chains.sort(["underlyings", "chain_id", "mindate"])
 
     # A mapping of category (sheet) to a list of prepared combined chains tables.
     txns_chain_map = petl.recordlookup(txns, "chain_id")
     detail_map = collections.defaultdict(list)
     final_map = collections.defaultdict(list)
-    for chain in chains.records():
+    for chain in sorted_chains.records():
         # Pretty up chains row.
         cchains = petl.wrap([chains.fieldnames(), chain]).cut(
             "chain_id",
@@ -260,26 +320,16 @@ def prepare_groups(
 
         # Append a list of aggregated matches for the purpose of reporting.
         funcs = {
-            "date_opened": partial(date_sub, "OPENING"),
-            "date_closed": partial(date_sub, "CLOSING"),
+            "date_acquire": partial(date_sub, "OPENING"),
+            "date_disposed": partial(date_sub, "CLOSING"),
+            "date_min": ("datetime", lambda g: min(g).date()),
+            "date_max": ("datetime", lambda g: max(g).date()),
             "cost": cost_opened,
             "proceeds": cost_closed,
             "account": ("account", first),
             "symbol": ("symbol", lambda g: next(iter(set(g)))),
             "quantity": estimate_match_quantity,
         }
-        mheaders = (
-            "description",
-            "date_opened",
-            "date_closed",
-            "cost",
-            "proceeds",
-            "pnl",
-            # "chain_id",
-            # "account",
-            # "match_id",
-            # "symbol",
-        )
         cmatches = (
             ctxns.aggregate("match_id", funcs)
             .addfield("chain_id", chain.chain_id)
@@ -290,10 +340,65 @@ def prepare_groups(
             # Fetch a readable instrument description.
             .applyfn(instrument.Expand, "symbol")
             .addfield("description", partial(get_description, contract_getter))
+            .addfield("und", lambda r: r.underlying)
+            .addfield(
+                "sec1256", lambda r: instrument.IsSection1256(r.instype, r.underlying)
+            )
+            # Categorize the chain based on the instruments traded in it. In
+            # particular, this detects long-term and short-term, and section
+            # 1256 or not.
+            .addfield("category", lambda r: categorize_chain(acc_map, chain.term, r))
             .applyfn(instrument.Shrink)
-            .cut(*mheaders)
+            .addfield("*", "  ")
+            .cut(
+                "description",
+                "date_acquire",
+                "date_disposed",
+                "cost",
+                "proceeds",
+                "pnl",
+                # Fields used for wash sales.
+                "*",
+                "symbol",
+                "und",
+                "match_id",
+                "date_min",
+                "date_max",
+                # "sec1256",
+                "category",
+            )
         )
 
+        # Find the single category for all the matches. The chains configuration
+        # is assumed to split chains into subchains with a single category.
+        # Eventually this could be automated, but we impose this constraint
+        # here.
+        categories = set(cmatches.values("category"))
+        if len(categories) != 1:
+            raise ValueError(
+                f"Match in chain {chain.chain_id} has non-unique categories: {categories}"
+            )
+        category = next(iter(categories))
+
+        # Invert sell-to-open then buy-to-close in order to have positive
+        # numbers. We swap the dates, swap cost and proceeds and swap the signs
+        # on them. The P/L should be the same.
+        invert_sales = True
+        if invert_sales:
+            irows = []
+            for row in cmatches.records():
+                if row.cost <= ZERO and row.proceeds <= ZERO:
+                    row = Replace(
+                        row,
+                        cost=-row.proceeds,
+                        proceeds=-row.cost,
+                        date_acquire=row.date_disposed,
+                        date_disposed=row.date_acquire,
+                    )
+                irows.append(row)
+            cmatches = petl.wrap([cmatches.fieldnames()] + irows)
+
+        # Check P/L against chain.
         flds = cmatches.fieldnames()
         check_row = Record([""] * len(flds), flds)
         matches_cost = sum(cmatches.values("cost"))
@@ -305,7 +410,6 @@ def prepare_groups(
             tuple(
                 Replace(
                     check_row,
-                    # chain_id="TOTAL",
                     cost=matches_cost,
                     proceeds=matches_proceeds,
                     pnl=matches_pnl,
@@ -318,37 +422,20 @@ def prepare_groups(
             # Note: If you don't quantize these match perfectly at 1 penny
             if diff > Decimal("0.05"):
                 raise ValueError(f"Invalid matches_pnl for {chain}: {diff}")
-
-        # Form 8949
-        # (a) Description of property (Example: 100 sh. XYZ Co.)
-        # (b) Date acquired (Mo., day, yr.)
-        # (c) Date sold or disposed of (Mo., day, yr.)
-        # (d) Proceeds (sales price) (see instructions)
-        # (e) Cost or other basis. See the Note below and see Column (e) in the separate instructions Adjustment, if any, to gain or loss. If you enter an amount in column (g), enter a code in column (f). See the separate instructions.
-        # (f) Code(s) from instructions
-        # (g) Amount of adjustment
-        # (h) Gain or (loss). Subtract column (e) from column (d) and combine the result with column (g)
-
-        # Form 6781
-        # (a) Description of property
-        # (b) Date entered into or acquired
-        # (c) Date closed out or sold
-        # (d) Gross sales price
-        # (e) Cost or other basis plus expense of sale
-        # (f) Loss. If column (e) is more than (d), enter difference. Otherwise, enter -0-.
-        # (g) Unrecognized gain on offsetting positions
-        # (h) Recognized loss. If column (f) is more than (g), enter difference. Otherwise, enter -0
+        cmatches = cmatches.rename({"pnl": "gain_loss"})
 
         # Append a combined table to a list.
         rows = list(cchains) + list(ctxns) + list(cmatches) + [check_row, [], []]
-        detail_map[chain.category].extend(rows)
-        final_map[chain.category].append(cmatches)
+        detail_map[category].extend(rows)
+        final_map[category].append(cmatches)
 
     for key, tables in final_map.items():
         table = petl.cat(*tables)
         final_map[key] = petl.cat(*tables)
 
-    return detail_map, final_map
+    all_matches = petl.cat(*final_map.values())
+
+    return detail_map, final_map, all_matches
 
 
 def date_sub(effect: str, rows: List[Record]) -> str:
@@ -366,7 +453,8 @@ def estimate_match_quantity(rows: List[Record]) -> int:
 def get_description(contract_getter, r: Record) -> str:
     description = tax_description.get_description(contract_getter, r)
     match_id = r.match_id.strip("&")
-    return f"{r.quantity} {description} (id:{match_id})"
+    # return f"{r.quantity} {description} (id:{match_id})"
+    return f"{r.quantity} {description}"
 
 
 def cost_opened(rows: List[Record]) -> str:
@@ -375,6 +463,75 @@ def cost_opened(rows: List[Record]) -> str:
 
 def cost_closed(rows: List[Record]) -> str:
     return sum((r.cost + r.commissions + r.fees) for r in rows if r.effect == "CLOSING")
+
+
+def identify_wash_sales(chains: Table, matches: Table):
+    """Try to identify potential wash sales across accounts."""
+    smatches = matches.aggregate("und", check_wash_und)
+    # print(smatches.selectne("value", ZERO).lookallstr())
+    # print(smatches.values("value").sum())
+
+
+def check_wash_und(g: Grouper):
+    """Check wash sales across a single und."""
+
+    # Find contiguous regions with overlaps.
+    intervals = []
+    rows = list(g)
+    for r in rows:
+        non_overlapping = []
+        dates = [r.date_min, r.date_max]
+        for index, interval in enumerate(intervals):
+            (int_min, int_max) = interval
+            if int_max < r.date_min or r.date_max < int_min:
+                non_overlapping.append(interval)
+            else:
+                dates.append(int_min)
+                dates.append(int_max)
+        intervals = non_overlapping
+        intervals.append((min(dates), max(dates)))
+
+    # Compress if <= 31 days.
+    int_iter = iter(sorted(intervals, key=lambda i: i[0]))
+    joined_intervals = []
+    prev_min, prev_max = next(int_iter)
+    threshold = dt.timedelta(days=31)
+    for int_min, int_max in int_iter:
+        if int_min - prev_max > threshold:
+            joined_intervals.append((prev_min, prev_max))
+            prev_min, prev_max = int_min, int_max
+        else:
+            prev_max = int_max
+    joined_intervals.append((prev_min, prev_max))
+
+    # Look for cross-account occurences.
+    total_disallowed = ZERO
+    for int_min, int_max in joined_intervals:
+        int_rows = []
+        categories = set()
+        for r in rows:
+            if re.search("Sec1256", r.category):
+                continue
+            overlapping = not (int_max < r.date_min or r.date_max < int_min)
+            if overlapping:
+                int_rows.append(r)
+                categories.add(r.category)
+
+        if len(categories) > 1 and any(re.search("Roth", c) for c in categories):
+            # Sum up non-Roth losses as they might be disallowed?
+            disallowed = ZERO
+            for r in int_rows:
+                if not re.search("Roth", r.category) and r.pnl < 0:
+                    disallowed += r.pnl
+            total_disallowed += disallowed
+            if 0:
+                print(int_min, int_max)
+                for r in int_rows:
+                    print("  {}".format(r))
+                print(f"disallowed: {disallowed}")
+                print()
+
+    return total_disallowed
 
 
 def final_verification(output_dir: str):
@@ -396,14 +553,15 @@ def final_verification(output_dir: str):
     final_dir = path.join(output_dir, "final")
     pnl_map = {}
     for filename in os.listdir(final_dir):
+        cat_table = petl.fromcsv(path.join(final_dir, filename))
         pnl_map[filename] = (
-            petl.fromcsv(path.join(final_dir, filename))
+            cat_table.rename({"gain_loss": "pnl"})
             .convert("pnl", Decimal)
             .values("pnl")
             .sum()
         )
     pprint.pprint(pnl_map)
-    print("breakdowns_pnl: {}".format(sum(pnl_map.values())))
+    print("Breakdowns pnl: {}".format(sum(pnl_map.values())))
 
     lt_pnl = sum(value for key, value in pnl_map.items() if re.match(".*LongTerm", key))
     st_pnl = sum(

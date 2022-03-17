@@ -54,19 +54,18 @@ class Instrument(NamedTuple):
     # decimal type.
     multiplier: Decimal = 1
 
-
     @property
     def instype(self) -> str:
         """Return the instrument type."""
         if self.underlying in multipliers.CBOE_MULTIPLIERS:
-            return 'IndexOption'
-        elif self.underlying.startswith('/'):
-            return 'FutureOption' if self.putcall else 'Future'
+            return "IndexOption"
+        elif self.underlying.startswith("/"):
+            return "FutureOption" if self.putcall else "Future"
         else:
-            return 'EquityOption' if self.putcall else 'Equity'
+            return "EquityOption" if self.putcall else "Equity"
 
     def is_future(self) -> bool:
-        return self.underlying.startswith('/')
+        return self.underlying.startswith("/")
 
     def is_option(self) -> bool:
         return bool(self.putcall) or self.instype.endswith("Option")
@@ -76,26 +75,28 @@ class Instrument(NamedTuple):
         return ToString(self)
 
     @staticmethod
-    def from_string(string: str) -> 'Instrument':
+    def from_string(string: str) -> "Instrument":
         return FromString(string)
 
 
-def FromColumns(underlying: str,
-                expiration: Optional[datetime.date],
-                expcode: Optional[str],
-                putcall: Optional[str],
-                strike: Optional[Decimal],
-                multiplier: Decimal) -> Instrument:
+def FromColumns(
+    underlying: str,
+    expiration: Optional[datetime.date],
+    expcode: Optional[str],
+    putcall: Optional[str],
+    strike: Optional[Decimal],
+    multiplier: Decimal,
+) -> Instrument:
     """Build an Instrument from column values."""
 
-    assert not expcode or not expcode.startswith('/')
+    assert not expcode or not expcode.startswith("/")
 
     # TODO(blais): Normalize to 'CALL' or 'PUT'
     putcall = putcall[0] if putcall else None
 
     # Infer the multiplier if it is not provided.
     if multiplier is None:
-        match = re.match('(/.*)([FGHJKMNQUVXZ]2\d)', underlying)
+        match = re.match("(/.*)([FGHJKMNQUVXZ]2\d)", underlying)
         if match:
             _, calendar = match.groups()
         else:
@@ -114,14 +115,14 @@ def FromColumns(underlying: str,
 
 def ParseUnderlying(symbol: str) -> str:
     """Parse only the underlying from the symbol."""
-    match = re.match(r'(/?[A-Z0-9]+)(_.*)?', symbol)
+    match = re.match(r"(/?[A-Z0-9]+)(_.*)?", symbol)
     assert match
     return match.group(1)
 
 
 def ParseProduct(underlying: str) -> str:
     """Return the product from an underlying."""
-    match = re.fullmatch(r'(/?[A-Z0-9]+?)([FGHJKMNQUVXZ][23][0-9])', underlying)
+    match = re.fullmatch(r"(/?[A-Z0-9]+?)([FGHJKMNQUVXZ][23][0-9])", underlying)
     return match.group(1) if match else underlying
 
 
@@ -129,15 +130,15 @@ def FromString(symbol: str) -> Instrument:
     """Build an instrument object from the symbol string."""
 
     # Match options.
-    match = re.match(r'(/?[A-Z0-9]+)_(?:(\d{6})|([A-Z0-9]+))_([CP])(.*)', symbol)
+    match = re.match(r"(/?[A-Z0-9]+)_(?:(\d{6})|([A-Z0-9]+))_([CP])(.*)", symbol)
     if match:
         underlying, expi_str, expcode, putcall, strike_str = match.groups()
-        expiration = (datetime.datetime.strptime(expi_str, '%y%m%d').date()
-                      if expi_str
-                      else None)
+        expiration = (
+            datetime.datetime.strptime(expi_str, "%y%m%d").date() if expi_str else None
+        )
         strike = Decimal(strike_str)
     else:
-        assert re.match('[A-Z]{3}_[A-Z]{3}', symbol) or ('_' not in symbol), symbol
+        assert re.match("[A-Z]{3}_[A-Z]{3}", symbol) or ("_" not in symbol), symbol
         expiration, expcode, putcall, strike = None, None, None, None
         underlying = symbol
 
@@ -148,7 +149,7 @@ def ToString(inst: Instrument) -> str:
     """Convert an instrument to a string code."""
 
     instype = inst.instype
-    if instype == 'FutureOption':
+    if instype == "FutureOption":
         # Note: For options on futures, the correct expiration date isn't always
         # available (e.g. from TOS). We use it when it's available; ignore it
         # otherwise for that reason, the date is implicit in the option code.
@@ -157,28 +158,32 @@ def ToString(inst: Instrument) -> str:
         # date (e.g. TOS), we may not be able to run some algorithms. One must
         # always assume that the 'expiration' is not present (in which case the
         # 'expcode' will always be).
-        expiration_str = inst.expiration.strftime('%y%m%d') if inst.expiration else inst.expcode
+        expiration_str = (
+            inst.expiration.strftime("%y%m%d") if inst.expiration else inst.expcode
+        )
         return "{}_{}_{}{}".format(
-            inst.underlying, expiration_str, inst.putcall, inst.strike)
+            inst.underlying, expiration_str, inst.putcall, inst.strike
+        )
 
-    elif instype == 'Future':
+    elif instype == "Future":
         return inst.underlying
 
-    elif instype in {'EquityOption', 'IndexOption'}:
+    elif instype in {"EquityOption", "IndexOption"}:
         return "{}_{:%y%m%d}_{}{}".format(
-            inst.underlying, inst.expiration, inst.putcall, inst.strike)
+            inst.underlying, inst.expiration, inst.putcall, inst.strike
+        )
 
-    elif instype == 'Equity':
+    elif instype == "Equity":
         return inst.underlying
 
-    raise ValueError('Invalid instrument type: {}'.format(instype))
+    raise ValueError("Invalid instrument type: {}".format(instype))
 
 
 def GetContractName(symbol: str) -> str:
     """Return the underlying root without the futures calendar expiration, e.g. '/CL'."""
-    underlying = symbol.split('_')[0]
-    if underlying.startswith('/'):
-        match = re.match('(.*)([FGHJKMNQUVXZ]2\d)', underlying)
+    underlying = symbol.split("_")[0]
+    if underlying.startswith("/"):
+        match = re.match("(.*)([FGHJKMNQUVXZ]2\d)", underlying)
         assert match, string
         return match.group(1)
     else:
@@ -187,32 +192,63 @@ def GetContractName(symbol: str) -> str:
 
 def ExpandInstrument(table: Table) -> Table:
     """Expand the symbol name into its component fields."""
-    return (table
-            .addfield('instype', lambda r: r._instrument.instype)
-            .addfield('underlying', lambda r: r._instrument.underlying)
-            .addfield('expiration', lambda r: r._instrument.expiration)
-            .addfield('expcode', lambda r: r._instrument.expcode)
-            .addfield('putcall', lambda r: r._instrument.putcall)
-            .addfield('strike', lambda r: r._instrument.strike)
-            .addfield('multiplier', lambda r: r._instrument.multiplier))
+    return (
+        table.addfield("instype", lambda r: r._instrument.instype)
+        .addfield("underlying", lambda r: r._instrument.underlying)
+        .addfield("expiration", lambda r: r._instrument.expiration)
+        .addfield("expcode", lambda r: r._instrument.expcode)
+        .addfield("putcall", lambda r: r._instrument.putcall)
+        .addfield("strike", lambda r: r._instrument.strike)
+        .addfield("multiplier", lambda r: r._instrument.multiplier)
+    )
 
 
 def Expand(table: Table, fieldname: str) -> Table:
     """Expand the symbol name into its component fields."""
-    return (table
-            .addfield('_instrument', lambda r: FromString(getattr(r, fieldname)))
-            .applyfn(ExpandInstrument)
-            .cutout('_instrument'))
+    return (
+        table.addfield("_instrument", lambda r: FromString(getattr(r, fieldname)))
+        .applyfn(ExpandInstrument)
+        .cutout("_instrument")
+    )
 
 
 def Shrink(table: Table) -> Table:
     """Remove the component fields of the instrument."""
-    return (table
-            .cutout('instype', 'underlying', 'expiration', 'expcode',
-                    'putcall', 'strike', 'multiplier'))
+    return table.cutout(
+        "instype",
+        "underlying",
+        "expiration",
+        "expcode",
+        "putcall",
+        "strike",
+        "multiplier",
+    )
 
 
-def IsSection1256(symbol: str) -> bool:
+# Underlyings that are treated as collectibles.
+COLLECTIBLES_UNDS = {"GLD", "OUNZ", "SLV", "IAU", "CPER"}
+
+
+# https://greentradertax.com/how-to-apply-lower-tax-rates-to-volatility-options/
+# – iPath S&P 500 VIX ST Futures ETN (VXX)
+# – iPath S&P 500 VIX Mid-Term Futures ETN (VXZ)
+# – UBS VelocityShares 1X Daily Inverse VSTOXX Futures ETN (EXIV)
+# – UBS VelocityShares VIX Variable Long/Short ETN (LSVX)
+# – UBS VelocityShares VIX Tail Risk ETN (BSWN)
+# – UBS VelocityShares 1X Long VSTOXX Futures ETN (EVIX)
+# – iPath S&P 500 Dynamic VIX ETN (XVZ)
+# – Credit Suisse VelocityShares Daily Long VIX Short-Term ETN (VIIX)
+VOL_ETNS = {"VXX", "VXZ", "EXIV", "LSVX", "BSWN", "EVIX", "XVZ", "VIIX"}
+
+
+def IsSection1256(instype: str, underlying: str) -> bool:
     """Return true if this is a section 1256 instrument."""
-    inst = FromString(symbol)
-    return inst.instype in {"Future", "FutureOption", "IndexOption"}
+    return (instype in {"Future", "FutureOption", "IndexOption"}) or (
+        instype == "EquityOption"
+        and (underlying in COLLECTIBLES_UNDS or underlying in VOL_ETNS)
+    )
+
+
+def IsCollectible(instype: str, underlying: str) -> bool:
+    """Return true if this is a section 1256 instrument."""
+    return instype in {"Equity"} and underlying in COLLECTIBLES_UNDS

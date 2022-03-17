@@ -90,7 +90,6 @@ def options_term(r: Record):
 def build_contract_getter(db: Table, settle_year: int):
     futures_map = build_globex_description_map(db)
     options_map = build_options_description_map(db)
-    #pprint.pprint(options_map)
 
     def getter(r: Record):
         if r.instype == 'Future':
