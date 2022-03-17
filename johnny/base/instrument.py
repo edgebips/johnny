@@ -7,7 +7,7 @@ __license__ = "GNU GPLv2"
 import datetime
 import re
 from decimal import Decimal
-from typing import NamedTuple, Optional
+from typing import NamedTuple, Optional, List
 
 from mulmat import multipliers
 from johnny.base.etl import Table
@@ -190,39 +190,57 @@ def GetContractName(symbol: str) -> str:
         return underlying
 
 
-def ExpandInstrument(table: Table) -> Table:
+INSTATTR = {
+    "instype": lambda r: r._instrument.instype,
+    "underlying": lambda r: r._instrument.underlying,
+    "expiration": lambda r: r._instrument.expiration,
+    "expcode": lambda r: r._instrument.expcode,
+    "putcall": lambda r: r._instrument.putcall,
+    "strike": lambda r: r._instrument.strike,
+    "multiplier": lambda r: r._instrument.multiplier,
+}
+
+
+def ExpandInstrument(table: Table, only: List[str]) -> Table:
     """Expand the symbol name into its component fields."""
-    return (
-        table.addfield("instype", lambda r: r._instrument.instype)
-        .addfield("underlying", lambda r: r._instrument.underlying)
-        .addfield("expiration", lambda r: r._instrument.expiration)
-        .addfield("expcode", lambda r: r._instrument.expcode)
-        .addfield("putcall", lambda r: r._instrument.putcall)
-        .addfield("strike", lambda r: r._instrument.strike)
-        .addfield("multiplier", lambda r: r._instrument.multiplier)
-    )
+    if only:
+        for fieldname in only:
+            table = table.addfield(fieldname, INSTATTR[fieldname])
+    else:
+        for fieldname, getter in INSTATTR.items():
+            table = table.addfield(fieldname, getter)
+    return table
 
 
-def Expand(table: Table, fieldname: str) -> Table:
+def Expand(table: Table, fieldname: str, *only: List[str]) -> Table:
     """Expand the symbol name into its component fields."""
     return (
         table.addfield("_instrument", lambda r: FromString(getattr(r, fieldname)))
-        .applyfn(ExpandInstrument)
+        .applyfn(ExpandInstrument, only=only)
         .cutout("_instrument")
     )
 
 
-def Shrink(table: Table) -> Table:
+FIELDNAMES = [
+    "instype",
+    "underlying",
+    "expiration",
+    "expcode",
+    "putcall",
+    "strike",
+    "multiplier",
+]
+
+
+def Shrink(table: Table, *exceptions: List[str]) -> Table:
     """Remove the component fields of the instrument."""
-    return table.cutout(
-        "instype",
-        "underlying",
-        "expiration",
-        "expcode",
-        "putcall",
-        "strike",
-        "multiplier",
-    )
+    if exceptions:
+        fieldnames = FIELDNAMES.copy()
+        for exception in exceptions:
+            fieldnames.remove(exception)
+    else:
+        fieldnames = FIELDNAMES
+    return table.cutout(*fieldnames)
 
 
 # Underlyings that are treated as collectibles.
