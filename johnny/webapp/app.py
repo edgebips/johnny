@@ -304,6 +304,9 @@ def chain(chain_id: str):
     pnl_static = agg_cost(static)
     pnl_dynamic = agg_cost(dynamic)
 
+
+
+
     # TODO(blais): Isolate this to a function.
     if 0:
         history_html = RenderHistorySVG(txns)

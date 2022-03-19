@@ -318,86 +318,25 @@ def prepare_groups(
 
         # Clean up transactions detail.
         ctxns = txns_chain_map.pop(chain.chain_id)
-        ctxns = (
+        cmatches = get_chain_matches_from_transactions(
             petl.wrap([txns.fieldnames()] + ctxns)
-            .movefield("chain_id", 0)
-            .movefield("account", 1)
-            .convert("chain_id", lambda _: "")
-            .sort(["match_id", "datetime"])
         )
-
-        # Append a list of aggregated matches for the purpose of reporting.
-        funcs = {
-            "date_acquire": partial(date_sub, "OPENING"),
-            "date_disposed": partial(date_sub, "CLOSING"),
-            "date_min": ("datetime", lambda g: min(g).date()),
-            "date_max": ("datetime", lambda g: max(g).date()),
-            "cost": cost_opened,
-            "proceeds": cost_closed,
-            "futures_notional_open": futures_notional_open,
-            "account": ("account", first),
-            "symbol": ("symbol", lambda g: next(iter(set(g)))),
-            "quantity": estimate_match_quantity,
-        }
-        cmatches = ctxns.applyfn(instrument.Expand, "symbol").aggregate(
-            "match_id", funcs
-        )
-
-        # For futures contracts, remove notional value from cost and add the
-        # corresponding notional to proceeds. Opening futures positions should
-        # have 0 cost (excluding commissions and fees) and closing positions
-        # should be the matched P/L. This should produce proceeds and cost
-        # numbers much closer to those on the 1099s.
-        denotionalize_futures = True
-        if denotionalize_futures:
-            cmatches = cmatches.convert(
-                "cost",
-                lambda _, r: r.cost - r.futures_notional_open,
-                pass_row=True,
-            ).convert(
-                "proceeds",
-                lambda _, r: r.proceeds + r.futures_notional_open,
-                pass_row=True,
-            )
-
         cmatches = (
-            cmatches.addfield("chain_id", chain.chain_id)
-            .addfield("pnl", lambda r: (r.proceeds + r.cost).quantize(Q))
-            .convert("proceeds", lambda v: v.quantize(Q))
-            # Flip the signs on cost, so that pnl = proceeds - cost, not proceeds + cost.
-            .convert("cost", lambda v: -v.quantize(Q))
+            cmatches
             # Fetch a readable instrument description.
             .applyfn(instrument.Expand, "symbol")
-            .addfield("description", partial(get_description, contract_getter))
-            .addfield("und", lambda r: r.underlying)
             .addfield(
                 "sec1256", lambda r: instrument.IsSection1256(r.instype, r.underlying)
             )
+            .addfield("description", partial(get_description, contract_getter), index=0)
             # Categorize the chain based on the instruments traded in it. In
             # particular, this detects long-term and short-term, and section
             # 1256 or not.
             .addfield("category", lambda r: categorize_chain(acc_map, chain.term, r))
-            .addfield("inst_type", lambda r: r.instype)
-            .applyfn(instrument.Shrink)
-            .addfield("*", "  ")
-            .cut(
-                "description",
-                "date_acquire",
-                "date_disposed",
-                "cost",
-                "proceeds",
-                "pnl",
-                # Fields used for wash sales.
-                "*",
-                "match_id",
-                "symbol",
-                "und",
-                "date_min",
-                "date_max",
-                # "sec1256",
-                "inst_type",
-                "category",
-            )
+            .applyfn(instrument.Shrink, "instype", "underlying")
+            .addfield("*", "  ", index=6)
+            .cutout("quantity", "account", "sec1256")
+            .movefield("underlying", 9)
         )
 
         # Find the single category for all the matches. The chains configuration
@@ -410,24 +349,6 @@ def prepare_groups(
                 f"Match in chain {chain.chain_id} has non-unique categories: {categories}"
             )
         category = next(iter(categories))
-
-        # Invert sell-to-open then buy-to-close in order to have positive
-        # numbers. We swap the dates, swap cost and proceeds and swap the signs
-        # on them. The P/L should be the same.
-        invert_sales = True
-        if invert_sales:
-            irows = []
-            for row in cmatches.records():
-                if row.cost <= ZERO and row.proceeds <= ZERO:
-                    row = Replace(
-                        row,
-                        cost=-row.proceeds,
-                        proceeds=-row.cost,
-                        date_acquire=row.date_disposed,
-                        date_disposed=row.date_acquire,
-                    )
-                irows.append(row)
-            cmatches = petl.wrap([cmatches.fieldnames()] + irows)
 
         # Check P/L against chain.
         flds = cmatches.fieldnames()
@@ -469,6 +390,82 @@ def prepare_groups(
     return bychain_map, final_map, all_matches
 
 
+def get_chain_matches_from_transactions(txns: Table) -> Table:
+    chain_id = next(iter(txns.values("chain_id")))
+    ctxns = (
+        txns.movefield("chain_id", 0)
+        .movefield("account", 1)
+        .convert("chain_id", lambda _: "")
+        .sort(["match_id", "datetime"])
+    )
+
+    # Append a list of aggregated matches for the purpose of reporting.
+    funcs = {
+        "date_acquire": partial(date_sub, "OPENING"),
+        "date_disposed": partial(date_sub, "CLOSING"),
+        "date_min": ("datetime", lambda g: min(g).date()),
+        "date_max": ("datetime", lambda g: max(g).date()),
+        "cost": cost_opened,
+        "proceeds": cost_closed,
+        "futures_notional_open": futures_notional_open,
+        "account": ("account", first),
+        "symbol": ("symbol", lambda g: next(iter(set(g)))),
+        "quantity": estimate_match_quantity,
+    }
+    cmatches = ctxns.applyfn(instrument.Expand, "symbol").aggregate("match_id", funcs)
+
+    # For futures contracts, remove notional value from cost and add the
+    # corresponding notional to proceeds. Opening futures positions should
+    # have 0 cost (excluding commissions and fees) and closing positions
+    # should be the matched P/L. This should produce proceeds and cost
+    # numbers much closer to those on the 1099s.
+    denotionalize_futures = True
+    if denotionalize_futures:
+        cmatches = cmatches.convert(
+            "cost",
+            lambda _, r: r.cost - r.futures_notional_open,
+            pass_row=True,
+        ).convert(
+            "proceeds",
+            lambda _, r: r.proceeds + r.futures_notional_open,
+            pass_row=True,
+        )
+
+    cmatches = (
+        cmatches.addfield("chain_id", chain_id)
+        .addfield("pnl", lambda r: (r.proceeds + r.cost).quantize(Q))
+        .convert("proceeds", lambda v: v.quantize(Q))
+        # Flip the signs on cost, so that pnl = proceeds - cost, not proceeds + cost.
+        .convert("cost", lambda v: -v.quantize(Q))
+    )
+
+    # Handle P/L specially on short options.
+    short_options_method = "none"
+    if short_options_method == "invert":
+        cmatches = short_options_invert(cmatches)
+    elif short_options_method == "nullify":
+        cmatches = short_options_nullify(cmatches)
+
+    return cmatches.cut(
+        # "description",
+        "date_acquire",
+        "date_disposed",
+        "cost",
+        "proceeds",
+        "pnl",
+        # "*",
+        "match_id",
+        "symbol",
+        "quantity",
+        "date_min",
+        "date_max",
+        # "instype",
+        # "underlying",
+        "account",
+        # "category",
+    )
+
+
 def date_sub(effect: str, rows: List[Record]) -> str:
     dtimes = set([r.datetime.date() for r in rows if r.effect == effect])
     if len(dtimes) > 1:
@@ -505,6 +502,63 @@ def identify_wash_sales(chains: Table, matches: Table):
     smatches = matches.aggregate("und", check_wash_und)
     # print(smatches.selectne("value", ZERO).lookallstr())
     # print(smatches.values("value").sum())
+
+
+def short_options_nullify(matches: Table) -> Table:
+    """
+    On short options sales, nullify the cost basis as per the following rule:
+    https://support.tastyworks.com/support/solutions/articles/43000615420--0-00-cost-basis-on-short-equity-options-
+    """
+    return (
+        matches.addfield(
+            "null",
+            lambda r: (
+                r.instype == "EquityOption" and r.cost <= ZERO and r.proceeds <= ZERO
+            ),
+        )
+        .addfield("offset", lambda r: -r.cost)
+        .addfield("cost_null", lambda r: r.cost + offset if r.null else r.cost)
+        .addfield(
+            "proceeds_null", lambda r: r.proceeds + offset if r.null else r.proceeds
+        )
+        .cutout("null", "cost", "proceeds")
+        .rename({"cost_null": "cost", "proceeds_null": "proceeds"})
+    )
+
+
+def short_options_invert(matches: Table) -> Table:
+    """
+    Invert sell-to-open then buy-to-close in order to have positive
+    numbers. We swap the dates, swap cost and proceeds and swap the signs
+    on them. The P/L should be the same.
+    """
+    return (
+        matches.addfield("inv", lambda r: r.cost <= ZERO and r.proceeds <= ZERO)
+        .addfield("cost_inv", lambda r: -r.proceeds if r.inv else r.cost)
+        .addfield("proceeds_inv", lambda r: -r.cost if r.inv else r.proceeds)
+        .cutout("inv", "cost", "proceeds")
+        .rename({"cost_inv": "cost", "proceeds_inv": "proceeds"})
+    )
+
+
+def invert_sales(matches: Table) -> Table:
+    """
+    Invert sell-to-open then buy-to-close in order to have positive
+    numbers. We swap the dates, swap cost and proceeds and swap the signs
+    on them. The P/L should be the same.
+    """
+    irows = []
+    for row in matches.records():
+        if row.cost <= ZERO and row.proceeds <= ZERO:
+            row = Replace(
+                row,
+                cost=-row.proceeds,
+                proceeds=-row.cost,
+                date_acquire=row.date_disposed,
+                date_disposed=row.date_acquire,
+            )
+        irows.append(row)
+    matches = petl.wrap([matches.fieldnames()] + irows)
 
 
 def check_wash_und(g: Grouper):
@@ -613,9 +667,7 @@ def validate_numbers_against_manual(
     print("Total")
     df_man_sum = df_man_summary.sum()
     df_cat_sum = df_cat_summary.sum()
-    df = pd.DataFrame([df_man_sum,
-                       df_cat_sum,
-                       df_man_sum - df_cat_sum])
+    df = pd.DataFrame([df_man_sum, df_cat_sum, df_man_sum - df_cat_sum])
     print(df)
 
     # print()

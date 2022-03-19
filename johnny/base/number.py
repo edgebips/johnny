@@ -29,6 +29,7 @@ def ToDecimal(string: str) -> Decimal:
     """Convert number to Decimal. This also decimalizes bond fractions to decimals"""
 
     # Ignore empty or N/A values.
+    string = string.strip()
     ostring = string
     if string in {"", "--"} or string.startswith("N/A"):
         return Decimal(0)

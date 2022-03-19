@@ -244,6 +244,7 @@ def Shrink(table: Table, *exceptions: List[str]) -> Table:
 
 
 # Underlyings that are treated as collectibles.
+# Note: Not COPX.
 COLLECTIBLES_UNDS = {"GLD", "OUNZ", "SLV", "IAU", "CPER"}
 
 
