@@ -266,7 +266,7 @@ def make_chain_filter(min_date, max_date):
 TERM = {"TaxST": "ShortTerm", "TaxLT": "LongTerm"}
 
 
-def categorize_chain(acc_map, term: str, row: Record) -> str:
+def categorize_chain(acc_map, row: Record) -> str:
     """Create a unique reporting category for this chain."""
     # Segment out Sec1256.
     if instrument.IsSection1256(row.instype, row.underlying):
@@ -275,7 +275,7 @@ def categorize_chain(acc_map, term: str, row: Record) -> str:
         suffix = "Collectible"
     else:
         # Note: Right now the LT/ST nature of the trade is manual.
-        suffix = TERM[term]
+        suffix = TERM[row.term]
     category = "{}_{}".format(acc_map[row.account], suffix)
     return category
 
@@ -332,7 +332,8 @@ def prepare_groups(
             # Categorize the chain based on the instruments traded in it. In
             # particular, this detects long-term and short-term, and section
             # 1256 or not.
-            .addfield("category", lambda r: categorize_chain(acc_map, chain.term, r))
+            .addfield("term", chain.term)
+            .addfield("category", lambda r: categorize_chain(acc_map, r))
             .applyfn(instrument.Shrink, "instype", "underlying")
             .addfield("*", "  ", index=6)
             .cutout("quantity", "account", "sec1256")
@@ -650,13 +651,13 @@ def validate_numbers_against_manual(
     # cross-checking.
     df_cat_summary = cat_summary.todataframe().set_index("category")
     print()
-    print("Manual")
+    print("From 1099's")
     print(df_man_summary)
     print()
-    print("FromJohnny")
+    print("From 'Johnny', my own system")
     print(df_cat_summary)
     df_diff_summary = df_cat_summary - df_man_summary
-    df_diff_summary[df_man_summary == 0] = np.nan
+    df_diff_summary[df_man_summary == 0] = "?"
     # df_pct_summary = df_diff_summary / df_man_summary.max(0.0001)
     print()
     print("Difference")
