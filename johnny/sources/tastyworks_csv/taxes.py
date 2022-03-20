@@ -50,6 +50,7 @@ def read_worksheet(filename: str) -> Table:
         .movefield("instype", 1)
     )
     taxes.validate_worksheet(worksheet)
+    worksheet = _uncorrect_nonequity(worksheet)
     return worksheet
 
 
@@ -84,6 +85,7 @@ def read_form8949(filename: str) -> Table:
         .convert("term", {"S": "ST", "L": "LT"})
     )
     taxes.validate_form8949(form8949)
+    form8949 = _uncorrect_nonequity(form8949)
     return form8949
 
 
@@ -100,3 +102,10 @@ def _parse_security_description(description: str, und: str, txntype: str) -> str
         raise ValueError(f"Could not parse option '{description}'")
 
     return und.lstrip("*")
+
+
+# TODO(blais): Non-equity options aren't categorized as such by Tastyworks as of
+# 2022-03-20.a
+def _uncorrect_nonequity(table):
+    "Tastyworks is incorrectly missing non-equity options as equity options."
+    return table.replace("instype", "NonEquityOption", "EquityOption")
