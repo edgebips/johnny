@@ -56,6 +56,7 @@ Record = petl.Record
 debug = False
 Config = Any
 ZERO = Decimal(0)
+Q3 = Decimal("0.001")
 
 
 def SplitCashBalance(statement: Table, trade_hist: Table) -> Tuple[Table, Table]:
@@ -367,8 +368,11 @@ def SplitGroupsToTransactions(groups: List[Group],
         for cash_rows, trade_rows in subgroups:
             # Pick up all the fees from the cash transactions.
             description = cash_rows[0].description
-            commissions = sum(crow.commissions_fees for crow in cash_rows)
-            fees = sum(crow.misc_fees for crow in cash_rows)
+            cash_commissions = sum(crow.commissions_fees for crow in cash_rows)
+            cash_fees = sum(crow.misc_fees for crow in cash_rows)
+
+            commissions = (cash_commissions / len(trade_rows)).quantize(Q3)
+            fees = (cash_fees / len(trade_rows)).quantize(Q3)
 
             for index, trow in enumerate(trade_rows, start=1):
                 row_desc = ("{}  [{}/{}]".format(description, index, len(trade_rows))
@@ -383,6 +387,16 @@ def SplitGroupsToTransactions(groups: List[Group],
                     trow.strike,
                     trow.multiplier)
                 symbol = str(inst)
+
+                if 0:
+                    # Include the commnissions on the last leg. This matches the
+                    # worksheets.
+                    if index == 1:
+                        commissions = cash_commissions
+                        fees = cash_fees
+                    else:
+                        commissions = ZERO
+                        fees = ZERO
 
                 txn = (trow.exec_time,
                        trow.order_id,
@@ -407,11 +421,6 @@ def SplitGroupsToTransactions(groups: List[Group],
                        fees,
                        row_desc)
                 rows.append(txn)
-
-                # Reset the commnissions so that they are only included on the
-                # first leg where relevant.
-                commissions = ZERO
-                fees = ZERO
 
     return petl.wrap(rows)
 

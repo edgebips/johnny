@@ -1,6 +1,7 @@
 """Tax worksheets and form 8949 parsing for TD Ameritrade.
 """
 
+from decimal import Decimal
 import re
 
 import petl
@@ -10,6 +11,10 @@ from johnny.base import instrument
 from johnny.base.etl import Table
 from johnny.base.number import ToDecimal
 from johnny.base import taxes
+
+
+Q = Decimal("0.01")
+ZERO = Decimal(0)
 
 
 def read_worksheet(filename: str) -> Table:
@@ -24,7 +29,7 @@ def read_worksheet(filename: str) -> Table:
         table.rename(lowercase)
         .convert(
             ["proceeds", "cost", "gain_adj", "st_gain", "lt_gain", "or_gain"],
-            none_or_decimal,
+            lambda v: ZERO if v is None else Decimal(v).quantize(Q),
         )
         .addfield("gain_loss", lambda r: r.st_gain + r.lt_gain)
         .rename({"st_gain": "st_gain_loss", "lt_gain": "lt_gain_loss"})
@@ -54,9 +59,10 @@ def read_form8949(filename: str) -> Table:
     form8949 = (
         table.rename(lowercase)
         .selectne("close_date", None)
+        .convert("shares_sold", int)
         .convert(
-            ["shares_sold", "proceeds", "cost", "gainloss", "gainloss_adjustment"],
-            none_or_decimal,
+            ["proceeds", "cost", "gainloss", "gainloss_adjustment"],
+            lambda v: ZERO if v is None else Decimal(v).quantize(Q),
         )
         .rename(
             {
@@ -79,9 +85,11 @@ def read_form8949(filename: str) -> Table:
     return form8949
 
 
-def none_or_decimal(value):
-    return 0 if value is None else value
-
+_WRAPS = {
+    "SPXW": "SPX",
+    "RUTW": "RUT",
+    "NDXP": "NDX",
+}
 
 def _parse_security_description(description: str) -> str:
     match = re.fullmatch(
@@ -90,7 +98,10 @@ def _parse_security_description(description: str) -> str:
     )
     if match:
         und, expiration, strike, putcall = match.groups()
+        und = _WRAPS.get(und, und)
         expiration = dateutil.parser.parse(expiration).date()
+        if strike.endswith(".0"):
+            strike = strike[:-2]
         strike = ToDecimal(strike)
         return f"{und}_{expiration:%y%m%d}_{putcall[0]}{strike}"
 
