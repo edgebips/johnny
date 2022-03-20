@@ -24,11 +24,15 @@ needed on its own.
 
   * `Equity`
   * `EquityOption`
+  * `NonEquityOption`
+  * `Collectibles`
   * `Future`
   * `FutureOption`
-  * `Index` (not tradeable)
+  * `Index` (*)
   * `IndexOption`
   * `Crypto`
+
+  (*) Note that `Index` is not something that's tradeable.
 
 - `underlying: str`: The underlying instrument, with normalized name. If this is
   a futures instrument, includes the calendar month (and is normalized to
