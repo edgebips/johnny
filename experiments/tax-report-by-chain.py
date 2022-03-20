@@ -269,10 +269,12 @@ TERM = {"TaxST": "ShortTerm", "TaxLT": "LongTerm"}
 def categorize_chain(acc_map, row: Record) -> str:
     """Create a unique reporting category for this chain."""
     # Segment out Sec1256.
-    if instrument.IsSection1256(row.instype, row.underlying):
-        suffix = "Sec1256"
-    elif instrument.IsCollectible(row.instype, row.underlying):
-        suffix = "Collectible"
+    if row.instype in {"Future", "FutureOption"}:
+        suffix = "Futures"
+    elif instrument.IsNonEquity(row.instype, row.underlying):
+        suffix = "NonEquity"
+    # elif instrument.IsCollectible(row.instype, row.underlying):
+    #     suffix = "Collectible"
     else:
         # Note: Right now the LT/ST nature of the trade is manual.
         suffix = TERM[row.term]
@@ -325,9 +327,6 @@ def prepare_groups(
             cmatches
             # Fetch a readable instrument description.
             .applyfn(instrument.Expand, "symbol")
-            .addfield(
-                "sec1256", lambda r: instrument.IsSection1256(r.instype, r.underlying)
-            )
             .addfield("description", partial(get_description, contract_getter), index=0)
             # Categorize the chain based on the instruments traded in it. In
             # particular, this detects long-term and short-term, and section
@@ -336,7 +335,7 @@ def prepare_groups(
             .addfield("category", lambda r: categorize_chain(acc_map, r))
             .applyfn(instrument.Shrink, "instype", "underlying")
             .addfield("*", "  ", index=6)
-            .cutout("quantity", "account", "sec1256")
+            .cutout("quantity", "account")
             .movefield("underlying", 9)
         )
 
@@ -398,11 +397,12 @@ def get_chain_matches_from_transactions(txns: Table) -> Table:
         .movefield("account", 1)
         .convert("chain_id", lambda _: "")
         .sort(["match_id", "datetime"])
+        .applyfn(instrument.Expand, "symbol")
     )
 
     # Append a list of aggregated matches for the purpose of reporting.
     funcs = {
-        "date_acquire": partial(date_sub, "OPENING"),
+        "date_acquired": partial(date_sub, "OPENING"),
         "date_disposed": partial(date_sub, "CLOSING"),
         "date_min": ("datetime", lambda g: min(g).date()),
         "date_max": ("datetime", lambda g: max(g).date()),
@@ -411,9 +411,10 @@ def get_chain_matches_from_transactions(txns: Table) -> Table:
         "futures_notional_open": futures_notional_open,
         "account": ("account", first),
         "symbol": ("symbol", lambda g: next(iter(set(g)))),
+        "instype": ("instype", lambda g: next(iter(set(g)))),
         "quantity": estimate_match_quantity,
     }
-    cmatches = ctxns.applyfn(instrument.Expand, "symbol").aggregate("match_id", funcs)
+    cmatches = ctxns.aggregate("match_id", funcs)
 
     # For futures contracts, remove notional value from cost and add the
     # corresponding notional to proceeds. Opening futures positions should
@@ -441,7 +442,7 @@ def get_chain_matches_from_transactions(txns: Table) -> Table:
     )
 
     # Handle P/L specially on short options.
-    short_options_method = "none"
+    short_options_method = "nullify"
     if short_options_method == "invert":
         cmatches = short_options_invert(cmatches)
     elif short_options_method == "nullify":
@@ -449,7 +450,7 @@ def get_chain_matches_from_transactions(txns: Table) -> Table:
 
     return cmatches.cut(
         # "description",
-        "date_acquire",
+        "date_acquired",
         "date_disposed",
         "cost",
         "proceeds",
@@ -518,11 +519,11 @@ def short_options_nullify(matches: Table) -> Table:
             ),
         )
         .addfield("offset", lambda r: -r.cost)
-        .addfield("cost_null", lambda r: r.cost + offset if r.null else r.cost)
+        .addfield("cost_null", lambda r: r.cost + r.offset if r.null else r.cost)
         .addfield(
-            "proceeds_null", lambda r: r.proceeds + offset if r.null else r.proceeds
+            "proceeds_null", lambda r: r.proceeds + r.offset if r.null else r.proceeds
         )
-        .cutout("null", "cost", "proceeds")
+        .cutout("null", "offset", "cost", "proceeds")
         .rename({"cost_null": "cost", "proceeds_null": "proceeds"})
     )
 
@@ -555,8 +556,8 @@ def invert_sales(matches: Table) -> Table:
                 row,
                 cost=-row.proceeds,
                 proceeds=-row.cost,
-                date_acquire=row.date_disposed,
-                date_disposed=row.date_acquire,
+                date_acquired=row.date_disposed,
+                date_disposed=row.date_acquired,
             )
         irows.append(row)
     matches = petl.wrap([matches.fieldnames()] + irows)
@@ -633,36 +634,77 @@ def validate_numbers_against_manual(
 
     df_man_summary = (
         petl.fromcsv(path.join(summaries_dir, "summary-from-1099.csv"))
-        .cutout("wash_sales", "wash_gain_loss")
+        .select(lambda r: r.category)
+        .cutout("wash_sales", "wash_gain_loss", "collectibles")
         .convert(["proceeds", "cost", "gain_loss"], ToDecimal)
-        .select("category", lambda v: bool(v) and not re.match("Note:", v))
         .todataframe()
         .set_index("category")
         .sort_index()
     )
-    df_man_summary_instype = (
-        petl.fromcsv(path.join(summaries_dir, "summary-instype-from-1099.csv"))
-        .convert(["proceeds", "cost", "gain_loss"], ToDecimal)
-        .todataframe()
-        .sort_index()
-    )
+
+    # Redistributed non-reported categories to reported ones. This takes
+    # non-equity options to short/long term gain/loss.
+    if 0:
+        srows = []
+        lt_rate, st_rate = Decimal("0.60"), Decimal("0.40")
+        for row in cat_summary.records():
+            srows.append(row)
+            if row.category.endswith("NonEquity"):
+                srows.append(
+                    Replace(
+                        row,
+                        category=row.category.replace("NonEquity", "LongTerm"),
+                        gain_loss=row.gain_loss * lt_rate,
+                    )
+                )
+                srows.append(
+                    Replace(
+                        row,
+                        category=row.category.replace("NonEquity", "ShortTerm"),
+                        gain_loss=row.gain_loss * st_rate,
+                    )
+                )
+        cat_summary = petl.wrap([cat_summary.fieldnames()] + srows).aggregate(
+            "category",
+            {
+                "proceeds": ("proceeds", sum),
+                "cost": ("cost", sum),
+                "gain_loss": ("gain_loss", sum),
+            },
+        )
 
     # Produce aggregate reports of proceeds and cost for each category for 1099
     # cross-checking.
     df_cat_summary = cat_summary.todataframe().set_index("category")
-    print()
-    print("From 1099's")
-    print(df_man_summary)
-    print()
-    print("From 'Johnny', my own system")
-    print(df_cat_summary)
+    # print()
+    # print("From 1099s")
+    # print(df_man_summary)
+    # print()
+    # print("From 'Johnny', my own system")
+    # print(df_cat_summary)
+
+    # if 1:
+    #     print()
+    #     print(df_cat_summary.index)
+    #     print(df_man_summary.index)
+    #     print(df_cat_summary.columns)
+    #     print(df_man_summary.columns)
+    #     print()
+
     df_diff_summary = df_cat_summary - df_man_summary
-    df_diff_summary[df_man_summary == 0] = "?"
+    # df_diff_summary[df_man_summary == 0] = np.nan
     # df_pct_summary = df_diff_summary / df_man_summary.max(0.0001)
-    print()
-    print("Difference")
-    print(df_diff_summary)
+    # print()
+    # print("Difference")
+    # print(df_diff_summary)
     # print(df_pct_summary)
+
+    cdf = pd.concat(
+        [df_man_summary, df_cat_summary, df_man_summary - df_cat_summary],
+        axis=1,
+        keys=["from1099", "johnny", "diff"],
+    )
+    print(cdf.to_string())
 
     print()
     print("Total")

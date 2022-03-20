@@ -46,11 +46,16 @@ def get_description(contract_getter, r: Record):
     if r.instype in {"Future", "FutureOption", "IndexOption"}:
         return contract_getter(r)
     elif r.instype == "Equity":
-        return f"Share of {r.symbol} Common Stock"
+        return f"Share of {r.symbol} Stock"
+    elif r.instype == "Collectibles":
+        return f"Share of {r.symbol} Stock (Collectible)"
     elif r.instype == "EquityOption":
         term = options_term(r)
-        return f"Option of {r.underlying} Common Stock - {term}"
-    raise ValueError("Not supported")
+        return f"Option of {r.underlying} Stock - {term}"
+    elif r.instype == "NonEquityOption":
+        term = options_term(r)
+        return f"Nonequity Option of {r.underlying} Stock - {term}"
+    raise ValueError(f"Not supported: {r}")
 
 
 def build_globex_description_map(db: Table) -> Mapping[str, str]:

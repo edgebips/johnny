@@ -57,12 +57,18 @@ class Instrument(NamedTuple):
     @property
     def instype(self) -> str:
         """Return the instrument type."""
-        if self.underlying in multipliers.CBOE_MULTIPLIERS:
-            return "IndexOption"
-        elif self.underlying.startswith("/"):
+        if self.underlying.startswith("/"):
             return "FutureOption" if self.putcall else "Future"
+        elif self.underlying in multipliers.CBOE_MULTIPLIERS:
+            return "IndexOption"
+        elif self.putcall:
+            return ("NonEquityOption"
+                    if self.underlying in NONEQUITY_UNDS
+                    else "EquityOption")
         else:
-            return "EquityOption" if self.putcall else "Equity"
+            return ("Collectibles"
+                    if self.underlying in COLLECTIBLES_UNDS
+                    else "Equity")
 
     def is_future(self) -> bool:
         return self.underlying.startswith("/")
@@ -243,8 +249,8 @@ def Shrink(table: Table, *exceptions: List[str]) -> Table:
     return table.cutout(*fieldnames)
 
 
-# Underlyings that are treated as collectibles.
-# Note: Not COPX.
+# Underlyings that are treated as collectibles. Options on these are non-equity
+# options. Note: But not COPX.
 COLLECTIBLES_UNDS = {"GLD", "OUNZ", "SLV", "IAU", "CPER"}
 
 
@@ -260,11 +266,17 @@ COLLECTIBLES_UNDS = {"GLD", "OUNZ", "SLV", "IAU", "CPER"}
 VOL_ETNS = {"VXX", "VXZ", "EXIV", "LSVX", "BSWN", "EVIX", "XVZ", "VIIX"}
 
 
-def IsSection1256(instype: str, underlying: str) -> bool:
+NONEQUITY_UNDS = COLLECTIBLES_UNDS | VOL_ETNS
+
+
+def IsNonEquity(instype: str, underlying: str) -> bool:
     """Return true if this is a section 1256 instrument."""
     return (instype in {"Future", "FutureOption", "IndexOption"}) or (
         instype == "EquityOption"
-        and (underlying in COLLECTIBLES_UNDS or underlying in VOL_ETNS)
+        and (
+            underlying in COLLECTIBLES_UNDS or
+            underlying in VOL_ETNS
+        )
     )
 
 
