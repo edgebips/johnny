@@ -88,7 +88,7 @@ def read_form8949(filename: str) -> Table:
 
 
 def _parse_security_description(description: str, und: str, txntype: str) -> str:
-    if txntype in {"BTO", "STO"}:
+    if txntype in {"BTO", "STO", "XCH", "MRG"}:
         match = re.match(
             r"(PUT|CALL)\s+([A-Z0-9]+)\s+(\d\d/\d\d/\d\d)\s+([0-9.]+)", description
         )

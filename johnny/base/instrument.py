@@ -174,12 +174,12 @@ def ToString(inst: Instrument) -> str:
     elif instype == "Future":
         return inst.underlying
 
-    elif instype in {"EquityOption", "IndexOption"}:
+    elif instype in {"EquityOption", "IndexOption", "NonEquityOption"}:
         return "{}_{:%y%m%d}_{}{}".format(
             inst.underlying, inst.expiration, inst.putcall, inst.strike
         )
 
-    elif instype == "Equity":
+    elif instype in {"Equity", "Collectibles"}:
         return inst.underlying
 
     raise ValueError("Invalid instrument type: {}".format(instype))
