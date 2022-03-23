@@ -839,7 +839,8 @@ def GetTransactions(filename: str) -> Tuple[Table, Table]:
             .sort('datetime'))
 
     # Add a cost column, calculated from the data.
-    def Cost(r: Record) -> Decimal:
+    # Note that for futures contracts this includes the notional value.
+    def CalculateCost(r: Record) -> Decimal:
         sign = -1 if r.instruction == 'BUY' else +1
         return sign * r.quantity * r.multiplier * r.price
 
@@ -860,7 +861,7 @@ def GetTransactions(filename: str) -> Tuple[Table, Table]:
             .convert('order_id', lambda oid: 'T{}'.format(oid) if oid else oid)
 
             # Add a cost row.
-            .addfield('cost', Cost)
+            .addfield('cost', CalculateCost)
             )
 
     # Make the final ordering correct and finalize the columns.

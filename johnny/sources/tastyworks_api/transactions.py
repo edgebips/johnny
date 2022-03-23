@@ -40,12 +40,15 @@ Json = Union[Dict[str, 'Json'], List['Json'], str, int, float]
 
 
 # Numerical fields appear as strings, and we convert them to Decimal instances.
+# These ones have '{name}-effect' fields providing the sign.
 NUMERICAL_FIELDS = ['clearing-fees',
                     'proprietary-index-option-fees',
                     'regulatory-fees',
                     'commission',
                     'value',
                     'net-value']
+
+UNSIGNED_NUMERICAL_FIELDS = ['price']
 
 
 def PreprocessTransactions(items: Iterator[Tuple[str, Json]]) -> Iterator[Json]:
@@ -66,6 +69,14 @@ def PreprocessTransactions(items: Iterator[Tuple[str, Json]]) -> Iterator[Json]:
                 txn[field] = Decimal(value) * sign
             else:
                 txn[field] = ZERO
+
+        for field in UNSIGNED_NUMERICAL_FIELDS:
+            if field in txn:
+                value = txn[field]
+                txn[field] = Decimal(value)
+            else:
+                txn[field] = ZERO
+
         yield txn
 
 
@@ -109,6 +120,7 @@ ALLOW_TYPES = {
 OTHER_TYPES = {
     ('Money Movement', 'Balance Adjustment'),
     ('Money Movement', 'Credit Interest'),
+    # Note: This contains amounts affecting balance for futures.
     ('Money Movement', 'Mark to Market'),
     ('Money Movement', 'Transfer'),
     ('Money Movement', 'Withdrawal'),
@@ -192,14 +204,26 @@ def CalculateCost(rec: Record) -> Decimal:
     assert rec['net-value'] == derived_net_value, (
         rec['net-value'], derived_net_value)
 
-    sign = +1 if 'BUY' else -1
-    return sign * rec['value']
+    # We need to handle opening and closing cost on Future differently (but not
+    # FutureOption types) because much of the value for those contracts is
+    # transfered via mark-to-market transaction lines, but we choose to instead
+    # ignore those and instead use the notional value (cash equivalent). The
+    # thing is, using the mark-to-market values would require use to assign
+    # little bits of daily transfers to a variable number of shares, and it's
+    # not meaningful anyway. Cash equivalent notional is easier to think about,
+    # and renders nicer logs.
+    value = rec['value']
+    if rec['instrument-type'] == 'Future':
+        assert rec['action'] in {"Buy", "Sell"}
+        sign = -1 if rec['action'] == 'Buy' else +1
+        value = sign * rec['quantity'] * rec.instrument.multiplier * rec['price']
+
+    return value
 
 
 def CalculatePrice(value: str, rec: Record) -> Decimal:
     """Clean up prices and calculate them where missing."""
     if rec['transaction-sub-type'] in {'Forward Split', 'Reverse Split'}:
-        assert value is None
         return abs(rec.cost / rec.quantity / rec.instrument.multiplier)
     if value is None:
         return ZERO
@@ -222,12 +246,17 @@ def GetTransactions(filename: str) -> Tuple[Table, Table]:
     db = shelve.open(filename, 'r')
     items = PreprocessTransactions(db.items())
 
-    table = (petl.fromdicts(items)
+    # Filter rows that we care about. Note that this removes mark-to-market
+    # entries.
+    filt_items = (
+        petl.fromdicts(items)
+        # Add row type and filter out the row types we're not interested
+        # in.
+        .addfield('rowtype', GetRowType)
+        .select(lambda r: r.rowtype is not None)
+    )
 
-             # Add row type and filter out the row types we're not interested
-             # in.
-             .addfield('rowtype', GetRowType)
-             .select(lambda r: r.rowtype is not None)
+    table = (filt_items
 
              # Map account number.
              .convert('account-number', MapAccountNumber)
