@@ -266,20 +266,5 @@ COLLECTIBLES_UNDS = {"GLD", "OUNZ", "SLV", "IAU", "CPER"}
 VOL_ETNS = {"VXX", "VXZ", "EXIV", "LSVX", "BSWN", "EVIX", "XVZ", "VIIX"}
 
 
+# Unds for non-equity options.
 NONEQUITY_UNDS = COLLECTIBLES_UNDS | VOL_ETNS
-
-
-def IsNonEquity(instype: str, underlying: str) -> bool:
-    """Return true if this is a section 1256 instrument."""
-    return (instype in {"Future", "FutureOption", "IndexOption"}) or (
-        instype == "EquityOption"
-        and (
-            underlying in COLLECTIBLES_UNDS or
-            underlying in VOL_ETNS
-        )
-    )
-
-
-def IsCollectible(instype: str, underlying: str) -> bool:
-    """Return true if this is a section 1256 instrument."""
-    return instype in {"Equity"} and underlying in COLLECTIBLES_UNDS
