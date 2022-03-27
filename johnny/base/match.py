@@ -280,6 +280,7 @@ def GetChainMatchesFromTransactions(txns: Table, short_method: ShortMethod) -> T
         "symbol": ("symbol", lambda g: next(iter(set(g)))),
         "instype": ("instype", lambda g: next(iter(set(g)))),
         "quantity": _EstimateMatchQuantity,
+        "long_short": _LongShortIndicator,
     }
     cmatches = ctxns.aggregate("match_id", funcs)
 
@@ -331,6 +332,7 @@ def GetChainMatchesFromTransactions(txns: Table, short_method: ShortMethod) -> T
         # "underlying",
         "account",
         # "category",
+        "long_short",
     )
 
 
@@ -344,6 +346,11 @@ def _DateSub(effect: str, rows: List[Record]) -> str:
 
 def _EstimateMatchQuantity(rows: List[Record]) -> int:
     return sum(r.quantity for r in rows if r.effect == "OPENING")
+
+
+def _LongShortIndicator(rows: List[Record]) -> int:
+    first_row = min(rows, key=lambda row: row.datetime)
+    return first_row.instruction
 
 
 def _CostOpened(rows: List[Record]) -> str:
