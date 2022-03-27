@@ -30,37 +30,37 @@ ZERO = Decimal(0)
 
 
 # Mapping of signatures to strategy names.
-A, B, C, D, E, F = 'abcdef'
+A, B, C, D, E, F = "abcdef"
 _STRATEGIES = {
-    ((A, +1, None),)                                         : "Long",
-    ((A, -1, None),)                                         : "Short",
-    ((A, +1, 'C'),)                                          : "LongCall",
-    ((A, -1, 'C'),)                                          : "ShortCall",
-    ((A, -1, 'P'),)                                          : "ShortPut",
-    ((A, +1, 'P'),)                                          : "LongPut",
-    ((A, -1, 'P'), (B, -1, 'C'))                             : "Strangle",
-    ((A, -2, 'P'), (B, -1, 'C'))                             : "UnevenStrangle",
-    ((A, -1, 'P'), (B, -2, 'C'))                             : "UnevenStrangle",
-    ((A, -3, 'P'), (B, -1, 'C'))                             : "UnevenStrangle",
-    ((A, -1, 'P'), (B, -3, 'C'))                             : "UnevenStrangle",
-    ((A, +1, 'P'), (B, +1, 'C'))                             : "LongStrangle",
-    ((A, -1, 'C'), (A, -1, 'P'))                             : "Straddle",
-    ((A, +1, 'C'), (A, +1, 'P'))                             : "LongStraddle",
-    ((A, +1, 'P'), (B, -1, 'P'))                             : "PutSpread",
-    ((A, -1, 'C'), (B, +1, 'C'))                             : "CallSpread",
-    ((A, -1, 'P'), (B, +1, 'P'))                             : "BearSpread",
-    ((A, +1, 'C'), (B, -1, 'C'))                             : "BullSpread",
-    ((A, +1, 'P'), (B, -1, 'P'), (C, -1, 'C'), (D, +1, 'C')) : "IronCondor",
-    ((A, -1, 'P'), (B, +1, 'P'), (C, +1, 'C'), (D, -1, 'C')) : "LongIronCondor",
-    ((A, +1, 'P'), (B, -1, 'P'), (B, -1, 'C'), (C, +1, 'C')) : "IronFly",
-    ((A, -1, 'P'), (B, -1, 'C'), (C, +1, 'C'))               : "JadeLizard",
-    ((A, +1, 'P'), (B, -1, 'P'), (C, -1, 'C'))               : "ReverseJadeLizard",
-    ((A, -2, 'P'), (B, +1, 'P'))                             : "PutRatioSpread",
-    ((A, +1, 'C'), (B, -2, 'C'))                             : "CallRatioSpread",
-    ((A, +1, 'P'), (B, -2, 'P'), (C, +1, 'P'))               : "Butterfly",
-    ((A, +1, 'C'), (B, -2, 'C'), (C, +1, 'C'))               : "Butterfly",
-    ((A, -1, 'P'), (B, +2, 'P'), (C, -1, 'P'))               : "LongButterfly",
-    ((A, -1, 'C'), (B, +2, 'C'), (C, -1, 'C'))               : "LongButterfly",
+    ((A, +1, None),): "Long",
+    ((A, -1, None),): "Short",
+    ((A, +1, "C"),): "LongCall",
+    ((A, -1, "C"),): "ShortCall",
+    ((A, -1, "P"),): "ShortPut",
+    ((A, +1, "P"),): "LongPut",
+    ((A, -1, "P"), (B, -1, "C")): "Strangle",
+    ((A, -2, "P"), (B, -1, "C")): "UnevenStrangle",
+    ((A, -1, "P"), (B, -2, "C")): "UnevenStrangle",
+    ((A, -3, "P"), (B, -1, "C")): "UnevenStrangle",
+    ((A, -1, "P"), (B, -3, "C")): "UnevenStrangle",
+    ((A, +1, "P"), (B, +1, "C")): "LongStrangle",
+    ((A, -1, "C"), (A, -1, "P")): "Straddle",
+    ((A, +1, "C"), (A, +1, "P")): "LongStraddle",
+    ((A, +1, "P"), (B, -1, "P")): "PutSpread",
+    ((A, -1, "C"), (B, +1, "C")): "CallSpread",
+    ((A, -1, "P"), (B, +1, "P")): "BearSpread",
+    ((A, +1, "C"), (B, -1, "C")): "BullSpread",
+    ((A, +1, "P"), (B, -1, "P"), (C, -1, "C"), (D, +1, "C")): "IronCondor",
+    ((A, -1, "P"), (B, +1, "P"), (C, +1, "C"), (D, -1, "C")): "LongIronCondor",
+    ((A, +1, "P"), (B, -1, "P"), (B, -1, "C"), (C, +1, "C")): "IronFly",
+    ((A, -1, "P"), (B, -1, "C"), (C, +1, "C")): "JadeLizard",
+    ((A, +1, "P"), (B, -1, "P"), (C, -1, "C")): "ReverseJadeLizard",
+    ((A, -2, "P"), (B, +1, "P")): "PutRatioSpread",
+    ((A, +1, "C"), (B, -2, "C")): "CallRatioSpread",
+    ((A, +1, "P"), (B, -2, "P"), (C, +1, "P")): "Butterfly",
+    ((A, +1, "C"), (B, -2, "C"), (C, +1, "C")): "Butterfly",
+    ((A, -1, "P"), (B, +2, "P"), (C, -1, "P")): "LongButterfly",
+    ((A, -1, "C"), (B, +2, "C"), (C, -1, "C")): "LongButterfly",
     # TODO(blais): What about calendars?
     # TODO(blais): What about broken wing?
 }
@@ -73,7 +73,7 @@ def InferStrategy(init_transactions: list[Record]) -> Tuple[str, Any]:
     # Aggregate over the same contracts.
     quantities_map = collections.defaultdict(int)
     for txn in init_transactions:
-        sign = -1 if txn.instruction == 'SELL' else +1
+        sign = -1 if txn.instruction == "SELL" else +1
         quantities_map[txn.symbol] += sign * txn.quantity
 
     # Calculate GCD to normalize sizes for signature.
@@ -83,8 +83,9 @@ def InferStrategy(init_transactions: list[Record]) -> Tuple[str, Any]:
         return None, None
 
     # Expand instruments.
-    inst_map = {symbol: instrument.FromString(symbol)
-                for symbol in quantities_map.keys()}
+    inst_map = {
+        symbol: instrument.FromString(symbol) for symbol in quantities_map.keys()
+    }
 
     # Compute symbolic ordered strikes.
     strikes = sorted(set(inst.strike or ZERO for inst in inst_map.values()))

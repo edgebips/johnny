@@ -43,45 +43,46 @@ from johnny.base import inventories
 from johnny.base import mark
 from johnny.base.etl import AssertColumns, Record, Table
 from johnny.utils import timing
+
 ChainStatus = configlib.ChainStatus
 Chain = configlib.Chain
 Chains = configlib.Chains
 
 
 ZERO = Decimal(0)
-Q = Decimal('0.01')
+Q = Decimal("0.01")
 
 
-def ChainTransactions(matched_transactions: Table,
-                      chains_db: Chains) -> Tuple[Table, Chains]:
+def ChainTransactions(
+    matched_transactions: Table, chains_db: Chains
+) -> Tuple[Table, Chains]:
     """Cluster the transactions and return a new table, with added 'chain_id' and an
     update chains configuration on a config object."""
 
     log = functools.partial(timing.log_time, log_timings=logging.info, indent=1)
 
     # Clean up the configuration before clustering with it as a side-input.
-    with log('scrub'):
+    with log("scrub"):
         clean_chains_db = ScrubConfig(matched_transactions, chains_db)
 
     # Run the chains heuristic. (Note: We need to temporarily expand the
     # instrument fields, as they are needed by the match and chains modules.)
-    with log('group'):
-        chained_transactions = (matched_transactions
-                                .applyfn(instrument.Expand, 'symbol')
-                                .applyfn(Group, clean_chains_db.chains)
-                                .applyfn(instrument.Shrink))
+    with log("group"):
+        chained_transactions = (
+            matched_transactions.applyfn(instrument.Expand, "symbol")
+            .applyfn(Group, clean_chains_db.chains)
+            .applyfn(instrument.Shrink)
+        )
 
-    with log('update'):
+    with log("update"):
         updated_chains_db = UpdateConfig(chained_transactions, clean_chains_db)
 
     return chained_transactions, updated_chains_db
 
 
-def Group(transactions: Table,
-          chains: List[Chain],
-          by_match=True,
-          by_order=True,
-          by_time=True) -> Table:
+def Group(
+    transactions: Table, chains: List[Chain], by_match=True, by_order=True, by_time=True
+) -> Table:
     """Cluster transactions to create options chains.
 
     This function inserts the `chain_id` column to the table and returns a
@@ -101,28 +102,32 @@ def Group(transactions: Table,
     # Extract finalized chains explicitly. They don't have to be part of the graph.
     final_chains, match_chains = [], []
     for chain in chains:
-        (final_chains
-         if chain.status == ChainStatus.FINAL
-         else match_chains).append(chain)
+        (final_chains if chain.status == ChainStatus.FINAL else match_chains).append(
+            chain
+        )
     final_chain_ids = {chain.chain_id for chain in final_chains}
 
     # Initialize the resulting mapping of transactions to chains with finalized
     # chains.
-    final_txn_chain_map = {transaction_id: chain.chain_id
-                           for chain in final_chains
-                           for transaction_id in chain.ids}
+    final_txn_chain_map = {
+        transaction_id: chain.chain_id
+        for chain in final_chains
+        for transaction_id in chain.ids
+    }
 
     # Select only remaining transactions not account for by final chains.
-    match_transactions = (transactions
-                          .selectnotin('transaction_id', final_txn_chain_map))
-
+    match_transactions = transactions.selectnotin("transaction_id", final_txn_chain_map)
 
     # Update the chain mapping with chains that are active or closed, so
     # explicit names can resolve.
     txn_chain_map = final_txn_chain_map.copy()
-    txn_chain_map.update({transaction_id: chain.chain_id
-                          for chain in match_chains
-                          for transaction_id in chain.ids})
+    txn_chain_map.update(
+        {
+            transaction_id: chain.chain_id
+            for chain in match_chains
+            for transaction_id in chain.ids
+        }
+    )
 
     # Create a graph and process each connected component to an individual trade.
     graph = CreateGraph(match_transactions, match_chains, by_match, by_order, by_time)
@@ -131,11 +136,11 @@ def Group(transactions: Table,
         for transaction_id in cc:
             node = graph.nodes[transaction_id]
             try:
-                unused_node_type = node['type']
+                unused_node_type = node["type"]
             except KeyError:
                 raise KeyError("Node without type for: {}".format(transaction_id))
-            if node['type'] == 'txn':
-                chain_txns.append(node['rec'])
+            if node["type"] == "txn":
+                chain_txns.append(node["rec"])
         assert chain_txns, "Invalid empty chain: {}".format(chain_txns)
 
         chain_id = ChainName(chain_txns, txn_chain_map)
@@ -144,59 +149,65 @@ def Group(transactions: Table,
         # transaction - with the same (account, datetime, underlying) in a final
         # chain, it could. Best is to adjust the input file, but we could
         # eventually just insert a random character here.
-        assert chain_id not in final_chain_ids, (
-            f"Collision with FINAL chain names at '{chain_id}'.")
+        assert (
+            chain_id not in final_chain_ids
+        ), f"Collision with FINAL chain names at '{chain_id}'."
 
         # Add tagged transactions to the chain map.
         for rec in chain_txns:
             txn_chain_map[rec.transaction_id] = chain_id
 
-    return (transactions
-            .addfield('chain_id', lambda r: txn_chain_map[r.transaction_id]))
+    return transactions.addfield("chain_id", lambda r: txn_chain_map[r.transaction_id])
 
 
-def CreateGraph(transactions: Table,
-                chains: List[Chain],
-                by_match=True,
-                by_order=True,
-                by_time=True,
-                explicit_chain_map=None) -> nx.Graph:
+def CreateGraph(
+    transactions: Table,
+    chains: List[Chain],
+    by_match=True,
+    by_order=True,
+    by_time=True,
+    explicit_chain_map=None,
+) -> nx.Graph:
     """Create a graph to link together related transactions."""
 
-    AssertColumns(transactions,
-                  ('transaction_id', str),
-                  ('order_id', {None, str}),
-                  ('match_id', str),
-                  ('datetime', datetime.datetime),
-                  ('expiration', {None, datetime.date}),
-                  ('account', str),
-                  ('underlying', str))
+    AssertColumns(
+        transactions,
+        ("transaction_id", str),
+        ("order_id", {None, str}),
+        ("match_id", str),
+        ("datetime", datetime.datetime),
+        ("expiration", {None, datetime.date}),
+        ("account", str),
+        ("underlying", str),
+    )
 
     # Create a mapping of transaction id to their chain id.
-    chain_map = {transaction_id: chain.chain_id
-                 for chain in chains
-                 for transaction_id in chain.ids}
+    chain_map = {
+        transaction_id: chain.chain_id
+        for chain in chains
+        for transaction_id in chain.ids
+    }
 
     graph = nx.Graph()
     for rec in transactions.records():
-        graph.add_node(rec.transaction_id, type='txn', rec=rec)
+        graph.add_node(rec.transaction_id, type="txn", rec=rec)
 
         # Link together explicit chains that aren't finalized.
         explicit_chain = chain_map.pop(rec.transaction_id, None)
         if explicit_chain:
-            graph.add_node(explicit_chain, type='expchain')
+            graph.add_node(explicit_chain, type="expchain")
             graph.add_edge(rec.transaction_id, explicit_chain)
 
         # Link together by order id.
         if by_order:
             if rec.order_id:
-                graph.add_node(rec.order_id, type='order')
+                graph.add_node(rec.order_id, type="order")
                 graph.add_edge(rec.transaction_id, rec.order_id)
 
         # Link together by match id.
         if by_match:
             if rec.match_id:
-                graph.add_node(rec.match_id, type='match')
+                graph.add_node(rec.match_id, type="match")
                 graph.add_edge(rec.transaction_id, rec.match_id)
 
     # Link together matches that overlap in underlying and time.
@@ -207,7 +218,7 @@ def CreateGraph(transactions: Table,
         ids.update(id2 for _, id2 in links)
         ids.update(id1 for id1, _ in transaction_links)
         for idx in ids:
-            graph.add_node(idx, type='time')
+            graph.add_node(idx, type="time")
         for id1, id2 in itertools.chain(links, transaction_links):
             graph.add_edge(id1, id2)
 
@@ -222,7 +233,6 @@ def _GetExpiration(rec: Record) -> Union[datetime.date, str]:
     return rec.expiration or rec.expcode
 
 
-
 def _LinkByOverlapping(transactions: Table) -> List[Tuple[str, str]]:
     """Return pairs of linked matches, linking all transactions where either of (a)
     an outright position exists in that underlying and/or (b) a common
@@ -230,14 +240,16 @@ def _LinkByOverlapping(transactions: Table) -> List[Tuple[str, str]]:
     match_id at all. This is a bit more general and correct than
     _LinkByOverlappingMatch().
     """
-    AssertColumns(transactions,
-                  ('transaction_id', str),
-                  ('instruction', str),
-                  ('symbol', str),
-                  ('quantity', Decimal),
-                  ('account', str),
-                  ('underlying', str),
-                  ('expiration', {None, datetime.date}))
+    AssertColumns(
+        transactions,
+        ("transaction_id", str),
+        ("instruction", str),
+        ("symbol", str),
+        ("quantity", Decimal),
+        ("account", str),
+        ("underlying", str),
+        ("expiration", {None, datetime.date}),
+    )
 
     class Term:
         """All the positions associated with an expiration term.
@@ -271,8 +283,9 @@ def _LinkByOverlapping(transactions: Table) -> List[Tuple[str, str]]:
         # need to insert a unique id.
         expiration = _GetExpiration(rec)
         isnew = expiration not in undermap
-        term_id = "{}/{}/{}/{}".format(rec.account, rec.underlying,
-                                       expiration, next(idgen))
+        term_id = "{}/{}/{}/{}".format(
+            rec.account, rec.underlying, expiration, next(idgen)
+        )
         term = undermap.get(expiration, None)
         if term is None:
             term = undermap[expiration] = Term(term_id)
@@ -292,7 +305,7 @@ def _LinkByOverlapping(transactions: Table) -> List[Tuple[str, str]]:
                     outterm = undermap[None]
                     links.append((term.id, outterm.id))
 
-        sign = -1 if rec.instruction == 'SELL' else +1
+        sign = -1 if rec.instruction == "SELL" else +1
         term.quantities[rec.symbol] += sign * rec.quantity
         transaction_links.append((term.id, rec.transaction_id))
         if term.quantities[rec.symbol] == ZERO:
@@ -303,9 +316,7 @@ def _LinkByOverlapping(transactions: Table) -> List[Tuple[str, str]]:
     # Sanity check. All positions should have been closed (`Mark` rows close
     # outstanding positions) and the resulting inventory should be completely
     # empty.
-    inventory = {key: undermap
-                 for key, undermap in undermap.items()
-                 if undermap}
+    inventory = {key: undermap for key, undermap in undermap.items() if undermap}
     if inventory:
         logging.error("Inventory not empty: {}".format(inventory))
 
@@ -315,12 +326,11 @@ def _LinkByOverlapping(transactions: Table) -> List[Tuple[str, str]]:
 def _CreateChainId(transaction_id: str, _: datetime.datetime) -> str:
     """Create a unique match id from the given transaction id."""
     md5 = hashlib.blake2s(digest_size=4)
-    md5.update(transaction_id.encode('ascii'))
+    md5.update(transaction_id.encode("ascii"))
     return "{}".format(md5.hexdigest())
 
 
-def ChainName(txns: List[Record],
-              chain_map: Mapping[str, str]):
+def ChainName(txns: List[Record], chain_map: Mapping[str, str]):
     """Generate a unique chain name."""
 
     # Look for an explicit chain id from one of the transactions.
@@ -334,15 +344,22 @@ def ChainName(txns: List[Record],
     if num_ids == 1:
         return first(explicit_chain_ids)
     elif num_ids > 1:
-        logging.error("Multiple explicit chains for cluster {}: {}".format(
-            [t.transaction_id for t in txns], explicit_chain_ids))
+        logging.error(
+            "Multiple explicit chains for cluster {}: {}".format(
+                [t.transaction_id for t in txns], explicit_chain_ids
+            )
+        )
 
     # Note: We don't know the max date, so we stick with the front date only in
     # the readable chain name.
     first_txn = next(iter(sorted_txns))
-    chain_id = ".".join([first_txn.account,
-                         "{:%y%m%d_%H%M%S}".format(first_txn.datetime),
-                         first_txn.underlying.lstrip('/')])
+    chain_id = ".".join(
+        [
+            first_txn.account,
+            "{:%y%m%d_%H%M%S}".format(first_txn.datetime),
+            first_txn.underlying.lstrip("/"),
+        ]
+    )
     return chain_id
 
 
@@ -351,18 +368,24 @@ def ChainName(txns: List[Record],
 INITIAL_ORDER_THRESHOLD = datetime.timedelta(seconds=300)
 
 
-def InitialTransactions(pairs: Iterator[Tuple[str, str, datetime.datetime, str]]) -> Decimal:
+def InitialTransactions(
+    pairs: Iterator[Tuple[str, str, datetime.datetime, str]]
+) -> Decimal:
     """Extract the transaction ids for the initial order. This input are tupled of
     (transaction_id, order_id, datetime, effect) for each transaction."""
     init_order_id = None
     init_txns = []
     init_dt = None
-    for transaction_id, order_id, dt, effect in sorted(pairs, key=lambda r: (r[2], r[0])):
-        if effect == 'CLOSING':
+    for transaction_id, order_id, dt, effect in sorted(
+        pairs, key=lambda r: (r[2], r[0])
+    ):
+        if effect == "CLOSING":
             continue
-        if (init_order_id is not None and
-            order_id != init_order_id and
-            (dt - init_dt) > INITIAL_ORDER_THRESHOLD):
+        if (
+            init_order_id is not None
+            and order_id != init_order_id
+            and (dt - init_dt) > INITIAL_ORDER_THRESHOLD
+        ):
             break
         init_order_id = order_id
         init_dt = dt
@@ -372,9 +395,7 @@ def InitialTransactions(pairs: Iterator[Tuple[str, str, datetime.datetime, str]]
 
 def MarkTransactions(pairs: Iterator[Tuple[str, str]]) -> Decimal:
     """Extract the active positions transactions."""
-    return [transaction_id
-            for transaction_id, rowtype in pairs
-            if rowtype == 'Mark']
+    return [transaction_id for transaction_id, rowtype in pairs if rowtype == "Mark"]
 
 
 def InitialCredits(rec: Record) -> Decimal:
@@ -385,14 +406,14 @@ def InitialCredits(rec: Record) -> Decimal:
 def PositionCost(rec: Record) -> Decimal:
     """Compute the cost of the position from a group of chain rows, using FIFO
     matching."""
-    if not any(rec.rowtype == 'Mark' for rec in rec.txns):
+    if not any(rec.rowtype == "Mark" for rec in rec.txns):
         return
 
     inv = collections.defaultdict(inventories.FifoInventory)
     for txn in rec.txns:
-        if txn.rowtype == 'Mark':
+        if txn.rowtype == "Mark":
             continue
-        sign = +1 if txn.instruction == 'SELL' else -1
+        sign = +1 if txn.instruction == "SELL" else -1
         unit_cost = abs(txn.cost / txn.quantity)
         inv[txn.symbol].match(sign * txn.quantity, unit_cost, txn.transaction_id)
 
@@ -400,14 +421,15 @@ def PositionCost(rec: Record) -> Decimal:
 
 
 def _CalculateNetLiq(pairs: Iterator[Tuple[str, Decimal]]):
-    return Decimal(sum(cost
-                       for rowtype, cost in pairs
-                       if rowtype == 'Mark')).quantize(Q)
+    return Decimal(sum(cost for rowtype, cost in pairs if rowtype == "Mark")).quantize(
+        Q
+    )
 
 
 def _GetUnderlyings(symbols: Iterator[str]) -> List[str]:
-    return ",".join(sorted(set(instrument.FromString(symbol).underlying
-                               for symbol in symbols)))
+    return ",".join(
+        sorted(set(instrument.FromString(symbol).underlying for symbol in symbols))
+    )
 
 
 def _GetChain(chain_map, rec: Record) -> Chain:
@@ -427,8 +449,10 @@ def _GetChainAttribute(attrname: str, rec: Record) -> Any:
 DEFAULT_POP50 = 0.80
 DEFAULT_TARGET_FRAC = 0.50
 
-Probabilities = collections.namedtuple('Probabilities',
-                                       ['pop', 'target', 'pnl_win', 'pnl_loss'])
+Probabilities = collections.namedtuple(
+    "Probabilities", ["pop", "target", "pnl_win", "pnl_loss"]
+)
+
 
 def _CalculateProbabilities(rec: Record) -> Optional[Decimal]:
     """Pull the explicit win target or compute it using simple Kelly criterion."""
@@ -441,10 +465,12 @@ def _CalculateProbabilities(rec: Record) -> Optional[Decimal]:
     assert 0 < target_frac
     pnl_win = abs(float(rec.init)) * target_frac
     pnl_loss = pnl_win * (pop / (1 - pop))
-    return Probabilities(Decimal(pop).quantize(Q),
-                         Decimal(target_frac).quantize(Q),
-                         Decimal(pnl_win).quantize(Q),
-                         Decimal(-pnl_loss).quantize(Q))
+    return Probabilities(
+        Decimal(pop).quantize(Q),
+        Decimal(target_frac).quantize(Q),
+        Decimal(pnl_win).quantize(Q),
+        Decimal(-pnl_loss).quantize(Q),
+    )
 
 
 # Threshold under which successive trades are considered a single one. We look
@@ -479,8 +505,9 @@ def _CalculatePnlFrac(r: Record) -> Decimal:
     return (r.pnl_chain / denom).quantize(Q) if denom else ZERO
 
 
-def TransactionsTableToChainsTable(transactions: Table,
-                                   chains_db: Chains) -> Tuple[Table, Table]:
+def TransactionsTableToChainsTable(
+    transactions: Table, chains_db: Chains
+) -> Tuple[Table, Table]:
     """Aggregate a table of already identified transactions row (with a `chain_id` column)
     to a table of aggregated chains. The `config` object is used to join attributes in the
     table.
@@ -491,95 +518,111 @@ def TransactionsTableToChainsTable(transactions: Table,
     """
 
     agg = {
-        'txns': ('transaction_id', list),
-        'init_txns': (('transaction_id', 'order_id', 'datetime', 'effect'),
-                      InitialTransactions),
-        'mark_txns': (('transaction_id', 'rowtype'),
-                      MarkTransactions),
-
-        'account': ('account', first),
-        'mindate': ('datetime', lambda g: min(g).date()),
-        'maxdate': ('datetime', lambda g: max(g).date()),
-        'underlyings': ('symbol', _GetUnderlyings),
-        'pnl_chain': ('cost', lambda vlist: sum(vlist).quantize(Q)),
-        'net_liq': (('rowtype', 'cost'), _CalculateNetLiq),
-        'commissions': ('commissions', sum),
-        'fees': ('fees', sum),
+        "txns": ("transaction_id", list),
+        "init_txns": (
+            ("transaction_id", "order_id", "datetime", "effect"),
+            InitialTransactions,
+        ),
+        "mark_txns": (("transaction_id", "rowtype"), MarkTransactions),
+        "account": ("account", first),
+        "mindate": ("datetime", lambda g: min(g).date()),
+        "maxdate": ("datetime", lambda g: max(g).date()),
+        "underlyings": ("symbol", _GetUnderlyings),
+        "pnl_chain": ("cost", lambda vlist: sum(vlist).quantize(Q)),
+        "net_liq": (("rowtype", "cost"), _CalculateNetLiq),
+        "commissions": ("commissions", sum),
+        "fees": ("fees", sum),
     }
 
-    transaction_map = transactions.recordlookupone('transaction_id')
+    transaction_map = transactions.recordlookupone("transaction_id")
     chain_map = {c.chain_id: c for c in chains_db.chains}
 
     chains_table = (
         transactions
-
         # Add the underlying.
-        .addfield('underlying', lambda r: instrument.ParseUnderlying(r.symbol))
-
+        .addfield("underlying", lambda r: instrument.ParseUnderlying(r.symbol))
         # Aggregate over the chain id.
-        .aggregate('chain_id', agg)
-        .convert('txns', lambda txns: list(map(transaction_map.__getitem__, txns)))
-        .convert('init_txns', lambda txns: list(map(transaction_map.__getitem__, txns)))
-        .convert('mark_txns', lambda txns: list(map(transaction_map.__getitem__, txns)))
-
+        .aggregate("chain_id", agg)
+        .convert("txns", lambda txns: list(map(transaction_map.__getitem__, txns)))
+        .convert("init_txns", lambda txns: list(map(transaction_map.__getitem__, txns)))
+        .convert("mark_txns", lambda txns: list(map(transaction_map.__getitem__, txns)))
         # Add calculations off the initial position records.
-        .addfield('init', InitialCredits)
-        .addfield('fifo_cost', PositionCost)
-        .addfield('init_legs', lambda r: len(r.init_txns))
-        .addfield('adjust', _NumAdjustments)
-
-        .addfield('days', lambda r: (r.maxdate - r.mindate).days + 1)
-
+        .addfield("init", InitialCredits)
+        .addfield("fifo_cost", PositionCost)
+        .addfield("init_legs", lambda r: len(r.init_txns))
+        .addfield("adjust", _NumAdjustments)
+        .addfield("days", lambda r: (r.maxdate - r.mindate).days + 1)
         # Chain attributes.
-        .addfield('chain', partial(_GetChain, chain_map))
-        .addfield('status', partial(_GetChainAttribute, 'status'))
-        .convert('status', lambda e: ChainStatus.Name(e) if e is not None else 'NoStatus')
-        .addfield('group', partial(_GetChainAttribute, 'group'))
-        .addfield('strategy', partial(_GetChainAttribute, 'strategy'))
-        .addfield('term', lambda r: 'LT' if _GetChainAttribute('long_term', r) else 'ST')
-
+        .addfield("chain", partial(_GetChain, chain_map))
+        .addfield("status", partial(_GetChainAttribute, "status"))
+        .convert(
+            "status", lambda e: ChainStatus.Name(e) if e is not None else "NoStatus"
+        )
+        .addfield("group", partial(_GetChainAttribute, "group"))
+        .addfield("strategy", partial(_GetChainAttribute, "strategy"))
+        .addfield(
+            "term", lambda r: "LT" if _GetChainAttribute("long_term", r) else "ST"
+        )
         # Probability & targets.
-        .addfield('prob', _CalculateProbabilities)
-        .addfield('pop', lambda r: r.prob.pop if r.prob else ZERO)
-        .addfield('target', lambda r: r.prob.target if r.prob else ZERO)
-        .addfield('pnl_win', lambda r: r.prob.pnl_win if r.prob else ZERO)
-        .addfield('pnl_loss', lambda r: r.prob.pnl_loss if r.prob else ZERO)
-        .addfield('pnl_frac', _CalculatePnlFrac)
-
+        .addfield("prob", _CalculateProbabilities)
+        .addfield("pop", lambda r: r.prob.pop if r.prob else ZERO)
+        .addfield("target", lambda r: r.prob.target if r.prob else ZERO)
+        .addfield("pnl_win", lambda r: r.prob.pnl_win if r.prob else ZERO)
+        .addfield("pnl_loss", lambda r: r.prob.pnl_loss if r.prob else ZERO)
+        .addfield("pnl_frac", _CalculatePnlFrac)
         # Calculate net liq win/loss equivalent to match on the platform.
-        .addfield('net_win', lambda r: r.net_liq + (r.pnl_win - r.pnl_chain))
-        .addfield('net_loss', lambda r: r.net_liq + (r.pnl_loss - r.pnl_chain))
-        .cutout('prob', 'chain')
-
+        .addfield("net_win", lambda r: r.net_liq + (r.pnl_win - r.pnl_chain))
+        .addfield("net_loss", lambda r: r.net_liq + (r.pnl_loss - r.pnl_chain))
+        .cutout("prob", "chain")
         # Mark missing groups with a string that can be filtered on.
         # TODO(blais): Move this to the presentation layer.
-        .convert('group', lambda v: v or 'NoGroup')
-
-        .sort('maxdate'))
+        .convert("group", lambda v: v or "NoGroup")
+        .sort("maxdate")
+    )
 
     # Add a row marking transactions with the initial flag.
-    init_txns = set(rec.transaction_id
-                    for chain_row in chains_table.records()
-                    for rec in chain_row.init_txns)
-    itransactions = (transactions
-                     .addfield('init', lambda r: r.transaction_id in init_txns))
+    init_txns = set(
+        rec.transaction_id
+        for chain_row in chains_table.records()
+        for rec in chain_row.init_txns
+    )
+    itransactions = transactions.addfield(
+        "init", lambda r: r.transaction_id in init_txns
+    )
 
     # Strip unnecessary columns.
-    chains_table = (chains_table
-                    .cut('chain_id', 'account', 'underlyings', 'status',
-                         'mindate', 'maxdate', 'days',
-                         'init', 'init_legs', 'adjust',
-                         'pnl_win', 'pnl_chain', 'pnl_loss', 'pnl_frac',
-                         'target', 'pop',
-                         'net_win', 'net_liq', 'net_loss', 'fifo_cost',
-                         'commissions', 'fees',
-                         'group', 'strategy', 'term'))
+    chains_table = chains_table.cut(
+        "chain_id",
+        "account",
+        "underlyings",
+        "status",
+        "mindate",
+        "maxdate",
+        "days",
+        "init",
+        "init_legs",
+        "adjust",
+        "pnl_win",
+        "pnl_chain",
+        "pnl_loss",
+        "pnl_frac",
+        "target",
+        "pop",
+        "net_win",
+        "net_liq",
+        "net_loss",
+        "fifo_cost",
+        "commissions",
+        "fees",
+        "group",
+        "strategy",
+        "term",
+    )
 
     return chains_table, itransactions
 
 
-def ScrubConfig(transactions: Table,
-                chains_db: Chains) -> Chains:
+def ScrubConfig(transactions: Table, chains_db: Chains) -> Chains:
     """Update and clean configuration from the processed transactions table."""
 
     # Create a new result configuration object.
@@ -588,26 +631,27 @@ def ScrubConfig(transactions: Table,
 
     # If a chain is in FINAL state, automatically promote all of its `auto_ids`
     # to `ids`.
-    transaction_ids = set(transactions.values('transaction_id'))
+    transaction_ids = set(transactions.values("transaction_id"))
     for chain in new_chains_db.chains:
         if chain.status == ChainStatus.FINAL and chain.auto_ids:
             chain.ids.extend(chain.auto_ids)
 
         # Clear the `auto_ids` field on all the chains.
-        chain.ClearField('auto_ids')
+        chain.ClearField("auto_ids")
 
         # If any of the referenced ids aren't valid transactions, issue a
         # warning. (Idea: We could eventually move these ids to a junk chain in
         # the output instead.)
         for transaction_id in chain.ids:
             if transaction_id not in transaction_ids:
-                logging.error(f"Invalid transaction id from chain file: '{transaction_id}'")
+                logging.error(
+                    f"Invalid transaction id from chain file: '{transaction_id}'"
+                )
 
     return new_chains_db
 
 
-def UpdateConfig(transactions: Table,
-                 chains_db: Chains) -> Chains:
+def UpdateConfig(transactions: Table, chains_db: Chains) -> Chains:
     """Insert new transaction ids from updated transactions and update the status of
     all the non-finalized chains. This assumes a transactions Table with freshly
     clustered chain ids.
@@ -620,9 +664,9 @@ def UpdateConfig(transactions: Table,
     new_chains_db.CopyFrom(chains_db)
 
     # Gather the set of already existing ids.
-    inserted_ids = {transaction_id
-                    for chain in new_chains_db.chains
-                    for transaction_id in chain.ids}
+    inserted_ids = {
+        transaction_id for chain in new_chains_db.chains for transaction_id in chain.ids
+    }
 
     # Initialize a few mappings. This is much faster than running the more
     # convenient petl materialization routines, minimizing the number of runs
@@ -639,10 +683,10 @@ def UpdateConfig(transactions: Table,
         # Update various maps.
         transactions_map[txn.transaction_id] = txn
         referenced_chain_ids.add(txn.chain_id)
-        if txn.rowtype == 'Mark':
+        if txn.rowtype == "Mark":
             active_chain_ids.add(txn.chain_id)
 
-        if txn.rowtype == 'Mark':
+        if txn.rowtype == "Mark":
             continue
 
         transaction_id = txn.transaction_id
@@ -666,9 +710,9 @@ def UpdateConfig(transactions: Table,
     return new_chains_db
 
 
-def InferStatus(referenced_chain_ids: Set[str],
-                active_chain_ids: Set[str],
-                chains_db: Chains):
+def InferStatus(
+    referenced_chain_ids: Set[str], active_chain_ids: Set[str], chains_db: Chains
+):
     """Update (mutate) `status` on chains, from transactions."""
 
     # Infer the status of non-finalized chains.
@@ -691,9 +735,11 @@ def InferStatus(referenced_chain_ids: Set[str],
 
         # We update the active status of the chain.
         # Note: Mutate in-place.
-        chain.status = (ChainStatus.ACTIVE
-                        if chain.chain_id in active_chain_ids
-                        else ChainStatus.CLOSED)
+        chain.status = (
+            ChainStatus.ACTIVE
+            if chain.chain_id in active_chain_ids
+            else ChainStatus.CLOSED
+        )
 
 
 def InferStrategy(transactions_map: Dict[str, Record], chains_db: Chains):
@@ -710,29 +756,33 @@ def InferStrategy(transactions_map: Dict[str, Record], chains_db: Chains):
             rec = transactions_map.get(transaction_id, None)
             if rec is not None:
                 init_tuples.append(
-                    (rec.transaction_id, rec.order_id, rec.datetime, rec.effect))
+                    (rec.transaction_id, rec.order_id, rec.datetime, rec.effect)
+                )
         init_transaction_ids = InitialTransactions(init_tuples)
-        init_transactions = [transactions_map[transaction_id]
-                             for transaction_id in init_transaction_ids]
+        init_transactions = [
+            transactions_map[transaction_id] for transaction_id in init_transaction_ids
+        ]
 
         strategy, signature = strategylib.InferStrategy(init_transactions)
         if strategy:
             # Note: Mutate in-place. (I know.)
             chain.strategy = strategy
         else:
-            logging.warning(f"Could not infer strategy for chain "
-                            f"http://localhost:5000/chain/{chain.chain_id} : {signature}")
+            logging.warning(
+                f"Could not infer strategy for chain "
+                f"http://localhost:5000/chain/{chain.chain_id} : {signature}"
+            )
 
 
-def AcceptChain(chain: Chain,
-                group: Optional[str]=None,
-                status: Optional[int]=None):
+def AcceptChain(
+    chain: Chain, group: Optional[str] = None, status: Optional[int] = None
+):
     """Mutate the chain to bake the ids and modify some of its attributes."""
 
     # Move `auto_ids` to `ids`.
     for iid in chain.auto_ids:
         chain.ids.append(iid)
-    chain.ClearField('auto_ids')
+    chain.ClearField("auto_ids")
 
     # Set status.
     if status is not None:

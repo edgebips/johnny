@@ -21,7 +21,7 @@ from johnny.base.etl import Table, WrapRecords
 
 
 @click.command()
-@click.argument('config_filename', type=click.Path(exists=True))
+@click.argument("config_filename", type=click.Path(exists=True))
 def main(config_filename: str):
     config = configlib.ParseFile(config_filename)
     chains_db = configlib.ReadChains(config.input.chains_db)
@@ -32,8 +32,8 @@ def main(config_filename: str):
     transactions.tocsv("/tmp/transactions.csv")
 
     # Ensure that
-    txn_ids = set(transactions.values('transaction_id'))
-    order_ids = set(transactions.values('order_id'))
+    txn_ids = set(transactions.values("transaction_id"))
+    order_ids = set(transactions.values("order_id"))
     missing_chains = []
     for chain in chains_db.chains:
         missing = False
@@ -53,6 +53,5 @@ def main(config_filename: str):
         print(config, file=outfile)
 
 
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

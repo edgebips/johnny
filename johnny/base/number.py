@@ -12,16 +12,16 @@ from decimal import Decimal
 # fractions. /ZN has {0, 5} for 1/2 subfractions, /ZF has {0, 2, 5, 7} for 1/4
 # subfractions, /ZT has {0, 1, 2, 3, 5, 6, 7, 8} for 1/8 subfractions.
 _SUB_FRACTIONS = {
-    '0': Decimal(0),
-    '1': Decimal(1)/Decimal(8),
-    '2': Decimal(2)/Decimal(8),
-    '3': Decimal(3)/Decimal(8),
-    '4': Decimal(3+4)/Decimal(8+8), # Approximation, for calculations.
-    '5': Decimal(4)/Decimal(8),
-    '6': Decimal(5)/Decimal(8),
-    '7': Decimal(6)/Decimal(8),
-    '8': Decimal(7)/Decimal(8),
-    '9': Decimal(7+8)/Decimal(8+8), # Approximation, for calculations.
+    "0": Decimal(0),
+    "1": Decimal(1) / Decimal(8),
+    "2": Decimal(2) / Decimal(8),
+    "3": Decimal(3) / Decimal(8),
+    "4": Decimal(3 + 4) / Decimal(8 + 8),  # Approximation, for calculations.
+    "5": Decimal(4) / Decimal(8),
+    "6": Decimal(5) / Decimal(8),
+    "7": Decimal(6) / Decimal(8),
+    "8": Decimal(7) / Decimal(8),
+    "9": Decimal(7 + 8) / Decimal(8 + 8),  # Approximation, for calculations.
 }
 
 
@@ -35,7 +35,7 @@ def ToDecimal(string: str) -> Decimal:
         return Decimal(0)
 
     # Remove dollar signs and parentheses.
-    string = string.replace('$', '').replace(',', '')
+    string = string.replace("$", "").replace(",", "")
 
     # Parse parentheses as a negative number.
     sign = 1

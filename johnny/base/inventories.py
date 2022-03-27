@@ -47,6 +47,7 @@ class MinInventory:
     This matching method leverages opening/closing information and only tracks
     quantity. This is used upstream in simpler parts of transactions processing.
     """
+
     def __init__(self):
         self.quantity = ZERO
 
@@ -59,13 +60,13 @@ class MinInventory:
         Returns:
           True if the update was applied; False if it was ignored.
         """
-        if effect == 'OPENING':
+        if effect == "OPENING":
             # Check consistency of signs.
             assert (self.quantity * quantity) >= 0, (self.quantity, quantity)
             self.quantity += quantity
             return True
 
-        if effect == 'CLOSING':
+        if effect == "CLOSING":
             if (self.quantity * quantity) >= 0:
                 return False
             self.quantity += quantity
@@ -115,8 +116,9 @@ class MatchInventory:
         # The current match id being assigned.
         self.match_id: str = None
 
-    def match(self, quantity: Quantity,
-              transaction_id: TransactionId) -> Tuple[Quantity, MatchId]:
+    def match(
+        self, quantity: Quantity, transaction_id: TransactionId
+    ) -> Tuple[Quantity, MatchId]:
         """Match the given change against the inventory state.
         Return the signed matched size and match id to apply.
         """
@@ -149,15 +151,18 @@ class MatchInventory:
         matched = -self.quantity
         self.quantity = ZERO
 
-        match_id = (self.create_id_fn(transaction_id)
-                    if self.match_id is None
-                    else self.match_id)
+        match_id = (
+            self.create_id_fn(transaction_id)
+            if self.match_id is None
+            else self.match_id
+        )
         self.match_id = None
         return (matched, match_id)
 
 
 class Lot(NamedTuple):
     """A single lot with basis."""
+
     quantity: Quantity
     cost: Amount  # Unit cost, not total.
 
@@ -196,10 +201,9 @@ class FifoInventory:
         """Return the total cost held in this inventory."""
         return sum(lot.quantity * lot.cost for lot in self.lots) if self.lots else ZERO
 
-    def match(self,
-              quantity: Quantity,
-              unit_cost: Amount,
-              transaction_id: TransactionId) -> Tuple[Quantity, Amount, Optional[MatchId]]:
+    def match(
+        self, quantity: Quantity, unit_cost: Amount, transaction_id: TransactionId
+    ) -> Tuple[Quantity, Amount, Optional[MatchId]]:
         """Match the given change against the inventory state.
         Return the absolute matched size, absolute basis, and match id to apply.
 
@@ -239,7 +243,9 @@ class FifoInventory:
 
                     if lot_matched < sign * lot.quantity:
                         # Partial lot matched; reinsert remainder.
-                        self.lots.insert(0, Lot(lot.quantity - sign * lot_matched, lot.cost))
+                        self.lots.insert(
+                            0, Lot(lot.quantity - sign * lot_matched, lot.cost)
+                        )
                         break
 
                 # Remaining quantity to insert to cross.
@@ -264,9 +270,11 @@ class FifoInventory:
         basis = sign * sum(lot.quantity * lot.cost for lot in self.lots)
         self.lots = []
 
-        match_id = (self.create_id_fn(transaction_id)
-                    if self.match_id is None
-                    else self.match_id)
+        match_id = (
+            self.create_id_fn(transaction_id)
+            if self.match_id is None
+            else self.match_id
+        )
         self.match_id = None
 
         return (matched, basis, match_id)
@@ -286,9 +294,8 @@ TxnAccumFn = Callable[[Record, str], None]
 
 def SignedQuantity(rec: Record) -> Decimal:
     """Return the signed quantity."""
-    sign = (1 if rec.instruction == 'BUY' else -1)
+    sign = 1 if rec.instruction == "BUY" else -1
     return sign * rec.quantity
-
 
 
 class OpenCloseFifoInventory:
@@ -326,7 +333,7 @@ class OpenCloseFifoInventory:
 
     create_id_fn = staticmethod(_CreateMatchId)
 
-    def __init__(self, debug: bool=False):
+    def __init__(self, debug: bool = False):
         # A list of insertion-ordered lots as (quantity, cost) pairs.
         self.lots: List[Lot] = []
 
@@ -358,50 +365,59 @@ class OpenCloseFifoInventory:
         """Return the total quantity held in this inventory."""
         return sum(lot.cost for lot in self.lots) if self.lots else ZERO
 
-    def match(self,
-              rec: Record,
-              accumfn: TxnAccumFn):
-        """Match the given change against the inventory state.
-        """
-        AssertFields(rec,
-                     ('transaction_id', TransactionId),
-                     ('instruction', Instruction),
-                     ('effect', Effect),
-                     ('quantity', Quantity),
-                     ('cost', Amount))
+    def match(self, rec: Record, accumfn: TxnAccumFn):
+        """Match the given change against the inventory state."""
+        AssertFields(
+            rec,
+            ("transaction_id", TransactionId),
+            ("instruction", Instruction),
+            ("effect", Effect),
+            ("quantity", Quantity),
+            ("cost", Amount),
+        )
 
         # Notes: `basis` and `matched` are positive.
         matched_quantity = ZERO
-        #matched_cost = ZERO
+        # matched_cost = ZERO
         squantity = SignedQuantity(rec)
         unit_cost = rec.cost / rec.quantity
-        if self.debug: print('-----')
+        if self.debug:
+            print("-----")
         if not self.lots:
-            if self.debug: print('A')
+            if self.debug:
+                print("A")
             # Adding to an empty inventory.
-            if rec.effect and rec.effect != 'OPENING':
+            if rec.effect and rec.effect != "OPENING":
                 raise MatchError("New position not opening.")
-            accumfn(rec._replace(match_id=self.get_match_id(rec),
-                                 effect=rec.effect or 'OPENING'),
-                    'NEW')
+            accumfn(
+                rec._replace(
+                    match_id=self.get_match_id(rec), effect=rec.effect or "OPENING"
+                ),
+                "NEW",
+            )
             self.lots.append(Lot(squantity, unit_cost))
         else:
             # Calculate the sign of the current position.
             position_sign = self.sign()
             if position_sign * squantity >= ZERO:
-                if self.debug: print('B')
+                if self.debug:
+                    print("B")
 
                 # Augmentation on existing position.
-                if rec.effect and rec.effect != 'OPENING':
+                if rec.effect and rec.effect != "OPENING":
                     raise MatchError("Augmenting position not opening.")
-                accumfn(rec._replace(match_id=self.get_match_id(rec),
-                                     effect=rec.effect or 'OPENING'),
-                        'AUGMENT')
+                accumfn(
+                    rec._replace(
+                        match_id=self.get_match_id(rec), effect=rec.effect or "OPENING"
+                    ),
+                    "AUGMENT",
+                )
                 self.lots.append(Lot(squantity, unit_cost))
             else:
-                if self.debug: print('C')
+                if self.debug:
+                    print("C")
 
-                if rec.effect and rec.effect != 'CLOSING':
+                if rec.effect and rec.effect != "CLOSING":
                     raise MatchError("Reducing position not closing.")
 
                 # Reduction in FIFO order.
@@ -413,48 +429,61 @@ class OpenCloseFifoInventory:
                     abs_lot_quantity = abs(lot.quantity)
                     matched = min(abs_lot_quantity, remaining)
                     matched_quantity += matched
-                    #matched_cost += matched * lot.cost
+                    # matched_cost += matched * lot.cost
                     remaining -= matched
 
                     if matched < abs_lot_quantity:
                         # Partial lot matched; insert remainder.
-                        self.lots.insert(0, Lot(lot.quantity - position_sign * matched,
-                                                lot.cost))
+                        self.lots.insert(
+                            0, Lot(lot.quantity - position_sign * matched, lot.cost)
+                        )
                         break
 
                 # If after matching there is some remaining quantity, cross
                 # beyond flat to the other side.
                 assert matched_quantity > ZERO
                 if remaining == ZERO:
-                    if self.debug: print('D')
-                    accumfn(rec._replace(quantity=matched_quantity,
-                                         cost=matched_quantity * unit_cost,
-                                         effect='CLOSING',
-                                         match_id=self.get_match_id(rec)),
-                            'REDUCE')
+                    if self.debug:
+                        print("D")
+                    accumfn(
+                        rec._replace(
+                            quantity=matched_quantity,
+                            cost=matched_quantity * unit_cost,
+                            effect="CLOSING",
+                            match_id=self.get_match_id(rec),
+                        ),
+                        "REDUCE",
+                    )
                 else:
-                    if self.debug: print('E')
-                    accumfn(rec._replace(transaction_id=rec.transaction_id + '.1',
-                                         quantity=matched_quantity,
-                                         cost=matched_quantity * unit_cost,
-                                         effect='CLOSING',
-                                         match_id=self.get_match_id(rec)),
-                            'REDUCE_CLOSING')
-                    accumfn(rec._replace(transaction_id=rec.transaction_id + '.2',
-                                         quantity=remaining,
-                                         cost=remaining * unit_cost,
-                                         effect='OPENING',
-                                         match_id=self.get_match_id(rec)),
-                            'REDUCE_OPENING')
+                    if self.debug:
+                        print("E")
+                    accumfn(
+                        rec._replace(
+                            transaction_id=rec.transaction_id + ".1",
+                            quantity=matched_quantity,
+                            cost=matched_quantity * unit_cost,
+                            effect="CLOSING",
+                            match_id=self.get_match_id(rec),
+                        ),
+                        "REDUCE_CLOSING",
+                    )
+                    accumfn(
+                        rec._replace(
+                            transaction_id=rec.transaction_id + ".2",
+                            quantity=remaining,
+                            cost=remaining * unit_cost,
+                            effect="OPENING",
+                            match_id=self.get_match_id(rec),
+                        ),
+                        "REDUCE_OPENING",
+                    )
                     self.lots.append(Lot(-position_sign * remaining, unit_cost))
 
         # If after matching the position has been cleared, we'll reset the match id.
         if not self.lots:
             self.clear_match_id()
 
-    def opening(self,
-                rec: Record,
-                accumfn: TxnAccumFn):
+    def opening(self, rec: Record, accumfn: TxnAccumFn):
         """Match an explicitly opening position, raise an error if incompatible.
         You will need to set the initial state of your books before matching the
         transactions log. We make no attempt to auto-correct the initial positions."""
@@ -464,14 +493,13 @@ class OpenCloseFifoInventory:
         squantity = SignedQuantity(rec)
         if pquantity * squantity < ZERO:
             raise MatchError(
-                f"Invalid opening position matching {squantity} over {pquantity}: {rec}")
+                f"Invalid opening position matching {squantity} over {pquantity}: {rec}"
+            )
 
         # Match the new opening position.
         return self.match(rec, accumfn)
 
-    def closing(self,
-                rec: Record,
-                accumfn: TxnAccumFn):
+    def closing(self, rec: Record, accumfn: TxnAccumFn):
         """Match an explicitly closing position, raise an error if incompatible.
         You will need to set the initial state of your books before matching the
         transactions log. We make no attempt to auto-correct the initial positions."""
@@ -481,15 +509,15 @@ class OpenCloseFifoInventory:
         squantity = SignedQuantity(rec)
         if pquantity * squantity >= ZERO:
             raise MatchError(
-                f"Invalid closing position matching {squantity} over {pquantity}: {rec}")
+                f"Invalid closing position matching {squantity} over {pquantity}: {rec}"
+            )
 
         # Match the closing position against the inventory.
         return self.match(rec, accumfn)
 
-    def expire(self,
-               rec: Record,
-               accumfn: TxnAccumFn,
-               rowtype: Optional[str] = 'Expire'):
+    def expire(
+        self, rec: Record, accumfn: TxnAccumFn, rowtype: Optional[str] = "Expire"
+    ):
         """Match the inventory state.
         Return the signed matched size and match id to apply.
         Note that we ignore the value of the `quantity` field of the expiration message.
@@ -498,14 +526,18 @@ class OpenCloseFifoInventory:
             raise MatchError(f"Invalid expiration with no lots: {rec}")
 
         pquantity = self.quantity()
-        instruction = 'SELL' if pquantity >= 0 else 'BUY'
-        accumfn(rec._replace(rowtype=rowtype,
-                             instruction=instruction,
-                             effect='CLOSING',
-                             quantity=abs(pquantity),
-                             cost=ZERO,
-                             match_id=self.get_match_id(rec)),
-                'EXPIRE')
+        instruction = "SELL" if pquantity >= 0 else "BUY"
+        accumfn(
+            rec._replace(
+                rowtype=rowtype,
+                instruction=instruction,
+                effect="CLOSING",
+                quantity=abs(pquantity),
+                cost=ZERO,
+                match_id=self.get_match_id(rec),
+            ),
+            "EXPIRE",
+        )
 
         self.lots[:] = []
         self.clear_match_id()

@@ -60,7 +60,7 @@ def ReadInitialPositions(filename: str) -> Table:
         .convert("quantity", Decimal)
         .convert("cost", Decimal)
         .addfield("price", lambda r: abs(r.cost / r.quantity))
-        .convert('commissions', Decimal)
+        .convert("commissions", Decimal)
         .addfield("fees", ZERO)
         .addfield("description", lambda r: "Opening balance for {}".format(r.symbol))
         .cut(txnlib.FIELDS)

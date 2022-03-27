@@ -56,7 +56,7 @@ def Validate(config: Config):
 
     # Ensure required fields are set.
     for a in config.input.accounts:
-        if not a.HasField('logtype'):
+        if not a.HasField("logtype"):
             raise ConfigError("Log type is not set")
 
 

@@ -60,19 +60,22 @@ ZERO = Decimal(0)
 
 
 # The set of fields to produce aggregations over.
-FIELDS = ['Delta', 'Gamma', 'Theta', 'Vega', 'Beta', 'Net Liq', 'P/L Open', 'P/L Day']
+FIELDS = ["Delta", "Gamma", "Theta", "Vega", "Beta", "Net Liq", "P/L Open", "P/L Day"]
 
 
 def ParseNumber(string: str) -> Decimal:
     """Parse a single number string."""
-    if string in {'N/A', 'N/A (Split Position)'}:
-        return Decimal('0')
+    if string in {"N/A", "N/A (Split Position)"}:
+        return Decimal("0")
     sign = 1
     match = re.match(r"\((.*)\)", string)
     if match:
         sign = -1
         string = match.group(1)
-    return Decimal(string.replace('$', '').replace(',', '')).quantize(Decimal("0.01")) * sign
+    return (
+        Decimal(string.replace("$", "").replace(",", "")).quantize(Decimal("0.01"))
+        * sign
+    )
 
 
 class Group(NamedTuple):
@@ -95,16 +98,16 @@ def SplitGroups(lines: List[str]) -> List[Group]:
     rows = []
     for line in lines:
         # Remove initial BOM marker line.
-        if line.startswith('\ufeff'):
+        if line.startswith("\ufeff"):
             continue
         # Remove bottom subtable that contains only summaries.
-        if re.match('Cash & Sweep Vehicle', line):
+        if re.match("Cash & Sweep Vehicle", line):
             break
         rows.append(line.rstrip())
 
     def AddGroup():
         if name and subname and group:
-            source = petl.MemorySource('\n'.join(group).encode('utf8'))
+            source = petl.MemorySource("\n".join(group).encode("utf8"))
             group_list.append(Group(name, subname, petl.fromcsv(source)))
 
     # Split up the groups into subtables.
@@ -144,45 +147,51 @@ def SplitGroups(lines: List[str]) -> List[Group]:
 
 _FUTSYM = "(/[A-Z0-9]+[FGHJKMNQUVXZ]2[0-9])"
 
-def ParseInstrumentDescription(
-        string: str, symroot: str) -> instrument.Instrument:
+
+def ParseInstrumentDescription(string: str, symroot: str) -> instrument.Instrument:
     """Parse an instrument description to a Beansym."""
 
     # Handle Future Option, e.g.,
     # 1/125000 JUN 21 (European) /EUUM21 1.13 PUT
-    match = re.match(r"1/(\d+) ([A-Z]{3}) (2\d)(?: \(([^)]*)\))? "
-                     fr"{_FUTSYM} ([0-9.]+) (PUT|CALL)", string)
+    match = re.match(
+        r"1/(\d+) ([A-Z]{3}) (2\d)(?: \(([^)]*)\))? "
+        fr"{_FUTSYM} ([0-9.]+) (PUT|CALL)",
+        string,
+    )
     if match:
-        (multiplier, month, year, subtype,
-         expcode,
-         strike, putcall) = match.groups()
+        (multiplier, month, year, subtype, expcode, strike, putcall) = match.groups()
 
         underlying = months.get_underlying(expcode)
-        return instrument.Instrument(underlying=underlying,
-                                     expcode=expcode[1:],
-                                     putcall=putcall[0],
-                                     strike=Decimal(strike),
-                                     multiplier=Decimal(multiplier))
+        return instrument.Instrument(
+            underlying=underlying,
+            expcode=expcode[1:],
+            putcall=putcall[0],
+            strike=Decimal(strike),
+            multiplier=Decimal(multiplier),
+        )
 
     # Handle Equity Option, e.g.,
     # 100 (Weeklys) 4 JUN 21 4130 CALL
-    match = re.match(r"100(?: \(([^)]*)\))? (\d+ [A-Z]{3} 2\d) "
-                     r"([0-9.]+) (PUT|CALL)", string)
+    match = re.match(
+        r"100(?: \(([^)]*)\))? (\d+ [A-Z]{3} 2\d) " r"([0-9.]+) (PUT|CALL)", string
+    )
     if match:
         subtype, day_month_year, strike, putcall = match.groups()
         expiration = parse(day_month_year).date()
-        return instrument.Instrument(underlying=symroot,
-                                     expiration=expiration,
-                                     putcall=putcall[0],
-                                     strike=Decimal(strike),
-                                     multiplier=100)
+        return instrument.Instrument(
+            underlying=symroot,
+            expiration=expiration,
+            putcall=putcall[0],
+            strike=Decimal(strike),
+            multiplier=100,
+        )
 
     # Handle Future, e.g.,
     # 2-Year U.S. Treasury Note Futures,Jun-2021,ETH (prev. /ZTM1)
     match = re.fullmatch(r"(.*) \(prev. (/.*)\)", string)
     if match:
         symbol = match.group(2)
-        underlying = symbol[:-1] + '2' + symbol[-1:]
+        underlying = symbol[:-1] + "2" + symbol[-1:]
         return instrument.Instrument(underlying=underlying)
 
     # Handle Equity, e.g.,
@@ -224,50 +233,52 @@ def FoldInstrument(table: Table) -> Table:
     #   futures options, there will also be rows dedicated to the corresponding
     #   underlyings, even if their quantity is zero. Remove those.
 
-    table = (table
-
-             # Fold the special underlying row.
-             .addfield('symroot',
-                       lambda r: r['Instrument'] if bool(r['BP Effect']) else None)
-             .filldown('symroot')
-             .selectfalse('BP Effect')
-
-             # Folder the strategy row.
-             .addfield('strategy',
-                       lambda r: r['Instrument'] if not r['Qty'] else None)
-             .filldown('strategy')
-             .selecttrue('Qty')
-             .convert('Qty', Decimal)
-             .selectne('Qty', ZERO)
-             .rename('Qty', 'quantity')
-
-             # Synthetize our symbol.
-             .addfield('_instrument',
-                       lambda r: ParseInstrumentDescription(r.Instrument, r.symroot))
-             .addfield('symbol',
-                       lambda r: str(r._instrument))
-
-             # Normalize names of remaining fields.
-             .rename('Trade Price', 'price')
-             .rename('Mark', 'mark')
-             .rename('Net Liq', 'net_liq')
-             .rename('P/L Open', 'pnl_open')
-             .rename('P/L Day', 'pnl_day')
-
-             # Convert numbers.
-             .convert(['price', 'mark', 'net_liq', 'pnl_open', 'pnl_day'], ToDecimal)
-
-             # Make up missing 'cost' field.
-             #
-             # Unfortunately the cost isn't provided directly, but we infer it
-             # from the rest of the information.
-             .addfield('cost', InferCostFromTradePrice)
-             .cutout('_instrument')
-
-             # Clean up the final table.
-             .cut('symbol', 'quantity', 'price', 'mark',
-                  'cost', 'net_liq', 'pnl_open', 'pnl_day')
-             )
+    table = (
+        table
+        # Fold the special underlying row.
+        .addfield(
+            "symroot", lambda r: r["Instrument"] if bool(r["BP Effect"]) else None
+        )
+        .filldown("symroot")
+        .selectfalse("BP Effect")
+        # Folder the strategy row.
+        .addfield("strategy", lambda r: r["Instrument"] if not r["Qty"] else None)
+        .filldown("strategy")
+        .selecttrue("Qty")
+        .convert("Qty", Decimal)
+        .selectne("Qty", ZERO)
+        .rename("Qty", "quantity")
+        # Synthetize our symbol.
+        .addfield(
+            "_instrument", lambda r: ParseInstrumentDescription(r.Instrument, r.symroot)
+        )
+        .addfield("symbol", lambda r: str(r._instrument))
+        # Normalize names of remaining fields.
+        .rename("Trade Price", "price")
+        .rename("Mark", "mark")
+        .rename("Net Liq", "net_liq")
+        .rename("P/L Open", "pnl_open")
+        .rename("P/L Day", "pnl_day")
+        # Convert numbers.
+        .convert(["price", "mark", "net_liq", "pnl_open", "pnl_day"], ToDecimal)
+        # Make up missing 'cost' field.
+        #
+        # Unfortunately the cost isn't provided directly, but we infer it
+        # from the rest of the information.
+        .addfield("cost", InferCostFromTradePrice)
+        .cutout("_instrument")
+        # Clean up the final table.
+        .cut(
+            "symbol",
+            "quantity",
+            "price",
+            "mark",
+            "cost",
+            "net_liq",
+            "pnl_open",
+            "pnl_day",
+        )
+    )
 
     return ReduceFragmentedPositions(table)
 
@@ -288,9 +299,9 @@ def ReduceFragmentedPositions(table: Table) -> Table:
     #
     agg = {}
     for key in table.header()[1:]:
-        func = first if key in {'price', 'mark'} else sum
+        func = first if key in {"price", "mark"} else sum
         agg[key] = (key, func)
-    return table.aggregate('symbol', agg)
+    return table.aggregate("symbol", agg)
 
 
 def GetPositions(filename: str) -> Table:
@@ -309,15 +320,13 @@ def GetPositions(filename: str) -> Table:
         if x.table.nrows() == 0:
             continue
 
-        gtable = (FoldInstrument(x.table)
-                  .addfield('group', x.name, index=0))
+        gtable = FoldInstrument(x.table).addfield("group", x.name, index=0)
 
         tables.append(gtable)
 
     # Add the account number.
     account = utils.GetAccountNumber(filename)
-    table = (petl.cat(*tables)
-             .addfield('account', account, index=0))
+    table = petl.cat(*tables).addfield("account", account, index=0)
 
     return table
 
@@ -329,11 +338,11 @@ def Import(source: str, config: configlib.Config) -> Table:
 
 
 @click.command()
-@click.argument('filename', type=click.Path(resolve_path=True, exists=True))
+@click.argument("filename", type=click.Path(resolve_path=True, exists=True))
 def main(filename: str):
     """Simple local runner for this translator."""
     print(GetPositions(filename).lookallstr())
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

@@ -9,13 +9,12 @@ from johnny.base.etl import petl
 
 
 class TestConfig(unittest.TestCase):
-
     def test_basic(self):
         cfg = config_pb2.Config()
         account = cfg.input.accounts.add()
-        account.nickname = 'etrade'
+        account.nickname = "etrade"
         account.logtype = config_pb2.Account.LogType.TRANSACTIONS
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

@@ -10,7 +10,8 @@ import petl
 import petl.config
 import petl.compat
 import petl.util.vis
-petl.config.look_style = 'minimal'
+
+petl.config.look_style = "minimal"
 petl.config.failonerror = True
 
 Table = petl.Table
@@ -29,18 +30,20 @@ def WrapRecords(records: List[Record]) -> Table:
 
 def PrintGroups(table: Table, column: str):
     """Debug print groups of a table."""
+
     def pr(grouper):
         print(petl.wrap(grouper).lookallstr())
+
     agg = table.aggregate(column, pr)
     str(agg.lookallstr())
 
 
 def PrintToPython(table: Table):
-    print('table = petl.wrap([')
+    print("table = petl.wrap([")
     print("  {},".format(table.header()))
     for rec in table.records():
         print("  {},".format(repr(rec)))
-    print('])')
+    print("])")
 
 
 def AssertTableEqual(table1: Table, table2: Table):
@@ -51,8 +54,7 @@ def AssertTableEqual(table1: Table, table2: Table):
 
 # NOTE: A big problem with this function is that Table.typeset() forces
 # evaluation of the table. Contemplating giving up this method.
-def AssertColumns(table: Table,
-                  *columns: List[Tuple[str, Set[Any]]]):
+def AssertColumns(table: Table, *columns: List[Tuple[str, Set[Any]]]):
     """Assert the presence of a particular subset of columns."""
     if ASSERT is False:
         return
@@ -67,8 +69,7 @@ def AssertColumns(table: Table,
         assert realtypes.issubset(exptypes), (name, realtypes, exptypes)
 
 
-def AssertFields(rec: Union[Record, tuple],
-                 *columns: List[Tuple[str, Set[Any]]]):
+def AssertFields(rec: Union[Record, tuple], *columns: List[Tuple[str, Set[Any]]]):
     """Assert the presence of a particular subset of columns."""
     if ASSERT is False:
         return

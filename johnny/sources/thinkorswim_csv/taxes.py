@@ -91,6 +91,7 @@ _WRAPS = {
     "NDXP": "NDX",
 }
 
+
 def _parse_security_description(description: str) -> str:
     match = re.fullmatch(
         r"([A-Z0-9]+) ([A-Z][a-z][a-z] \d+ \d{4}) ([0-9.]+) (Call|Put)",

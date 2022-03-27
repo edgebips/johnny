@@ -10,28 +10,28 @@ from decimal import Decimal
 
 import click
 import petl
-petl.config.look_style = 'minimal'
+
+petl.config.look_style = "minimal"
 petl.compat.numeric_types = petl.compat.numeric_types + (Decimal,)
 petl.config.failonerror = True
 
 
 KNOWN = {
     # From blais@
-    ('Money Movement', 'Balance Adjustment', None),
-    ('Money Movement', 'Credit Interest', None),
-    ('Money Movement', 'Mark to Market', None),
-    ('Money Movement', 'Transfer', None),
-    ('Money Movement', 'Withdrawal', None),
-    ('Receive Deliver', 'Expiration', None),
-    ('Receive Deliver', 'Symbol Change', 'Buy to Close'),
-    ('Receive Deliver', 'Symbol Change', 'Sell to Open'),
-    ('Trade', 'Buy', 'Buy'),
-    ('Trade', 'Buy to Close', 'Buy to Close'),
-    ('Trade', 'Buy to Open', 'Buy to Open'),
-    ('Trade', 'Sell', 'Sell'),
-    ('Trade', 'Sell to Close', 'Sell to Close'),
-    ('Trade', 'Sell to Open', 'Sell to Open'),
-
+    ("Money Movement", "Balance Adjustment", None),
+    ("Money Movement", "Credit Interest", None),
+    ("Money Movement", "Mark to Market", None),
+    ("Money Movement", "Transfer", None),
+    ("Money Movement", "Withdrawal", None),
+    ("Receive Deliver", "Expiration", None),
+    ("Receive Deliver", "Symbol Change", "Buy to Close"),
+    ("Receive Deliver", "Symbol Change", "Sell to Open"),
+    ("Trade", "Buy", "Buy"),
+    ("Trade", "Buy to Close", "Buy to Close"),
+    ("Trade", "Buy to Open", "Buy to Open"),
+    ("Trade", "Sell", "Sell"),
+    ("Trade", "Sell to Close", "Sell to Close"),
+    ("Trade", "Sell to Open", "Sell to Open"),
     # From hg@
     # ('Money Movement', 'Deposit', None),
     # ('Money Movement', 'Dividend', None),
@@ -43,49 +43,54 @@ KNOWN = {
     # ('Receive Deliver', 'Cash Settled Exercise', None),
     # ('Receive Deliver', 'Exercise', None),
     # ('Receive Deliver', 'Expiration', None),
-
     # From Graeme22@
     # ('Receive Deliver', 'Buy to Open', 'Buy to Open'),
     # ('Receive Deliver', 'Sell to Close', 'Sell to Close'),
     # ('Receive Deliver', 'Transfer', 'Buy to Open'),
 }
 
+
 @click.command()
-@click.argument('database', type=click.Path(resolve_path=True, exists=True))
+@click.argument("database", type=click.Path(resolve_path=True, exists=True))
 def main(database: str):
-    db = shelve.open(database, 'r')
+    db = shelve.open(database, "r")
 
     def Filter(rec: petl.Record) -> bool:
-        return (rec['transaction-type'],
-                rec['transaction-sub-type'],
-                rec['action']) not in KNOWN
+        return (
+            rec["transaction-type"],
+            rec["transaction-sub-type"],
+            rec["action"],
+        ) not in KNOWN
 
-    table = (petl.fromdicts(value for key, value in db.items() if not key.startswith('__'))
-             #.cut('transaction-type', 'transaction-sub-type', 'action')
-             #.distinct()
-             #.complement(known)
+    table = (
+        petl.fromdicts(value for key, value in db.items() if not key.startswith("__"))
+        # .cut('transaction-type', 'transaction-sub-type', 'action')
+        # .distinct()
+        # .complement(known)
+        .select(Filter)
+        # Anonymize content.
+        .convert("account-number", lambda _: "<HIDDEN>")
+        .convert("id", lambda _: "12345678")
+        # Make all numbers opaque.
+        .convert("net-value", lambda _: "123.45")
+        .convert("value", lambda _: "123.45")
+        .convert("commission", lambda _: "123.45")
+        .convert("regulatory-fees", lambda _: "123.45")
+        .convert("clearing-fees", lambda _: "123.45")
+        .convert("proprietary-index-option-fees", lambda _: "123.45")
+        .convert("quantity", lambda _: "1.0")
+        # Reduce to the first row of each distinct type.
+        .rowreduce(
+            key=("transaction-type", "transaction-sub-type", "action"),
+            reducer=lambda _, g: next(iter(g)),
+        )
+    )
+    print(
+        petl.cut(
+            table, "transaction-type", "transaction-sub-type", "action"
+        ).lookallstr()
+    )
 
-             .select(Filter)
 
-             # Anonymize content.
-             .convert('account-number', lambda _: '<HIDDEN>')
-             .convert('id', lambda _: '12345678')
-
-             # Make all numbers opaque.
-             .convert('net-value', lambda _: '123.45')
-             .convert('value', lambda _: '123.45')
-             .convert('commission', lambda _: '123.45')
-             .convert('regulatory-fees', lambda _: '123.45')
-             .convert('clearing-fees', lambda _: '123.45')
-             .convert('proprietary-index-option-fees', lambda _: '123.45')
-             .convert('quantity', lambda _: '1.0')
-
-             # Reduce to the first row of each distinct type.
-             .rowreduce(key=('transaction-type', 'transaction-sub-type', 'action'),
-                        reducer=lambda _, g: next(iter(g)))
-             )
-    print(petl.cut(table, 'transaction-type', 'transaction-sub-type', 'action').lookallstr())
-
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

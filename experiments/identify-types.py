@@ -10,24 +10,24 @@ from decimal import Decimal
 
 import click
 import petl
-petl.config.look_style = 'minimal'
+
+petl.config.look_style = "minimal"
 petl.compat.numeric_types = petl.compat.numeric_types + (Decimal,)
 petl.config.failonerror = True
 
 
 @click.command()
-@click.argument('database', type=click.Path(resolve_path=True, exists=True))
+@click.argument("database", type=click.Path(resolve_path=True, exists=True))
 def main(database: str):
-    db = shelve.open(database, 'r')
+    db = shelve.open(database, "r")
 
-    table = (petl.fromdicts(value for key, value in db.items() if not key.startswith('__'))
-
-             #.cut('underlying-symbol', 'exchange')
-             .cut('transaction-type', 'transaction-sub-type', 'action')
-             .distinct()
-             )
+    table = (
+        petl.fromdicts(value for key, value in db.items() if not key.startswith("__"))
+        # .cut('underlying-symbol', 'exchange')
+        .cut("transaction-type", "transaction-sub-type", "action").distinct()
+    )
     print(table.lookallstr())
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

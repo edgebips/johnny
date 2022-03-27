@@ -68,39 +68,38 @@ Config = Any
 ZERO = Decimal(0)
 
 
-
-
 def CheckValues(values, value):
     assert value in values
     return value
 
 
 def GetAssetClass(v: str) -> str:
-    if v == 'STK':
-        return 'Equity'
-    elif v == 'OPT':
-        return 'EquityOption'
+    if v == "STK":
+        return "Equity"
+    elif v == "OPT":
+        return "EquityOption"
     else:
         raise ValueError(f"Unknown value {v}")
 
 
 def GetExpiration(v: str) -> Optional[datetime.date]:
-    return (datetime.datetime.strptime(v, '%Y-%m-%d').date()
-            if v
-            else '')
+    return datetime.datetime.strptime(v, "%Y-%m-%d").date() if v else ""
 
 
 def GetSymbol(rec: Record) -> instrument.Instrument:
-    if rec.instype == 'Equity':
-        return instrument.FromColumns(rec.Symbol,
-                                      None, None, None, None, rec.multiplier)
-    elif rec.instype == 'EquityOption':
-        return instrument.FromColumns(rec.underlying,
-                                      rec.expiration,
-                                      rec.expcode,
-                                      rec.putcall,
-                                      rec.strike,
-                                      rec.multiplier)
+    if rec.instype == "Equity":
+        return instrument.FromColumns(
+            rec.Symbol, None, None, None, None, rec.multiplier
+        )
+    elif rec.instype == "EquityOption":
+        return instrument.FromColumns(
+            rec.underlying,
+            rec.expiration,
+            rec.expcode,
+            rec.putcall,
+            rec.strike,
+            rec.multiplier,
+        )
     else:
         raise ValueError(f"Unknown instrument type: {rec}")
 
@@ -110,77 +109,107 @@ def SplitTables(filename: str) -> Dict[str, Table]:
     This requires the headers and trailers."""
 
     tablemap = {}
-    with open(filename, encoding='utf8') as f:
+    with open(filename, encoding="utf8") as f:
         rowset = None
         for row in csv.reader(f):
-            if row[0] in {'BOF', 'BOA', 'EOA', 'EOF'}:
+            if row[0] in {"BOF", "BOA", "EOA", "EOF"}:
                 continue
-            if row[0] == 'BOS':
+            if row[0] == "BOS":
                 rowset = tablemap[row[1]] = []
-            elif row[0] == 'EOS':
+            elif row[0] == "EOS":
                 pass
             else:
                 rowset.append(row)
-    return {key: petl.wrap(rows)
-            for key, rows in tablemap.items()}
+    return {key: petl.wrap(rows) for key, rows in tablemap.items()}
 
 
 def GetEffect(oc: str) -> str:
-    if oc == 'O':
-        return 'OPENING'
-    elif oc == 'C':
-        return 'CLOSING'
+    if oc == "O":
+        return "OPENING"
+    elif oc == "C":
+        return "CLOSING"
     else:
         assert not oc
-        return ''
+        return ""
 
 
 def ProcessCommissions(table: petl.Table) -> petl.Table:
     """Prepare commissions table for joining."""
-    table = (table
-
-             # Keep the number columns.
-             .cut('TradeID', 'TotalCommission',
-                  'BrokerExecutionCharge', 'BrokerClearingCharge',
-                  'ThirdPartyExecutionCharge', 'ThirdPartyClearingCharge',
-                  'ThirdPartyRegulatoryCharge',
-                  'RegFINRATradingActivityFee', 'RegSection31TransactionFee',
-                  'RegOther', 'Other')
-             .convert(['TotalCommission',
-                       'BrokerExecutionCharge', 'BrokerClearingCharge',
-                       'ThirdPartyExecutionCharge', 'ThirdPartyClearingCharge',
-                       'ThirdPartyRegulatoryCharge',
-                       'RegFINRATradingActivityFee', 'RegSection31TransactionFee',
-                       'RegOther', 'Other'
-                       ],
-                      lambda v: Decimal(v) if v else '')
-
-             # Check the sum of commissions.
-             .addfield('rcommissions',
-                       lambda r: (r['BrokerExecutionCharge'] +
-                                  r['BrokerClearingCharge'] +
-                                  r['ThirdPartyExecutionCharge'] +
-                                  r['ThirdPartyClearingCharge'] +
-                                  r['ThirdPartyRegulatoryCharge']))
-             .addfield('dcommissions', lambda r: ((r.TotalCommission - r.rcommissions)
-                                                  .quantize(Decimal('0.00001'))))
-
-             # Check the sum of fees.
-             .addfield('rfees',
-                       lambda r: (r['RegFINRATradingActivityFee'] +
-                                  r['RegSection31TransactionFee'] +
-                                  r['RegOther'] +
-                                  r['Other']))
-             .addfield('dfees', lambda r: ((r['ThirdPartyRegulatoryCharge'] - r.rfees)
-                                           .quantize(Decimal('0.00001'))))
-             )
+    table = (
+        table
+        # Keep the number columns.
+        .cut(
+            "TradeID",
+            "TotalCommission",
+            "BrokerExecutionCharge",
+            "BrokerClearingCharge",
+            "ThirdPartyExecutionCharge",
+            "ThirdPartyClearingCharge",
+            "ThirdPartyRegulatoryCharge",
+            "RegFINRATradingActivityFee",
+            "RegSection31TransactionFee",
+            "RegOther",
+            "Other",
+        )
+        .convert(
+            [
+                "TotalCommission",
+                "BrokerExecutionCharge",
+                "BrokerClearingCharge",
+                "ThirdPartyExecutionCharge",
+                "ThirdPartyClearingCharge",
+                "ThirdPartyRegulatoryCharge",
+                "RegFINRATradingActivityFee",
+                "RegSection31TransactionFee",
+                "RegOther",
+                "Other",
+            ],
+            lambda v: Decimal(v) if v else "",
+        )
+        # Check the sum of commissions.
+        .addfield(
+            "rcommissions",
+            lambda r: (
+                r["BrokerExecutionCharge"]
+                + r["BrokerClearingCharge"]
+                + r["ThirdPartyExecutionCharge"]
+                + r["ThirdPartyClearingCharge"]
+                + r["ThirdPartyRegulatoryCharge"]
+            ),
+        )
+        .addfield(
+            "dcommissions",
+            lambda r: (
+                (r.TotalCommission - r.rcommissions).quantize(Decimal("0.00001"))
+            ),
+        )
+        # Check the sum of fees.
+        .addfield(
+            "rfees",
+            lambda r: (
+                r["RegFINRATradingActivityFee"]
+                + r["RegSection31TransactionFee"]
+                + r["RegOther"]
+                + r["Other"]
+            ),
+        )
+        .addfield(
+            "dfees",
+            lambda r: (
+                (r["ThirdPartyRegulatoryCharge"] - r.rfees).quantize(Decimal("0.00001"))
+            ),
+        )
+    )
 
     # Compute commissions ex-fees and fees and return a table to join with the trades.
-    return (table
-            .addfield('commissions', lambda r: (r['TotalCommission'] -
-                                                r['ThirdPartyRegulatoryCharge']))
-            .addfield('fees', lambda r: r['ThirdPartyRegulatoryCharge'])
-            .cut('TradeID', 'commissions', 'fees'))
+    return (
+        table.addfield(
+            "commissions",
+            lambda r: (r["TotalCommission"] - r["ThirdPartyRegulatoryCharge"]),
+        )
+        .addfield("fees", lambda r: r["ThirdPartyRegulatoryCharge"])
+        .cut("TradeID", "commissions", "fees")
+    )
 
 
 def GetTransactions(filename: str) -> Tuple[Table, Table]:
@@ -193,127 +222,161 @@ def GetTransactions(filename: str) -> Tuple[Table, Table]:
     # The table of trades is used to pull up OPENING, CLOSING trade status.
     # The table of commission details is used to split up commissions and fees.
     tablemap = SplitTables(filename)
-    assert(set(tablemap) == {'STFU', 'TRNT', 'UNBC'})
+    assert set(tablemap) == {"STFU", "TRNT", "UNBC"}
 
     # Check that the list of trades matches the subset of trade rows from the
     # statement of funds.
-    funds_map = (tablemap['STFU']
-                 .selecttrue('TradeID')
-                 .recordlookupone('TradeID'))
-    trades_map = (tablemap['TRNT']
-                  .recordlookupone('TradeID'))
-    comm_map = (tablemap['UNBC']
-                .recordlookupone('TradeID'))
-    assert(set(funds_map) == set(trades_map))
-    assert(set(comm_map) <= set(funds_map))
+    funds_map = tablemap["STFU"].selecttrue("TradeID").recordlookupone("TradeID")
+    trades_map = tablemap["TRNT"].recordlookupone("TradeID")
+    comm_map = tablemap["UNBC"].recordlookupone("TradeID")
+    assert set(funds_map) == set(trades_map)
+    assert set(comm_map) <= set(funds_map)
 
     # Perform general preparation to the statement of funds table that will be
     # useful for trade and non-trade data.
-    table = (tablemap['STFU']
-
-             # Convert date.
-             .convert('Date', lambda v: datetime.datetime.strptime(v, '%Y-%m-%d').date())
-             #.sort('Date')
-
-             # Keep just some of the fields.
-             .cut('ClientAccountID', 'TransactionID', 'OrderID', 'TradeID',
-                  'AssetClass', 'Symbol', 'UnderlyingSymbol', 'Multiplier',
-                  'Strike', 'Expiry', 'Put/Call',
-                  'Date', 'ActivityCode', 'ActivityDescription',
-                  'Buy/Sell', 'TradeQuantity', 'TradePrice',
-                  'TradeGross', 'TradeCommission', 'Debit', 'Credit', 'Amount', 'Balance')
-
-             # Convert numbers.
-             .convert(['Multiplier', 'Strike', 'TradeQuantity', 'TradePrice',
-                       'TradeGross', 'TradeCommission', 'Debit', 'Credit', 'Amount'],
-                      lambda v: Decimal(v) if v else '')
-
-             # Check: (Debit + Credit) == Amount; then remove.
-             .addfield('Cr+Dr', lambda r: round((r.Debit or ZERO) + (r.Credit or ZERO) - r.Amount, 6))
-             .cutout('Cr+Dr', 'Debit', 'Credit')
-
-             # Check: that (Multiplier * TradeQuantity * TradePrice) == TradeGross
-             .addfield('Gross', lambda r: (((r.Multiplier * r.TradeQuantity * r.TradePrice) + r.TradeGross)
-                                           if r.Multiplier else ''))
-             .cutout('Gross')
-             )
+    table = (
+        tablemap["STFU"]
+        # Convert date.
+        .convert("Date", lambda v: datetime.datetime.strptime(v, "%Y-%m-%d").date())
+        # .sort('Date')
+        # Keep just some of the fields.
+        .cut(
+            "ClientAccountID",
+            "TransactionID",
+            "OrderID",
+            "TradeID",
+            "AssetClass",
+            "Symbol",
+            "UnderlyingSymbol",
+            "Multiplier",
+            "Strike",
+            "Expiry",
+            "Put/Call",
+            "Date",
+            "ActivityCode",
+            "ActivityDescription",
+            "Buy/Sell",
+            "TradeQuantity",
+            "TradePrice",
+            "TradeGross",
+            "TradeCommission",
+            "Debit",
+            "Credit",
+            "Amount",
+            "Balance",
+        )
+        # Convert numbers.
+        .convert(
+            [
+                "Multiplier",
+                "Strike",
+                "TradeQuantity",
+                "TradePrice",
+                "TradeGross",
+                "TradeCommission",
+                "Debit",
+                "Credit",
+                "Amount",
+            ],
+            lambda v: Decimal(v) if v else "",
+        )
+        # Check: (Debit + Credit) == Amount; then remove.
+        .addfield(
+            "Cr+Dr",
+            lambda r: round((r.Debit or ZERO) + (r.Credit or ZERO) - r.Amount, 6),
+        )
+        .cutout("Cr+Dr", "Debit", "Credit")
+        # Check: that (Multiplier * TradeQuantity * TradePrice) == TradeGross
+        .addfield(
+            "Gross",
+            lambda r: (
+                ((r.Multiplier * r.TradeQuantity * r.TradePrice) + r.TradeGross)
+                if r.Multiplier
+                else ""
+            ),
+        )
+        .cutout("Gross")
+    )
 
     # We're going to split the statement of funds between trade and non-trade data.
     #
     # Important note: for now, dividends aren't incorporated; they need to be
     # added to Johnny in the long run.
-    trade, nontrade = table.biselect(lambda r: r.ActivityCode in {'BUY', 'SELL'})
+    trade, nontrade = table.biselect(lambda r: r.ActivityCode in {"BUY", "SELL"})
 
     # Join some of the rows rom the trades table.
-    trnt = (tablemap['TRNT']
-            .convert('DateTime', lambda v: parser.parse(v))
-            .convert('Open/CloseIndicator', GetEffect)
-            .cut('TradeID', 'DateTime', 'Open/CloseIndicator')
-            .rename({'DateTime':'datetime',
-                     'Open/CloseIndicator': 'effect'}))
-    trade = (petl.leftjoin(trade, trnt, key='TradeID')
-             .cutout('Date'))
+    trnt = (
+        tablemap["TRNT"]
+        .convert("DateTime", lambda v: parser.parse(v))
+        .convert("Open/CloseIndicator", GetEffect)
+        .cut("TradeID", "DateTime", "Open/CloseIndicator")
+        .rename({"DateTime": "datetime", "Open/CloseIndicator": "effect"})
+    )
+    trade = petl.leftjoin(trade, trnt, key="TradeID").cutout("Date")
 
     # Join some of the rows rom the commissions table.
-    unbc = ProcessCommissions(tablemap['UNBC'])
-    trade = (petl.leftjoin(trade, unbc, key='TradeID')
-             .replace(['commissions', 'fees'], None, Decimal(0)))
+    unbc = ProcessCommissions(tablemap["UNBC"])
+    trade = petl.leftjoin(trade, unbc, key="TradeID").replace(
+        ["commissions", "fees"], None, Decimal(0)
+    )
 
     # Setup all instrument fields, derive a unique symbol from them, and shrink
     # the fields away.
-    trade = (trade
-
-             # Compute normalized instrument type.
-             .convert('AssetClass', GetAssetClass)
-             .rename('AssetClass', 'instype')
-
-             # Compute normalized instrument fields.
-             .rename({'UnderlyingSymbol': 'underlying',
-                      'Put/Call': 'putcall',
-                      'Strike': 'strike',
-                      'Multiplier': 'multiplier'})
-
-             # Compute and normawlize expiration, if present.
-             #
-             # Note: we haven't traded futures in IBKR yet, so don't know what
-             # their expcode looks like.
-             .convert('Expiry', GetExpiration)
-             .rename('Expiry', 'expiration')
-             .addfield('expcode', '')
-
-             # Produce normalized instrument/symbol.
-             .addfield('symbol', GetSymbol)
-             .convert('symbol', str)
-             .applyfn(instrument.Shrink)
-             .cutout('Symbol')
-             )
+    trade = (
+        trade
+        # Compute normalized instrument type.
+        .convert("AssetClass", GetAssetClass)
+        .rename("AssetClass", "instype")
+        # Compute normalized instrument fields.
+        .rename(
+            {
+                "UnderlyingSymbol": "underlying",
+                "Put/Call": "putcall",
+                "Strike": "strike",
+                "Multiplier": "multiplier",
+            }
+        )
+        # Compute and normawlize expiration, if present.
+        #
+        # Note: we haven't traded futures in IBKR yet, so don't know what
+        # their expcode looks like.
+        .convert("Expiry", GetExpiration)
+        .rename("Expiry", "expiration")
+        .addfield("expcode", "")
+        # Produce normalized instrument/symbol.
+        .addfield("symbol", GetSymbol)
+        .convert("symbol", str)
+        .applyfn(instrument.Shrink)
+        .cutout("Symbol")
+    )
 
     # Normalize the rest of the fields.
-    trade = (trade
-             .rename({
-                 'ClientAccountID': 'account',
-                 'TransactionID': 'transaction_id',
-                 'OrderID': 'order_id',
-                 'Buy/Sell': 'instruction',
-                 'TradeGross': 'cost',
-                 'TradeQuantity': 'quantity',
-                 'TradePrice': 'price',
-                 'ActivityDescription': 'description',
-             })
-
-             # Absolute value for quantity.
-             .convert("quantity", abs)
-
-             # Verify the trade commission.
-             .addfield('cdiff', lambda r: (
-                 r['TradeCommission'] - (r['commissions'] + r['fees']))
-                       .quantize(Decimal('0.00001')))
-             .cutout('TradeCommission', 'cdiff')
-
-             .cutout('ActivityCode', 'TradeID')
-
-             .addfield('rowtype', 'Trade')
-             )
+    trade = (
+        trade.rename(
+            {
+                "ClientAccountID": "account",
+                "TransactionID": "transaction_id",
+                "OrderID": "order_id",
+                "Buy/Sell": "instruction",
+                "TradeGross": "cost",
+                "TradeQuantity": "quantity",
+                "TradePrice": "price",
+                "ActivityDescription": "description",
+            }
+        )
+        # Absolute value for quantity.
+        .convert("quantity", abs)
+        # Verify the trade commission.
+        .addfield(
+            "cdiff",
+            lambda r: (r["TradeCommission"] - (r["commissions"] + r["fees"])).quantize(
+                Decimal("0.00001")
+            ),
+        )
+        .cutout("TradeCommission", "cdiff")
+        .cutout("ActivityCode", "TradeID")
+        .addfield("rowtype", "Trade")
+    )
 
     # Reorder the final fields.
     trade = trade.cut(txnlib.FIELDS)
@@ -329,8 +392,8 @@ def Import(source: str, config: configlib.Config) -> Table:
 
 
 @click.command()
-@click.argument('filename', type=click.Path(resolve_path=True, exists=True))
-@click.option('--cash', is_flag=True, help="Print out cash transactions.")
+@click.argument("filename", type=click.Path(resolve_path=True, exists=True))
+@click.option("--cash", is_flag=True, help="Print out cash transactions.")
 def main(filename: str, cash):
     """Simple local runner for this translator."""
     trades_tables = []
@@ -342,5 +405,5 @@ def main(filename: str, cash):
     print(other_table.lookallstr())
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

@@ -26,13 +26,25 @@ from johnny.base.etl import petl, Table
 
 
 @click.command()
-@click.option('--config', '-c', type=click.Path(exists=True),
-              help="Configuration filename. Default to $JOHNNY_CONFIG")
-@click.option('--date', '-d', default=str(datetime.date.today()),
-              type=click.DateTime(formats=["%Y-%m-%d"]),
-              help="Ending date for the 1 day trade.")
-@click.option('--group', '-g', default="Earnings",
-              help="Group to assign to closed one-day trades.")
+@click.option(
+    "--config",
+    "-c",
+    type=click.Path(exists=True),
+    help="Configuration filename. Default to $JOHNNY_CONFIG",
+)
+@click.option(
+    "--date",
+    "-d",
+    default=str(datetime.date.today()),
+    type=click.DateTime(formats=["%Y-%m-%d"]),
+    help="Ending date for the 1 day trade.",
+)
+@click.option(
+    "--group",
+    "-g",
+    default="Earnings",
+    help="Group to assign to closed one-day trades.",
+)
 def main(config: Optional[str], group: str, date: datetime.date):
     "Find, process and print transactions."
     date = date.date()
@@ -42,7 +54,7 @@ def main(config: Optional[str], group: str, date: datetime.date):
     transactions = petl.frompickle(config.output.transactions)
     chains_db = configlib.ReadChains(config.input.chains_db)
     chain_table, _ = chainslib.TransactionsTableToChainsTable(transactions, chains_db)
-    chain_map = chain_table.recordlookupone('chain_id')
+    chain_map = chain_table.recordlookupone("chain_id")
 
     finalized = []
     for chain in chains_db.chains:
@@ -63,13 +75,15 @@ def main(config: Optional[str], group: str, date: datetime.date):
         chainslib.AcceptChain(chain, group, status=None)
         finalized.append(chain.chain_id)
 
-    for chain_id in sorted(finalized, key=lambda s: re.search('.*\.([A-Z0-9.]+)$', s).group(1)):
+    for chain_id in sorted(
+        finalized, key=lambda s: re.search(".*\.([A-Z0-9.]+)$", s).group(1)
+    ):
         print(chain_id, file=sys.stderr)
 
-    with open(config.output.chains_db, 'w') as outfile:
+    with open(config.output.chains_db, "w") as outfile:
         outfile.write(configlib.ToText(chains_db))
 
 
-if __name__ == '__main__':
-    logging.basicConfig(level=logging.INFO, format='%(levelname)-8s: %(message)s')
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format="%(levelname)-8s: %(message)s")
     main(obj={})

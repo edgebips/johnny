@@ -62,13 +62,13 @@ class Instrument(NamedTuple):
         elif self.underlying in multipliers.CBOE_MULTIPLIERS:
             return "IndexOption"
         elif self.putcall:
-            return ("NonEquityOption"
-                    if self.underlying in NONEQUITY_UNDS
-                    else "EquityOption")
+            return (
+                "NonEquityOption"
+                if self.underlying in NONEQUITY_UNDS
+                else "EquityOption"
+            )
         else:
-            return ("Collectibles"
-                    if self.underlying in COLLECTIBLES_UNDS
-                    else "Equity")
+            return "Collectibles" if self.underlying in COLLECTIBLES_UNDS else "Equity"
 
     def is_future(self) -> bool:
         return self.underlying.startswith("/")

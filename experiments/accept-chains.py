@@ -21,17 +21,27 @@ from johnny.base.etl import petl, Table
 
 
 @click.command()
-@click.option('--config', '-c', type=click.Path(exists=True),
-              help="Configuration filename. Default to $JOHNNY_CONFIG")
-@click.option('--status', '-s', default=None, type=chains_pb2.ChainStatus.Value,
-              help="Set the status on the given chains.")
-@click.option('--group', '-g', default=None,
-              help="Group to assign to chains.")
-@click.argument('chain_ids', nargs=-1)  # Chain ids to set group
-def main(config: Optional[str],
-         status: Optional[int],
-         group: Optional[str],
-         chain_ids: list[str]):
+@click.option(
+    "--config",
+    "-c",
+    type=click.Path(exists=True),
+    help="Configuration filename. Default to $JOHNNY_CONFIG",
+)
+@click.option(
+    "--status",
+    "-s",
+    default=None,
+    type=chains_pb2.ChainStatus.Value,
+    help="Set the status on the given chains.",
+)
+@click.option("--group", "-g", default=None, help="Group to assign to chains.")
+@click.argument("chain_ids", nargs=-1)  # Chain ids to set group
+def main(
+    config: Optional[str],
+    status: Optional[int],
+    group: Optional[str],
+    chain_ids: list[str],
+):
     "Find, process and print transactions."
 
     if not chain_ids:
@@ -54,9 +64,9 @@ def main(config: Optional[str],
         # Apply the modifications.
         chainslib.AcceptChain(chain, group, status)
 
-    with open(config.output.chains_db, 'w') as outfile:
+    with open(config.output.chains_db, "w") as outfile:
         outfile.write(configlib.ToText(chains_db))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main(obj={})

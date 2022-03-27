@@ -8,7 +8,7 @@ import re
 
 def GetAccountNumber(filename: str) -> str:
     """Get the account number."""
-    with open(filename, encoding='utf8') as infile:
+    with open(filename, encoding="utf8") as infile:
         line = infile.readline()
         # Note: There is a BOM in the front of the file.
         match = re.search(r"(Account|Position) Statement for (?:\d+\*+)?(\d+)", line)

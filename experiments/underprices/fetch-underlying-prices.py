@@ -31,27 +31,30 @@ from johnny.base import instrument
 from johnny.base.etl import petl
 
 
-Candle = collections.namedtuple('Candle', 'timestamp open low high close volume')
-Q = Decimal('0.00001')
+Candle = collections.namedtuple("Candle", "timestamp open low high close volume")
+Q = Decimal("0.00001")
 
 
 def price_history_to_arrays(history):
     """Convert response from GetPriceHistory to NumPy arrays."""
-    candles = history['candles']
+    candles = history["candles"]
     num = len(candles)
-    convert = lambda fname, dtype: numpy.fromiter((candle[fname] for candle in candles),
-                                                  dtype=dtype, count=num)
-    return Candle(convert('datetime', int)/1000,
-                  convert('open', float),
-                  convert('low', float),
-                  convert('high', float),
-                  convert('close', float),
-                  convert('volume', int))
+    convert = lambda fname, dtype: numpy.fromiter(
+        (candle[fname] for candle in candles), dtype=dtype, count=num
+    )
+    return Candle(
+        convert("datetime", int) / 1000,
+        convert("open", float),
+        convert("low", float),
+        convert("high", float),
+        convert("close", float),
+        convert("volume", int),
+    )
 
 
-def interpolate_price(candles: Candle,
-                      timestamp: int,
-                      debug: Optional[bool] = False) -> Optional[float]:
+def interpolate_price(
+    candles: Candle, timestamp: int, debug: Optional[bool] = False
+) -> Optional[float]:
     """Compute an interpolated price using the candles we happen to have."""
 
     # Find the closest two data points.
@@ -71,7 +74,7 @@ def interpolate_price(candles: Candle,
 
     # Convex interpolation.
     fraction = (timestamp - ts_before) / (ts_after - ts_before)
-    price = (1-fraction) * price_before + fraction * price_after
+    price = (1 - fraction) * price_before + fraction * price_after
     if ts_before == -numpy.inf or ts_after == +numpy.inf:
         return None
 
@@ -79,9 +82,17 @@ def interpolate_price(candles: Candle,
     dt_after = datetime.datetime.fromtimestamp(ts_after)
     dtime = datetime.datetime.fromtimestamp(timestamp)
     if debug:
-        print(dt_before, dtime, dt_after, " = ",
-              fraction, "   ",
-              price_before, price, price_after)
+        print(
+            dt_before,
+            dtime,
+            dt_after,
+            " = ",
+            fraction,
+            "   ",
+            price_before,
+            price,
+            price_after,
+        )
     return price
 
 
@@ -117,7 +128,8 @@ def clear_missing(database):
 
 
 _SPLITS_CACHE = {}
-_STOCK_RENAMES = {'LB': ('BBWI', datetime.date(2021, 8, 3))}
+_STOCK_RENAMES = {"LB": ("BBWI", datetime.date(2021, 8, 3))}
+
 
 def get_splits(underlying: str) -> List[Tuple[int, float]]:
     """Get split adjustment information as per the time of fetching."""
@@ -129,7 +141,9 @@ def get_splits(underlying: str) -> List[Tuple[int, float]]:
         if ticker.splits.empty:
             splits = []
         else:
-            timestamps = [int(dt.timestamp()) for dt in ticker.splits.index.to_pydatetime()]
+            timestamps = [
+                int(dt.timestamp()) for dt in ticker.splits.index.to_pydatetime()
+            ]
             split = list(ticker.splits.array)
             splits = list(zip(timestamps, split))
             _SPLITS_CACHE[underlying] = splits
@@ -137,15 +151,18 @@ def get_splits(underlying: str) -> List[Tuple[int, float]]:
 
 
 @click.command()
-@click.option('--config', '-c', type=click.Path(exists=True),
-              help="Configuration filename. Default to $JOHNNY_CONFIG")
-@click.option('--retry', is_flag=True, default=False,
-              help="Clear missing values before starting")
-@click.argument('database') # help="Location of DBM price database"
-def main(config: Optional[str],
-         retry: Optional[bool],
-         database: str):
-    logging.basicConfig(level=logging.INFO, format='%(levelname)-8s: %(message)s')
+@click.option(
+    "--config",
+    "-c",
+    type=click.Path(exists=True),
+    help="Configuration filename. Default to $JOHNNY_CONFIG",
+)
+@click.option(
+    "--retry", is_flag=True, default=False, help="Clear missing values before starting"
+)
+@click.argument("database")  # help="Location of DBM price database"
+def main(config: Optional[str], retry: Optional[bool], database: str):
+    logging.basicConfig(level=logging.INFO, format="%(levelname)-8s: %(message)s")
 
     if retry:
         clear_missing(database)
@@ -154,10 +171,11 @@ def main(config: Optional[str],
     config = configlib.ParseFile(filename)
     transactions = (
         petl.frompickle(config.output.transactions)
-        .applyfn(instrument.Expand, 'symbol')
-        .selectne('rowtype', 'Mark')
-        .selectin('instype', {'Equity', 'EquityOption'})
-        .cut('underlying', 'datetime'))
+        .applyfn(instrument.Expand, "symbol")
+        .selectne("rowtype", "Mark")
+        .selectin("instype", {"Equity", "EquityOption"})
+        .cut("underlying", "datetime")
+    )
     if 0:
         print(transactions.lookallstr())
         raise SystemExit
@@ -166,10 +184,10 @@ def main(config: Optional[str],
 
     with shelve.open(database) as pricedb:
         for row in transactions.records():
-            dtime = row['datetime']
-            symbol = row['underlying']
+            dtime = row["datetime"]
+            symbol = row["underlying"]
             key = "{}.{}".format(symbol, dtime)
-            if key.startswith('CLOV'):
+            if key.startswith("CLOV"):
                 print(key)
             if pricedb.get(key, None) is not None:
                 # value = pricedb[key]
@@ -179,21 +197,25 @@ def main(config: Optional[str],
                 #     pricedb[key] = (price, json, splits)
                 #     logging.info(f"Updated splits for {symbol}")
 
-                #logging.info(f"Skipping for {symbol}, {dtime}")
+                # logging.info(f"Skipping for {symbol}, {dtime}")
                 continue
 
             # Get price history.
             delta = datetime.timedelta(minutes=15)
             start = int((dtime - delta).timestamp() * 1000)
             end = int((dtime + delta).timestamp() * 1000)
-            hist = tdapi.GetPriceHistory(symbol=symbol,
-                                         frequency=5, frequencyType='minute',
-                                         startDate=start, endDate=end)
+            hist = tdapi.GetPriceHistory(
+                symbol=symbol,
+                frequency=5,
+                frequencyType="minute",
+                startDate=start,
+                endDate=end,
+            )
             if IsRateLimited(hist):
                 logging.info("Throttling for a few seconds; not retrying failed query.")
                 time.sleep(5)
                 continue
-            if not ('candles' in hist and hist['candles']):
+            if not ("candles" in hist and hist["candles"]):
                 logging.info(f"Empty for {symbol}, {dtime}: {hist}")
                 pricedb[key] = None
                 continue
@@ -214,5 +236,5 @@ def main(config: Optional[str],
             time.sleep(0.1)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

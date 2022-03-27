@@ -23,41 +23,41 @@ def GetPositions(filename: str) -> Table:
 
     table = (
         tablemap["POST"]
-
-        .cut('ClientAccountID', 'AssetClass', 'Symbol', 'Description', 'Quantity',
-             'MarkPrice', 'PositionValue', 'OpenPrice', 'CostBasisMoney',
-             'FifoPnlUnrealized', 'Side')
-
+        .cut(
+            "ClientAccountID",
+            "AssetClass",
+            "Symbol",
+            "Description",
+            "Quantity",
+            "MarkPrice",
+            "PositionValue",
+            "OpenPrice",
+            "CostBasisMoney",
+            "FifoPnlUnrealized",
+            "Side",
+        )
         # Clean up account name to match that from the transactions log.
         .rename("ClientAccountID", "account")
         .convert("account", lambda aid: "x{}".format(aid[3:5]))
-
         # Instrument type.
         .rename("AssetClass", "instype")
-        .convert("instype", {'STK': 'Equity'})
+        .convert("instype", {"STK": "Equity"})
         .rename("Symbol", "symbol")
         .rename("Description", "description")
-
         # Quantity.
         .rename("Quantity", "quantity")
         .convert("quantity", ToDecimal)
-
         # Prices.
         .rename("OpenPrice", "price")
         .convert("price", ToDecimal)
-
         .rename("MarkPrice", "mark")
         .convert("mark", ToDecimal)
-
         .rename("CostBasisMoney", "cost")
         .convert("cost", ToDecimal)
-
         .rename("PositionValue", "net_liq")
         .convert("net_liq", ToDecimal)
-
         # Add superfluous fields.
         .addfield("group", "")
-
         .cut(poslib.FIELDS)
     )
 

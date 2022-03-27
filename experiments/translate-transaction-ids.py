@@ -22,8 +22,9 @@ from johnny.base.etl import petl, Table
 
 
 @click.command()
-@click.option('--config', '-c',
-              help="Configuration filename. Default to $JOHNNY_CONFIG")
+@click.option(
+    "--config", "-c", help="Configuration filename. Default to $JOHNNY_CONFIG"
+)
 def main(config: Optional[str]):
     "Find, process and print transactions."
 
@@ -31,22 +32,23 @@ def main(config: Optional[str]):
     config = configlib.ParseFile(filename)
     chains_db = configlib.ReadChains(config.input.chains_db)
     logtables = discovery.ReadConfiguredInputs(config)
-    table = (logtables[configlib.Account.LogType.TRANSACTIONS]
-             .selectne('transaction_new_id', None))
+    table = logtables[configlib.Account.LogType.TRANSACTIONS].selectne(
+        "transaction_new_id", None
+    )
 
-    new_ids = list((table
-                    .values('transaction_new_id')))
+    new_ids = list((table.values("transaction_new_id")))
     assert len(list(new_ids)) == len(set(new_ids)), (
-        len(list(new_ids)), len(set(new_ids)))
+        len(list(new_ids)),
+        len(set(new_ids)),
+    )
 
-    mapping = (table
-               .lookup('transaction_id', 'transaction_new_id'))
+    mapping = table.lookup("transaction_id", "transaction_new_id")
 
     for chain in chains_db.chains:
         if not chain.ids:
             continue
         ids = list(chain.ids)
-        chain.ClearField('ids')
+        chain.ClearField("ids")
         for id in ids:
             try:
                 mapped = mapping[id]
@@ -58,10 +60,10 @@ def main(config: Optional[str]):
                 chain.ids.append(id)
 
     print(config)
-    #pp(mapping)
+    # pp(mapping)
 
-    #print(table.lookallstr())
+    # print(table.lookallstr())
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main(obj={})

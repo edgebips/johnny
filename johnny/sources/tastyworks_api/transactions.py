@@ -35,20 +35,22 @@ from johnny.sources.tastyworks_csv import symbols
 
 ZERO = Decimal(0)
 ONE = Decimal(1)
-Q2 = Decimal('0.01')
-Json = Union[Dict[str, 'Json'], List['Json'], str, int, float]
+Q2 = Decimal("0.01")
+Json = Union[Dict[str, "Json"], List["Json"], str, int, float]
 
 
 # Numerical fields appear as strings, and we convert them to Decimal instances.
 # These ones have '{name}-effect' fields providing the sign.
-NUMERICAL_FIELDS = ['clearing-fees',
-                    'proprietary-index-option-fees',
-                    'regulatory-fees',
-                    'commission',
-                    'value',
-                    'net-value']
+NUMERICAL_FIELDS = [
+    "clearing-fees",
+    "proprietary-index-option-fees",
+    "regulatory-fees",
+    "commission",
+    "value",
+    "net-value",
+]
 
-UNSIGNED_NUMERICAL_FIELDS = ['price']
+UNSIGNED_NUMERICAL_FIELDS = ["price"]
 
 
 def PreprocessTransactions(items: Iterator[Tuple[str, Json]]) -> Iterator[Json]:
@@ -56,16 +58,16 @@ def PreprocessTransactions(items: Iterator[Tuple[str, Json]]) -> Iterator[Json]:
 
     # This is a little easier than processing using petl.
     for key, txn in items:
-        if key.startswith('__'):
+        if key.startswith("__"):
             continue  # Skip special utility keys, like __latest__.
 
         for field in NUMERICAL_FIELDS:
             if field in txn:
                 value = txn[field]
-                effect = txn.pop(f'{field}-effect')
-                if effect == 'None':
-                    assert value == '0.0'
-                sign = -1 if effect == 'Debit' else +1
+                effect = txn.pop(f"{field}-effect")
+                if effect == "None":
+                    assert value == "0.0"
+                sign = -1 if effect == "Debit" else +1
                 txn[field] = Decimal(value) * sign
             else:
                 txn[field] = ZERO
@@ -84,101 +86,97 @@ def PreprocessTransactions(items: Iterator[Tuple[str, Json]]) -> Iterator[Json]:
 # The other types are ignored.
 ALLOW_TYPES = {
     # Futures trades.
-    ('Trade', 'Buy'): 'Trade',
-    ('Trade', 'Sell'): 'Trade',
-
+    ("Trade", "Buy"): "Trade",
+    ("Trade", "Sell"): "Trade",
     # Equity trades.
-    ('Trade', 'Buy to Close'): 'Trade',
-    ('Trade', 'Buy to Open'): 'Trade',
-    ('Trade', 'Sell to Close'): 'Trade',
-    ('Trade', 'Sell to Open'): 'Trade',
-
+    ("Trade", "Buy to Close"): "Trade",
+    ("Trade", "Buy to Open"): "Trade",
+    ("Trade", "Sell to Close"): "Trade",
+    ("Trade", "Sell to Open"): "Trade",
     # Expirations.
-    ('Receive Deliver', 'Expiration'): 'Expire',
-
+    ("Receive Deliver", "Expiration"): "Expire",
     # Stock actions.
-    ('Receive Deliver', 'Forward Split'): 'Trade',
-    ('Receive Deliver', 'Reverse Split'): 'Trade',
-    ('Receive Deliver', 'Symbol Change'): 'Trade',
-    ('Receive Deliver', 'Symbol Change'): 'Trade',
-
+    ("Receive Deliver", "Forward Split"): "Trade",
+    ("Receive Deliver", "Reverse Split"): "Trade",
+    ("Receive Deliver", "Symbol Change"): "Trade",
+    ("Receive Deliver", "Symbol Change"): "Trade",
     # Assignment and exercise.
-    ('Receive Deliver', 'Assignment'): 'Assign',
-    ('Receive Deliver', 'Exercise'): 'Exercise',
-    ('Receive Deliver', 'Cash Settled Assignment'): 'Assign',
-    ('Receive Deliver', 'Cash Settled Exercise'): 'Exercise',
-    ('Receive Deliver', 'Buy to Open'): 'Trade',
-    ('Receive Deliver', 'Sell to Open'): 'Trade',
-    ('Receive Deliver', 'Buy to Close'): 'Trade',
-    ('Receive Deliver', 'Sell to Close'): 'Trade',
-
+    ("Receive Deliver", "Assignment"): "Assign",
+    ("Receive Deliver", "Exercise"): "Exercise",
+    ("Receive Deliver", "Cash Settled Assignment"): "Assign",
+    ("Receive Deliver", "Cash Settled Exercise"): "Exercise",
+    ("Receive Deliver", "Buy to Open"): "Trade",
+    ("Receive Deliver", "Sell to Open"): "Trade",
+    ("Receive Deliver", "Buy to Close"): "Trade",
+    ("Receive Deliver", "Sell to Close"): "Trade",
     # Transfers.
-    ('Receive Deliver', 'ACAT'): 'Trade',
-    ('Receive Deliver', 'ACAT'): 'Trade',
+    ("Receive Deliver", "ACAT"): "Trade",
+    ("Receive Deliver", "ACAT"): "Trade",
 }
 
 OTHER_TYPES = {
-    ('Money Movement', 'Balance Adjustment'),
-    ('Money Movement', 'Credit Interest'),
+    ("Money Movement", "Balance Adjustment"),
+    ("Money Movement", "Credit Interest"),
     # Note: This contains amounts affecting balance for futures.
-    ('Money Movement', 'Mark to Market'),
-    ('Money Movement', 'Transfer'),
-    ('Money Movement', 'Withdrawal'),
-    ('Money Movement', 'Deposit'),
-    ('Money Movement', 'Dividend'),
-    ('Money Movement', 'Fee'),
+    ("Money Movement", "Mark to Market"),
+    ("Money Movement", "Transfer"),
+    ("Money Movement", "Withdrawal"),
+    ("Money Movement", "Deposit"),
+    ("Money Movement", "Dividend"),
+    ("Money Movement", "Fee"),
 }
+
 
 def GetRowType(rec: Record) -> bool:
     """Predicate to filter out row types we're not interested in."""
-    typekey = (rec['transaction-type'], rec['transaction-sub-type'])
-    assert typekey in ALLOW_TYPES or typekey in OTHER_TYPES, (
-        rec)
+    typekey = (rec["transaction-type"], rec["transaction-sub-type"])
+    assert typekey in ALLOW_TYPES or typekey in OTHER_TYPES, rec
     return ALLOW_TYPES.get(typekey, None)
 
 
 def MapAccountNumber(number: str) -> str:
     """Map the account number to the configured value."""
-    return f'x{number[-4:]}' # TODO(blais): Implement the translation to
-                             # nickname from the configuration.
+    return f"x{number[-4:]}"  # TODO(blais): Implement the translation to
+    # nickname from the configuration.
 
 
 LOCAL_ZONE = tzlocal.get_localzone()
 
+
 def ParseTime(row: Record):
     """Parse datetime and convert to local time."""
-    utctime = parser.parse(row['executed-at']).replace(microsecond=0)
+    utctime = parser.parse(row["executed-at"]).replace(microsecond=0)
     localtime = utctime.astimezone(LOCAL_ZONE)
-    #assert utctime == localtime, (utctime, localtime)
+    # assert utctime == localtime, (utctime, localtime)
     return localtime.replace(tzinfo=None)
 
 
 def GetPosEffect(rec: Record) -> Optional[str]:
     """Get position effect."""
-    if rec.rowtype in {'Expire', 'Exercise', 'Assign'}:
-        return 'CLOSING'
-    action = rec['action']
-    if action.endswith('to Open'):
-        return 'OPENING'
-    elif action.endswith('to Close'):
-        return 'CLOSING'
+    if rec.rowtype in {"Expire", "Exercise", "Assign"}:
+        return "CLOSING"
+    action = rec["action"]
+    if action.endswith("to Open"):
+        return "OPENING"
+    elif action.endswith("to Close"):
+        return "CLOSING"
     else:
-        return ''
+        return ""
 
 
 def GetInstruction(rec: Record) -> Optional[str]:
     """Get instruction."""
-    action = rec['action']
+    action = rec["action"]
     if action is None:
-        return ''
-    elif action.startswith('Buy'):
-        return 'BUY'
-    elif action.startswith('Sell'):
-        return 'SELL'
-    elif rec.rowtype == 'Expire':
+        return ""
+    elif action.startswith("Buy"):
+        return "BUY"
+    elif action.startswith("Sell"):
+        return "SELL"
+    elif rec.rowtype == "Expire":
         # The signs aren't set. We're going to use this value temporarily, and
         # once the stream is done, we compute and map the signs {e80fcd889943}.
-        return ''
+        return ""
     else:
         raise NotImplementedError("Unknown instruction: '{}'".format(rec.Action))
 
@@ -187,22 +185,23 @@ def ConvertSafeInteger(value_str: str) -> Decimal:
     """Convert and round integer values to decimal and leave fractional alone.
     This is only used to trim unnecessary trailing ".0" suffixes.
     """
-    rounded_value_str = re.sub(r'\.0$', '', value_str)
+    rounded_value_str = re.sub(r"\.0$", "", value_str)
     return Decimal(rounded_value_str)
 
 
 def CalculateFees(rec: Record) -> Decimal:
     """Add up the fees."""
-    return (rec['clearing-fees'] +
-            rec['proprietary-index-option-fees'] +
-            rec['regulatory-fees'])
+    return (
+        rec["clearing-fees"]
+        + rec["proprietary-index-option-fees"]
+        + rec["regulatory-fees"]
+    )
 
 
 def CalculateCost(rec: Record) -> Decimal:
     """Calculate the raw cost."""
-    derived_net_value = rec['value'] + rec['commissions'] + rec['fees']
-    assert rec['net-value'] == derived_net_value, (
-        rec['net-value'], derived_net_value)
+    derived_net_value = rec["value"] + rec["commissions"] + rec["fees"]
+    assert rec["net-value"] == derived_net_value, (rec["net-value"], derived_net_value)
 
     # We need to handle opening and closing cost on Future differently (but not
     # FutureOption types) because much of the value for those contracts is
@@ -212,18 +211,18 @@ def CalculateCost(rec: Record) -> Decimal:
     # little bits of daily transfers to a variable number of shares, and it's
     # not meaningful anyway. Cash equivalent notional is easier to think about,
     # and renders nicer logs.
-    value = rec['value']
-    if rec['instrument-type'] == 'Future':
-        assert rec['action'] in {"Buy", "Sell"}
-        sign = -1 if rec['action'] == 'Buy' else +1
-        value = sign * rec['quantity'] * rec.instrument.multiplier * rec['price']
+    value = rec["value"]
+    if rec["instrument-type"] == "Future":
+        assert rec["action"] in {"Buy", "Sell"}
+        sign = -1 if rec["action"] == "Buy" else +1
+        value = sign * rec["quantity"] * rec.instrument.multiplier * rec["price"]
 
     return value
 
 
 def CalculatePrice(value: str, rec: Record) -> Decimal:
     """Clean up prices and calculate them where missing."""
-    if rec['transaction-sub-type'] in {'Forward Split', 'Reverse Split'}:
+    if rec["transaction-sub-type"] in {"Forward Split", "Reverse Split"}:
         return abs(rec.cost / rec.quantity / rec.instrument.multiplier)
     if value is None:
         return ZERO
@@ -236,14 +235,14 @@ def GetOrderId(order_id: Optional[int], rec: Record) -> str:
         return str(order_id)
     else:
         assert rec.transaction_id
-        return 'w{}'.format(rec.transaction_id)
+        return "w{}".format(rec.transaction_id)
 
 
 def GetTransactions(filename: str) -> Tuple[Table, Table]:
     """Open a local database of Tastyworks API transactions and normalize it."""
 
     # Convert numerical fields to decimals.
-    db = shelve.open(filename, 'r')
+    db = shelve.open(filename, "r")
     items = PreprocessTransactions(db.items())
 
     # Filter rows that we care about. Note that this removes mark-to-market
@@ -252,71 +251,62 @@ def GetTransactions(filename: str) -> Tuple[Table, Table]:
         petl.fromdicts(items)
         # Add row type and filter out the row types we're not interested
         # in.
-        .addfield('rowtype', GetRowType)
-        .select(lambda r: r.rowtype is not None)
+        .addfield("rowtype", GetRowType).select(lambda r: r.rowtype is not None)
     )
 
-    table = (filt_items
-
-             # Map account number.
-             .convert('account-number', MapAccountNumber)
-             .rename('account-number', 'account')
-
-             # Rename transaction and convert to string.
-             .convert('id', str)
-             .rename('id', 'transaction_id')
-
-             # Parse datetime and convert to local time.
-             .addfield('datetime', ParseTime)
-             .cutout('executed-at')
-
-             # Reuse the original order ids.
-             .rename('order-id', 'order_id')
-             .convert('order_id', GetOrderId, pass_row=True)
-
-             # Parse the symbol.
-             .rename('symbol', 'symbol-orig')
-             .addfield('instrument', lambda r: symbols.ParseSymbol(r['symbol-orig'],
-                                                                   r['instrument-type']))
-             .addfield('symbol', lambda r: str(r.instrument))
-
-             # Split 'action' field.
-             .addfield('effect', GetPosEffect)
-             .addfield('instruction', GetInstruction)
-
-             # Safely convert quantity field to a numerical value.
-             .convert('quantity', ConvertSafeInteger)
-
-             # Rename commissions.
-             .rename('commission', 'commissions')
-
-             # Compute total fees.
-             .addfield('fees', CalculateFees)
-
-             # Compute cost and verify the totals.
-             .addfield('cost', CalculateCost)
-
-             # Convert price to decimal.
-             .convert('price', CalculatePrice, pass_row=True)
-
-             #.cut(txnlib.FIELDS) TODO(blais): Restore this.
-             .cut('account',
-                  'transaction_id',
-                  'datetime',
-                  'rowtype',
-                  'order_id',
-                  'symbol',
-                  'effect',
-                  'instruction',
-                  'quantity',
-                  'price',
-                  'cost',
-                  'commissions',
-                  'fees',
-                  'description')
-
-             .sort(('account', 'datetime', 'description', 'quantity'))
-             )
+    table = (
+        filt_items
+        # Map account number.
+        .convert("account-number", MapAccountNumber)
+        .rename("account-number", "account")
+        # Rename transaction and convert to string.
+        .convert("id", str)
+        .rename("id", "transaction_id")
+        # Parse datetime and convert to local time.
+        .addfield("datetime", ParseTime)
+        .cutout("executed-at")
+        # Reuse the original order ids.
+        .rename("order-id", "order_id")
+        .convert("order_id", GetOrderId, pass_row=True)
+        # Parse the symbol.
+        .rename("symbol", "symbol-orig")
+        .addfield(
+            "instrument",
+            lambda r: symbols.ParseSymbol(r["symbol-orig"], r["instrument-type"]),
+        )
+        .addfield("symbol", lambda r: str(r.instrument))
+        # Split 'action' field.
+        .addfield("effect", GetPosEffect)
+        .addfield("instruction", GetInstruction)
+        # Safely convert quantity field to a numerical value.
+        .convert("quantity", ConvertSafeInteger)
+        # Rename commissions.
+        .rename("commission", "commissions")
+        # Compute total fees.
+        .addfield("fees", CalculateFees)
+        # Compute cost and verify the totals.
+        .addfield("cost", CalculateCost)
+        # Convert price to decimal.
+        .convert("price", CalculatePrice, pass_row=True)
+        # .cut(txnlib.FIELDS) TODO(blais): Restore this.
+        .cut(
+            "account",
+            "transaction_id",
+            "datetime",
+            "rowtype",
+            "order_id",
+            "symbol",
+            "effect",
+            "instruction",
+            "quantity",
+            "price",
+            "cost",
+            "commissions",
+            "fees",
+            "description",
+        )
+        .sort(("account", "datetime", "description", "quantity"))
+    )
 
     return table
 
@@ -327,12 +317,12 @@ def Import(source: str, config: configlib.Config) -> Table:
 
 
 @click.command()
-@click.argument('database', type=click.Path(resolve_path=True, exists=True))
+@click.argument("database", type=click.Path(resolve_path=True, exists=True))
 def main(database: str):
     """Normalizer for database of unprocessed transactions to normalized form."""
     table = GetTransactions(database)
     print(table.lookallstr())
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

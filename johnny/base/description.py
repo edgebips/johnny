@@ -46,6 +46,7 @@ def build_globex_description_map(db: Table) -> Mapping[str, str]:
         .lookupone("Globex", "Product")
     )
 
+
 def build_options_description_map(db: Table) -> Mapping[str, str]:
     # In the standardized symbology, we don't have the option wrap code, so we
     # look it up from CME using the expiration date.
@@ -54,7 +55,7 @@ def build_options_description_map(db: Table) -> Mapping[str, str]:
         .cut("Underlying", "Expiration", "Product")
         .convert("Expiration", lambda v: dateutil.parser.parse(v).date())
         .distinct()
-        #.lookupone(["Underlying", "Expiration"], "Product")
+        # .lookupone(["Underlying", "Expiration"], "Product")
         .lookupone("Underlying", "Product")
     )
 
@@ -67,7 +68,7 @@ def futures_term(month: str, year: int):
 
 def options_term(r: Record):
     """Produce a description of the options term."""
-    putcall = 'Put' if r.putcall[0] == 'P' else 'Call' if r.putcall[0] == 'C' else ""
+    putcall = "Put" if r.putcall[0] == "P" else "Call" if r.putcall[0] == "C" else ""
     return f"{r.expiration:%m/%d/%y} {putcall} {r.strike} "
 
 
@@ -76,21 +77,23 @@ def build_contract_getter(db: Table, settle_year: int):
     options_map = build_options_description_map(db)
 
     def getter(r: Record):
-        if r.instype == 'Future':
+        if r.instype == "Future":
             product, month, year = split_month(r.symbol, settle_year)
-            fdescription = (futures_map.get(product[1:]) or
-                            xdescriptions.CBOE_DESCRIPTIONS.get(product[1:]))
+            fdescription = futures_map.get(
+                product[1:]
+            ) or xdescriptions.CBOE_DESCRIPTIONS.get(product[1:])
             term = futures_term(month, year)
             description = f"{fdescription} - {term}"
 
-        elif r.instype == 'FutureOption':
+        elif r.instype == "FutureOption":
             product, month, year = split_month(r.underlying, settle_year)
-            fdescription = (futures_map.get(product[1:]) or
-                            xdescriptions.CBOE_DESCRIPTIONS.get(product[1:]))
+            fdescription = futures_map.get(
+                product[1:]
+            ) or xdescriptions.CBOE_DESCRIPTIONS.get(product[1:])
             term = options_term(r)
             description = f"{fdescription} Option - {term}"
 
-        elif r.instype == 'IndexOption':
+        elif r.instype == "IndexOption":
             fdescription = xdescriptions.CBOE_DESCRIPTIONS.get(r.underlying)
             term = options_term(r)
             description = f"{fdescription} Option - {term}"
@@ -115,9 +118,9 @@ def main(filename: str):
     db = mulmat.read_cme_database()
     contract_getter = build_contract_getter(db, dt.date.today().year)
 
-    table = (table
-             .addfield("description", partial(get_description, contract_getter))
-             .applyfn(instrument.Shrink))
+    table = table.addfield(
+        "description", partial(get_description, contract_getter)
+    ).applyfn(instrument.Shrink)
     print(table.lookallstr())
 
 

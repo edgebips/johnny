@@ -26,5 +26,8 @@ def log_time(operation_name, log_timings, indent=0):
     yield time1
     time2 = time.time()
     if log_timings:
-        log_timings("Operation: {:48} Time: {}{:6.0f} ms".format(
-            "'{}'".format(operation_name), '      '*indent, (time2 - time1) * 1000))
+        log_timings(
+            "Operation: {:48} Time: {}{:6.0f} ms".format(
+                "'{}'".format(operation_name), "      " * indent, (time2 - time1) * 1000
+            )
+        )

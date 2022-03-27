@@ -12,6 +12,7 @@ from johnny.base import config as configlib
 from johnny.base import discovery
 from johnny.base import instrument
 from johnny.base.etl import Table, Record
+
 Instrument = instrument.Instrument
 
 
@@ -50,19 +51,25 @@ def FetchPricesFromTransactionsLog(transactions: Table) -> Mapping[str, Decimal]
     semi-reasonable prices (i.e., without accessing any network resource), just
     taking the most recent price you've seen in the log. A fallback of sorts.
     """
+
     def fn(symbol, group):
         rec = last(group)
         return symbol, rec.price, rec.datetime
-    table = (transactions
-             .sort('datetime')
-             .select(lambda r: r.rowtype not in {'Open', 'Mark'})
-             .rowreduce('symbol', fn, header=['symbol', 'price', 'datetime']))
-    return {key: (value, 'transactions')
-            for key, value in table.lookupone('symbol', 'price').items()}
+
+    table = (
+        transactions.sort("datetime")
+        .select(lambda r: r.rowtype not in {"Open", "Mark"})
+        .rowreduce("symbol", fn, header=["symbol", "price", "datetime"])
+    )
+    return {
+        key: (value, "transactions")
+        for key, value in table.lookupone("symbol", "price").items()
+    }
 
 
-def GetPriceMap(transactions: Table,
-                config: configlib.Config) -> Mapping[str, Tuple[Decimal, str]]:
+def GetPriceMap(
+    transactions: Table, config: configlib.Config
+) -> Mapping[str, Tuple[Decimal, str]]:
     """Produce a mapping of (symbol, mark-price)."""
     # Read prices from the transactions log itself. This is the baseline.
     price_map = FetchPricesFromTransactionsLog(transactions)
@@ -70,14 +77,14 @@ def GetPriceMap(transactions: Table,
     # Read the positions files as a source of prices and override the price map
     # with those prices where present.
     logtables = discovery.ReadConfiguredInputs(
-        config, configlib.Account.LogType.POSITIONS)
+        config, configlib.Account.LogType.POSITIONS
+    )
     positions = logtables.get(configlib.Account.LogType.POSITIONS, None)
     if positions:
-        pos_price_map = (positions
-                         .convert('mark', abs)
-                         .lookupone('symbol', 'mark'))
-        pos_price_map = {key: (value, 'positions')
-                         for key, value in pos_price_map.items()}
+        pos_price_map = positions.convert("mark", abs).lookupone("symbol", "mark")
+        pos_price_map = {
+            key: (value, "positions") for key, value in pos_price_map.items()
+        }
         price_map.update(pos_price_map)
 
     return price_map
@@ -88,28 +95,29 @@ def Mark(transactions: Table, price_map: Mapping[str, Tuple[Decimal, str]]) -> T
 
     def set_mark(price: Decimal, row: Record) -> Decimal:
         "Set mark price from price database."
-        if row.rowtype != 'Mark':
+        if row.rowtype != "Mark":
             return price
-        price, _ = price_map.get(row.symbol, (price, 'N/A'))
+        price, _ = price_map.get(row.symbol, (price, "N/A"))
         return price
 
     def set_description(description: str, row: Record) -> Decimal:
         "Place the source of the price in the description."
-        if row.rowtype != 'Mark':
+        if row.rowtype != "Mark":
             return description
-        _, source = price_map.get(row.symbol, (None, 'N/A'))
+        _, source = price_map.get(row.symbol, (None, "N/A"))
         return f"{description} (source: {source})"
 
     def get_cost(cost: Decimal, rec: Record) -> Decimal:
         "Calculate cost from updated price."
-        if rec.rowtype != 'Mark':
+        if rec.rowtype != "Mark":
             return cost
-        sign = -1 if rec.instruction == 'BUY' else +1
+        sign = -1 if rec.instruction == "BUY" else +1
         return sign * rec.quantity * rec.price * rec.multiplier
 
-    return (transactions
-            .convert('price', set_mark, pass_row=True)
-            .convert('description', set_description, pass_row=True)
-            .applyfn(instrument.Expand, 'symbol')
-            .convert('cost', get_cost, pass_row=True)
-            .applyfn(instrument.Shrink))
+    return (
+        transactions.convert("price", set_mark, pass_row=True)
+        .convert("description", set_description, pass_row=True)
+        .applyfn(instrument.Expand, "symbol")
+        .convert("cost", get_cost, pass_row=True)
+        .applyfn(instrument.Shrink)
+    )

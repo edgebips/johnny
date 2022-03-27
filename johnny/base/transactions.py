@@ -19,16 +19,23 @@ ZERO = Decimal(0)
 # Transaction table field names.
 FIELDS = [
     # Event info
-    'account', 'transaction_id', 'datetime', 'rowtype', 'order_id',
-
+    "account",
+    "transaction_id",
+    "datetime",
+    "rowtype",
+    "order_id",
     # Instrument info
-    'symbol',
-
+    "symbol",
     # Balance info
-    'effect', 'instruction', 'quantity', 'price', 'cost', 'commissions', 'fees',
-
+    "effect",
+    "instruction",
+    "quantity",
+    "price",
+    "cost",
+    "commissions",
+    "fees",
     # Descriptive info
-    'description',
+    "description",
 ]
 
 
@@ -38,23 +45,22 @@ class ValidationError(Exception):
 
 def IsZoneAware(d: datetime.datetime) -> bool:
     """Return true if the time is timezone aware."""
-    return (d.tzinfo is not None and
-            d.tzinfo.utcoffset(d) is not None)
+    return d.tzinfo is not None and d.tzinfo.utcoffset(d) is not None
 
 
 # Valid row types.
-ROW_TYPES = {'Trade', 'Expire', 'Open', 'Mark', 'Assign', 'Exercise'}
+ROW_TYPES = {"Trade", "Expire", "Open", "Mark", "Assign", "Exercise"}
 
 # Valid effect types. The empty string is used to indicate "unknown".
-EFFECT = {'OPENING', 'CLOSING', ''}
+EFFECT = {"OPENING", "CLOSING", ""}
 
 # Valid instructions.
-INSTRUCTION = {'BUY', 'SELL'}
+INSTRUCTION = {"BUY", "SELL"}
 
 
 def ValidateFieldNames(table: Table):
     """Validate the field names and their order."""
-    if list(table.header())[:len(FIELDS)] != FIELDS:
+    if list(table.header())[: len(FIELDS)] != FIELDS:
         raise ValidationError("Invalid field names on table:\n{}".format(table))
 
 
@@ -75,8 +81,8 @@ def ValidateTransactionRecord(r: Record):
     assert isinstance(r.datetime, datetime.datetime)
     assert not IsZoneAware(r.datetime)
     assert r.rowtype in ROW_TYPES
-    assert r.effect in EFFECT or r.effect == '', r
-    assert r.instruction in INSTRUCTION or r.instruction == '', r
+    assert r.effect in EFFECT or r.effect == "", r
+    assert r.instruction in INSTRUCTION or r.instruction == "", r
 
     # Check the normalized symbol.
     assert r.symbol and isinstance(r.symbol, str)
@@ -85,7 +91,9 @@ def ValidateTransactionRecord(r: Record):
 
     # A quantity of 'None' is allowed if the logs don't include the expiration
     # quantity, and is filled in automatically by matching code.
-    assert r.quantity is None or (isinstance(r.quantity, Decimal) and r.quantity >= ZERO), r
+    assert r.quantity is None or (
+        isinstance(r.quantity, Decimal) and r.quantity >= ZERO
+    ), r
     assert isinstance(r.price, Decimal)
     assert isinstance(r.cost, Decimal)
     assert isinstance(r.commissions, Decimal)

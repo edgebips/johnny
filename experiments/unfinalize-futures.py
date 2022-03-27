@@ -12,7 +12,7 @@ __license__ = "GNU GPLv2"
 import logging
 import csv
 import re
-from typing import List,Optional
+from typing import List, Optional
 
 import click
 
@@ -21,27 +21,33 @@ from johnny.base import instrument
 from johnny.base import chains_pb2
 from johnny.base import chains as chainslib
 from johnny.base import config as configlib
+
 ChainStatus = chains_pb2.ChainStatus
 Chain = chains_pb2.Chain
 
 
 def Unfinalize(chain: Chain):
     """Mutate in-place unfinalizing the chain."""
-    if (chain.status == ChainStatus.FINAL and
-        (chain.group in {'Error', 'Scalp', 'Experiments'} or
-         chain.strategy in {'Short', 'Pairs', 'CallSpread', 'PutSpread'})):
+    if chain.status == ChainStatus.FINAL and (
+        chain.group in {"Error", "Scalp", "Experiments"}
+        or chain.strategy in {"Short", "Pairs", "CallSpread", "PutSpread"}
+    ):
         return
     print(chain.group, chain.strategy)
 
     chain.auto_ids.extend(chain.ids)
-    chain.ClearField('ids')
+    chain.ClearField("ids")
     if chain.status == ChainStatus.FINAL:
         chain.status = ChainStatus.CLOSED
 
 
 @click.command()
-@click.option('--config', '-c', type=click.Path(exists=True),
-              help="Configuration filename. Default to $JOHNNY_CONFIG")
+@click.option(
+    "--config",
+    "-c",
+    type=click.Path(exists=True),
+    help="Configuration filename. Default to $JOHNNY_CONFIG",
+)
 def main(config: Optional[str]):
     # Read chains DB.
     filename = configlib.GetConfigFilenameWithDefaults(config)
@@ -50,14 +56,15 @@ def main(config: Optional[str]):
 
     for chain in chains_db.chains:
         if re.match(
-                r".*\.(6[ABCEJ]|NQ|ES|RTY|NG|CL|GC|SI|HG|PL|GE|Z[TFNB])[FGHJKMNQUVXZ]21$",
-                chain.chain_id):
+            r".*\.(6[ABCEJ]|NQ|ES|RTY|NG|CL|GC|SI|HG|PL|GE|Z[TFNB])[FGHJKMNQUVXZ]21$",
+            chain.chain_id,
+        ):
             logging.info(f"Unfinalizing chain '{chain.chain_id}'")
             Unfinalize(chain)
 
-    with open(config.output.chains_db, 'w') as outfile:
+    with open(config.output.chains_db, "w") as outfile:
         outfile.write(configlib.ToText(chains_db))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main(obj={})

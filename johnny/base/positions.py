@@ -16,7 +16,14 @@ ParserFn = Callable[[str], Table]
 
 # Transaction table field names.
 FIELDS = [
-    'account', 'group', 'symbol', 'quantity', 'price', 'mark', 'cost', 'net_liq',
+    "account",
+    "group",
+    "symbol",
+    "quantity",
+    "price",
+    "mark",
+    "cost",
+    "net_liq",
 ]
 
 
@@ -26,7 +33,7 @@ class ValidationError(Exception):
 
 def ValidateFieldNames(table: Table):
     """Validate the field names and their order."""
-    if list(table.header())[:len(FIELDS)] != FIELDS:
+    if list(table.header())[: len(FIELDS)] != FIELDS:
         raise ValidationError("Invalid field names on table:\n{}".format(table))
 
 
