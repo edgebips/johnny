@@ -36,6 +36,7 @@ from johnny.base import chains as chainslib
 from johnny.base import config as configlib
 from johnny.base import instrument
 from johnny.base import mark
+from johnny.base import match
 from johnny.base import recap as recaplib
 from johnny.base.etl import petl, Table, Record
 ChainStatus = chainslib.ChainStatus
@@ -292,6 +293,9 @@ def chain(chain_id: str):
             .selecteq('chain_id', chain_id))
     txns = instrument.Expand(txns, 'symbol')
 
+    # Get the corresponding set of matches.
+    matches = match.GetChainMatchesFromTransactions(txns, match.ShortMethod.INVERT)
+
     # Split up P/L from static and dynamic deltas.
     static, dynamic = (txns
                        .biselect(lambda r: r.instype in {'Equity', 'Future', 'Crypto'}))
@@ -303,9 +307,6 @@ def chain(chain_id: str):
         return next(iter(values)).quantize(Q)
     pnl_static = agg_cost(static)
     pnl_dynamic = agg_cost(dynamic)
-
-
-
 
     # TODO(blais): Isolate this to a function.
     if 0:
@@ -320,6 +321,7 @@ def chain(chain_id: str):
         chain=ToHtmlString(chain, 'chain_summary'),
         chain_proto=flask.url_for('chain_proto', chain_id=chain_id),
         transactions=ToHtmlString(txns, 'chain_transactions'),
+        matches=ToHtmlString(matches, 'chain_matches'),
         history=history_html,
         graph=flask.url_for('chain_graph', chain_id=chain_id),
         xrefs=chain_obj.xrefs,
