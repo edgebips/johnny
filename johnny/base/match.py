@@ -53,30 +53,42 @@ positions can be inserted.
 __copyright__ = "Copyright (C) 2021  Martin Blais"
 __license__ = "GNU GPLv2"
 
-import datetime
+from decimal import Decimal
+from functools import partial
+from typing import List, Mapping, NamedTuple, Optional
 import collections
+import datetime
+import enum
 import hashlib
 import itertools
-from decimal import Decimal
-from typing import Mapping, NamedTuple, Optional
 
-from johnny.base.etl import petl, AssertColumns, Table
+from johnny.base.etl import petl, AssertColumns, Record, Table
 from johnny.base import instrument
 from johnny.base import inventories
 
 
 ZERO = Decimal(0)
+Q = Decimal("0.01")
+
+
+class ShortMethod(enum.Enum):
+    NONE = "none"
+    INVERT = "invert"
+    NULLIFY = "nullify"
 
 
 class InstKey(NamedTuple):
     """Instrument key."""
+
     account: str
     symbol: str
 
 
-def Process(transactions: Table,
-            mark_time: Optional[datetime.datetime]=None,
-            debug: bool=False) -> Table:
+def Process(
+    transactions: Table,
+    mark_time: Optional[datetime.datetime] = None,
+    debug: bool = False,
+) -> Table:
     """Run state-based processing over the transactions log.
 
     Args:
@@ -86,48 +98,51 @@ def Process(transactions: Table,
       A fixed up table of processed, transformed and normalized transactions, as
       per the description of this module.
     """
-    AssertColumns(transactions,
-                  ('account', str),
-                  ('transaction_id', str),
-                  ('datetime', datetime.datetime),
-                  ('rowtype', str),
-                  ('order_id', str),
-                  ('symbol', str),
-                  ('effect', str),
-                  ('instruction', str),
-                  ('quantity', Decimal),
-                  ('price', Decimal),
-                  ('cost', Decimal),
-                  ('commissions', Decimal),
-                  ('fees', Decimal),
-                  ('description', str))
+    AssertColumns(
+        transactions,
+        ("account", str),
+        ("transaction_id", str),
+        ("datetime", datetime.datetime),
+        ("rowtype", str),
+        ("order_id", str),
+        ("symbol", str),
+        ("effect", str),
+        ("instruction", str),
+        ("quantity", Decimal),
+        ("price", Decimal),
+        ("cost", Decimal),
+        ("commissions", Decimal),
+        ("fees", Decimal),
+        ("description", str),
+    )
 
-    invs = collections.defaultdict(lambda: inventories.OpenCloseFifoInventory(debug=debug))
+    invs = collections.defaultdict(
+        lambda: inventories.OpenCloseFifoInventory(debug=debug)
+    )
 
     # Accumulator for new records to output.
     new_rows = []
+
     def accum(nrec, _):
         new_rows.append(nrec)
 
     # Note: Unfortunately we require two sortings; one to ensure that inventory
     # matching is done in time order, and a final one to reorder the newly
     # synthesized outputs {123a4903c212}.
-    transactions = (transactions
-                    .addfield('match_id', '')
-                    .sort('datetime'))
+    transactions = transactions.addfield("match_id", "").sort("datetime")
     for rec in transactions.namedtuples():
         inv = invs[InstKey(rec.account, rec.symbol)]
 
-        if rec.rowtype in {'Trade', 'Open'}:
-            if rec.effect == 'OPENING':
+        if rec.rowtype in {"Trade", "Open"}:
+            if rec.effect == "OPENING":
                 inv.opening(rec, accum)
-            elif rec.effect == 'CLOSING':
+            elif rec.effect == "CLOSING":
                 inv.closing(rec, accum)
             else:
                 assert not rec.effect
                 inv.match(rec, accum)
 
-        elif rec.rowtype in {'Expire', 'Assign', 'Exercise'}:
+        elif rec.rowtype in {"Expire", "Assign", "Exercise"}:
             inv.expire(rec, accum, rec.rowtype)
 
         else:
@@ -145,8 +160,9 @@ def Process(transactions: Table,
 
     # Note: We sort again to ensure newly synthesized rows are ordered in
     # datetime order {123a4903c212}.
-    return (petl.wrap(itertools.chain([transactions.header()], new_rows))
-            .sort('datetime'))
+    return petl.wrap(itertools.chain([transactions.header()], new_rows)).sort(
+        "datetime"
+    )
 
 
 def _GetMarkTime() -> datetime.datetime:
@@ -157,44 +173,51 @@ def _GetMarkTime() -> datetime.datetime:
 def _GetOrderIdFromSymbol(symbol: str, digest_size: int) -> str:
     """Make up a unique order id for an expiration."""
     md5 = hashlib.blake2s(digest_size=digest_size)
-    md5.update(symbol.encode('ascii'))
+    md5.update(symbol.encode("ascii"))
     return md5.hexdigest()
 
 
-def _AddMissingExpirations(invs: Mapping[str, Decimal],
-                           mark_time: datetime.datetime,
-                           accum: inventories.TxnAccumFn,
-                           prototype_row: tuple):
+def _AddMissingExpirations(
+    invs: Mapping[str, Decimal],
+    mark_time: datetime.datetime,
+    accum: inventories.TxnAccumFn,
+    prototype_row: tuple,
+):
     """Create missing expirations. Some sources miss them."""
 
     mark_date = mark_time.date()
     for key, inv in sorted(invs.items()):
         inst = instrument.FromString(key.symbol)
-        if (inst.expiration is not None and
-            inst.expiration < mark_date and
-            inv.quantity() != ZERO):
+        if (
+            inst.expiration is not None
+            and inst.expiration < mark_date
+            and inv.quantity() != ZERO
+        ):
             expiration_time = datetime.datetime.combine(
-                inst.expiration + datetime.timedelta(days=1),
-                datetime.time(0, 0, 0))
+                inst.expiration + datetime.timedelta(days=1), datetime.time(0, 0, 0)
+            )
             rec = prototype_row._replace(
                 transaction_id=_GetOrderIdFromSymbol(key.symbol, 6),
                 order_id=_GetOrderIdFromSymbol(key.symbol, 4),
                 account=key.account,
                 symbol=key.symbol,
                 datetime=expiration_time,
-                description=f'Synthetic expiration for {key.symbol}',
+                description=f"Synthetic expiration for {key.symbol}",
                 cost=ZERO,
                 price=ZERO,
                 quantity=ZERO,
                 commissions=ZERO,
-                fees=ZERO)
-            inv.expire(rec, accum, 'Expire')
+                fees=ZERO,
+            )
+            inv.expire(rec, accum, "Expire")
 
 
-def _AddMarkTransactions(invs: Mapping[str, Decimal],
-                         mark_time: datetime.datetime,
-                         accum: inventories.TxnAccumFn,
-                         prototype_row: tuple):
+def _AddMarkTransactions(
+    invs: Mapping[str, Decimal],
+    mark_time: datetime.datetime,
+    accum: inventories.TxnAccumFn,
+    prototype_row: tuple,
+):
     """Add mark transactions to close residual inventory positions."""
 
     for key, inv in sorted(invs.items()):
@@ -210,23 +233,163 @@ def _AddMarkTransactions(invs: Mapping[str, Decimal],
         # Compute a transaction id that will be invariable. Each symbol can only
         # be marked once, so we use a hash on that.
         h = hashlib.blake2s(digest_size=6)
-        h.update(key.account.encode('ascii'))
-        h.update(key.symbol.encode('ascii'))
-        transaction_id = 'mark-{}'.format(h.hexdigest()[:6])
+        h.update(key.account.encode("ascii"))
+        h.update(key.symbol.encode("ascii"))
+        transaction_id = "mark-{}".format(h.hexdigest()[:6])
 
         rec = prototype_row._replace(
             account=key.account,
             transaction_id=transaction_id,
             symbol=key.symbol,
             datetime=mark_time,
-            description=f'Mark for {key.symbol}',
+            description=f"Mark for {key.symbol}",
             cost=ZERO,
             price=ZERO,
             quantity=abs(pquantity),
             commissions=ZERO,
             fees=ZERO,
-            rowtype='Mark',
-            instruction=('SELL' if pquantity >= 0 else 'BUY'),
-            effect='CLOSING',
-            match_id=match_id)
-        accum(rec, 'MARK')
+            rowtype="Mark",
+            instruction=("SELL" if pquantity >= 0 else "BUY"),
+            effect="CLOSING",
+            match_id=match_id,
+        )
+        accum(rec, "MARK")
+
+
+def GetChainMatchesFromTransactions(txns: Table, short_method: ShortMethod) -> Table:
+    """Extract a list of trade matches from the list of transactions."""
+    chain_id = next(iter(txns.values("chain_id")))
+    ctxns = (
+        txns.movefield("chain_id", 0)
+        .movefield("account", 1)
+        .convert("chain_id", lambda _: "")
+        .sort(["match_id", "datetime"])
+        .applyfn(instrument.Expand, "symbol")
+    )
+
+    # Append a list of aggregated matches for the purpose of reporting.
+    funcs = {
+        "date_acquired": partial(_DateSub, "OPENING"),
+        "date_disposed": partial(_DateSub, "CLOSING"),
+        "date_min": ("datetime", lambda g: min(g).date()),
+        "date_max": ("datetime", lambda g: max(g).date()),
+        "cost": _CostOpened,
+        "proceeds": _CostClosed,
+        "futures_notional_open": _FuturesNotionalOpen,
+        "account": ("account", lambda g: next(iter(g))),
+        "symbol": ("symbol", lambda g: next(iter(set(g)))),
+        "instype": ("instype", lambda g: next(iter(set(g)))),
+        "quantity": _EstimateMatchQuantity,
+    }
+    cmatches = ctxns.aggregate("match_id", funcs)
+
+    # For futures contracts, remove notional value from cost and add the
+    # corresponding notional to proceeds. Opening futures positions should
+    # have 0 cost (excluding commissions and fees) and closing positions
+    # should be the matched P/L. This should produce proceeds and cost
+    # numbers much closer to those on the 1099s.
+    denotionalize_futures = True
+    if denotionalize_futures:
+        cmatches = cmatches.convert(
+            "cost",
+            lambda _, r: r.cost - r.futures_notional_open,
+            pass_row=True,
+        ).convert(
+            "proceeds",
+            lambda _, r: r.proceeds + r.futures_notional_open,
+            pass_row=True,
+        )
+
+    cmatches = (
+        cmatches.addfield("chain_id", chain_id)
+        .addfield("pnl", lambda r: (r.proceeds + r.cost).quantize(Q))
+        .convert("proceeds", lambda v: v.quantize(Q))
+        # Flip the signs on cost, so that pnl = proceeds - cost, not proceeds + cost.
+        .convert("cost", lambda v: -v.quantize(Q))
+    )
+
+    # Handle P/L specially on short options.
+    if short_method == ShortMethod.INVERT:
+        cmatches = _ShortOptionsInvert(cmatches)
+    elif short_method == ShortMethod.NULLIFY:
+        cmatches = _ShortOptionsNullify(cmatches)
+
+    return cmatches.cut(
+        # "description",
+        "date_acquired",
+        "date_disposed",
+        "cost",
+        "proceeds",
+        "pnl",
+        # "*",
+        "match_id",
+        "symbol",
+        "quantity",
+        "date_min",
+        "date_max",
+        # "instype",
+        # "underlying",
+        "account",
+        # "category",
+    )
+
+
+def _DateSub(effect: str, rows: List[Record]) -> str:
+    dtimes = set([r.datetime.date() for r in rows if r.effect == effect])
+    if len(dtimes) > 1:
+        return "Various"
+    else:
+        return next(iter(dtimes)).isoformat()
+
+
+def _EstimateMatchQuantity(rows: List[Record]) -> int:
+    return sum(r.quantity for r in rows if r.effect == "OPENING")
+
+
+def _CostOpened(rows: List[Record]) -> str:
+    return sum((r.cost + r.commissions + r.fees) for r in rows if r.effect == "OPENING")
+
+
+def _CostClosed(rows: List[Record]) -> str:
+    return sum((r.cost + r.commissions + r.fees) for r in rows if r.effect == "CLOSING")
+
+
+def _FuturesNotionalOpen(rows: List[Record]) -> Decimal:
+    return sum(r.cost for r in rows if r.instype == "Future" and r.effect == "OPENING")
+
+
+def _ShortOptionsNullify(matches: Table) -> Table:
+    """
+    On short options sales, nullify the cost basis as per the following rule:
+    https://support.tastyworks.com/support/solutions/articles/43000615420--0-00-cost-basis-on-short-equity-options-
+    """
+    return (
+        matches.addfield(
+            "null",
+            lambda r: (
+                r.instype == "EquityOption" and r.cost <= ZERO and r.proceeds <= ZERO
+            ),
+        )
+        .addfield("offset", lambda r: -r.cost)
+        .addfield("cost_null", lambda r: r.cost + r.offset if r.null else r.cost)
+        .addfield(
+            "proceeds_null", lambda r: r.proceeds + r.offset if r.null else r.proceeds
+        )
+        .cutout("null", "offset", "cost", "proceeds")
+        .rename({"cost_null": "cost", "proceeds_null": "proceeds"})
+    )
+
+
+def _ShortOptionsInvert(matches: Table) -> Table:
+    """
+    Invert sell-to-open then buy-to-close in order to have positive
+    numbers. We swap the dates, swap cost and proceeds and swap the signs
+    on them. The P/L should be the same.
+    """
+    return (
+        matches.addfield("inv", lambda r: r.cost <= ZERO and r.proceeds <= ZERO)
+        .addfield("cost_inv", lambda r: -r.proceeds if r.inv else r.cost)
+        .addfield("proceeds_inv", lambda r: -r.cost if r.inv else r.proceeds)
+        .cutout("inv", "cost", "proceeds")
+        .rename({"cost_inv": "cost", "proceeds_inv": "proceeds"})
+    )
