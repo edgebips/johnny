@@ -24,6 +24,11 @@ import numpy as np
 import networkx as nx
 import seaborn as sns
 
+try:
+    from johnny.exports import beanjohn
+except ImportError:
+    beanjohn = None
+
 sns.set()
 from matplotlib import pyplot
 import matplotlib
@@ -345,6 +350,40 @@ def chain(chain_id: str):
         pnl_dynamic=pnl_dynamic,
         **GetNavigation(),
     )
+
+
+# Note: This will never be called if we couldn't import Beancount, i.e., if
+# Beancount isn't installed. Beancount installation is optional to Johnny.
+def bchain(chain_id: str):
+    """Render the chain to beancount."""
+
+    # Get the chain object from the configuration.
+    chain_obj = STATE.chains_map.get(chain_id)
+
+    # Isolate the chain summary data.
+    chain = STATE.chains.selecteq("chain_id", chain_id)
+    chain = next(iter(chain.records()))
+
+    # Isolate the chain transactional data.
+    txns = STATE.transactions.selecteq("chain_id", chain_id)
+    txns = instrument.Expand(txns, "symbol")
+
+    buf = io.StringIO()
+    pr = partial(print, file=buf)
+    pr(";; Chain\n")
+    source = ""
+    beanjohn.RenderChainToBeancount(chain, source, buf)
+    pr("")
+    pr(";; Transactions\n")
+    beanjohn.RenderTransactionsToBeancount(chain, txns, source, buf)
+
+    response = flask.make_response(buf.getvalue(), 200)
+    response.mimetype = "text/plain"
+    return response
+
+
+if beanjohn:
+    app.route("/bchain/<chain_id>")(bchain)
 
 
 @app.route("/chain_proto/<chain_id>")

@@ -1,0 +1,57 @@
+#!/usr/bin/env python3
+"""Render Johnny chains to Beancount format.
+
+This can render a single transaction per chain, and possibly the full
+transaction detail, purely from Johnny transactions.
+"""
+
+__copyright__ = "Copyright (C) 2021  Martin Blais"
+__license__ = "GNU GPLv2"
+
+from decimal import Decimal
+from typing import List, Optional
+import logging
+import os
+import sys
+import io
+
+import click
+
+from johnny.base import chains as chainslib
+from johnny.base import config as configlib
+from johnny.base import discovery
+from johnny.base import instrument
+from johnny.base import mark
+from johnny.base.etl import petl, Table, Record, WrapRecords
+from johnny.exports import beanjohn
+
+
+@click.group()
+@click.option(
+    "--config", "-c", help="Configuration filename. Default to $JOHNNY_CONFIG"
+)
+@click.pass_context
+def cli(ctx: click.Context, config: Optional[str]):
+    "General purpose command-line printer tool."
+    logging.basicConfig(level=logging.INFO, format="%(levelname)-8s: %(message)s")
+    filename = configlib.GetConfigFilenameWithDefaults(config)
+    ctx.obj["filename"] = filename
+    ctx.obj["config"] = configlib.ParseFile(filename)
+
+
+@cli.command()
+@click.pass_context
+def chains(ctx: click.Context):
+    "Print out marked chains."
+    filename = ctx.obj["filename"]
+    config = ctx.obj["config"]
+    chains = petl.frompickle(config.output.chains)
+    chains = chains.convert('days', Decimal)
+    for chain in chains.records():
+        if chain.group != "Investment":
+            continue
+        beanjohn.RenderChainToBeancount(chain, filename, sys.stdout)
+
+
+if __name__ == "__main__":
+    cli(obj={})

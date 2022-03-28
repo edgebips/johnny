@@ -322,6 +322,7 @@ def GetChainMatchesFromTransactions(txns: Table, short_method: ShortMethod) -> T
         "cost",
         "proceeds",
         "pnl",
+        "long_short",
         # "*",
         "match_id",
         "symbol",
@@ -331,8 +332,8 @@ def GetChainMatchesFromTransactions(txns: Table, short_method: ShortMethod) -> T
         # "instype",
         # "underlying",
         "account",
+        "chain_id",
         # "category",
-        "long_short",
     )
 
 
