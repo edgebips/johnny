@@ -341,6 +341,7 @@ def chain(chain_id: str):
         comment=chain_obj.comment if chain_obj else "",
         chain=ToHtmlString(chain, "chain_summary"),
         chain_proto=flask.url_for("chain_proto", chain_id=chain_id),
+        bchain=flask.url_for("bchain", chain_id=chain_id),
         transactions=ToHtmlString(txns, "chain_transactions"),
         matches=ToHtmlString(matches, "chain_matches"),
         history=history_html,
@@ -368,14 +369,15 @@ def bchain(chain_id: str):
     txns = STATE.transactions.selecteq("chain_id", chain_id)
     txns = instrument.Expand(txns, "symbol")
 
+    # Render to text.
     buf = io.StringIO()
     pr = partial(print, file=buf)
     pr(";; Chain\n")
     source = ""
-    beanjohn.RenderChainToBeancount(chain, source, buf)
+    beanjohn.RenderChainToBeancount(STATE.config, chain, source, buf)
     pr("")
     pr(";; Transactions\n")
-    beanjohn.RenderTransactionsToBeancount(chain, txns, source, buf)
+    beanjohn.RenderTransactionsToBeancount(STATE.config, chain, txns, source, buf)
 
     response = flask.make_response(buf.getvalue(), 200)
     response.mimetype = "text/plain"
@@ -383,7 +385,7 @@ def bchain(chain_id: str):
 
 
 if beanjohn:
-    app.route("/bchain/<chain_id>")(bchain)
+    bchain = app.route("/bchain/<chain_id>")(bchain)
 
 
 @app.route("/chain_proto/<chain_id>")

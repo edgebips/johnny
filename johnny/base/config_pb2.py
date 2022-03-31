@@ -15,16 +15,20 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x18johnny/base/config.proto\x12\x06johnny\"\xba\x01\n\x06\x43onfig\x12\x1d\n\x05input\x18\x01 \x01(\x0b\x32\x0e.johnny.Inputs\x12\x1f\n\x06output\x18\x02 \x01(\x0b\x32\x0f.johnny.Outputs\x12\x44\n\x1c\x66utures_option_month_mapping\x18\x03 \x01(\x0b\x32\x1a.johnny.FutOptMonthMappingB\x02\x18\x01\x12*\n\x0cpresentation\x18\x04 \x01(\x0b\x32\x14.johnny.Presentation\">\n\x06Inputs\x12!\n\x08\x61\x63\x63ounts\x18\x01 \x03(\x0b\x32\x0f.johnny.Account\x12\x11\n\tchains_db\x18\x02 \x01(\t\"p\n\x07Outputs\x12\x11\n\tchains_db\x18\x01 \x01(\t\x12\x14\n\x0ctransactions\x18\x02 \x01(\t\x12\x18\n\x10transactions_csv\x18\x03 \x01(\t\x12\x0e\n\x06\x63hains\x18\x04 \x01(\t\x12\x12\n\nchains_csv\x18\x05 \x01(\t\"\xa9\x01\n\x12\x46utOptMonthMapping\x12/\n\x06months\x18\x01 \x03(\x0b\x32\x1f.johnny.FutOptMonthMapping.Item\x1a\x62\n\x04Item\x12\x16\n\x0eoption_product\x18\x01 \x01(\t\x12\x14\n\x0coption_month\x18\x02 \x01(\t\x12\x16\n\x0e\x66uture_product\x18\x03 \x01(\t\x12\x14\n\x0c\x66uture_month\x18\x04 \x01(\t\"R\n\x0cPresentation\x12\x15\n\rignore_groups\x18\x01 \x03(\t\x12\x13\n\x0bignore_tags\x18\x02 \x03(\t\x12\x16\n\x0eignore_mindate\x18\x03 \x01(\t\"\xef\x01\n\x07\x41\x63\x63ount\x12\x10\n\x08nickname\x18\x01 \x01(\t\x12\x11\n\tsheetname\x18\x07 \x01(\t\x12(\n\x07logtype\x18\x02 \x01(\x0e\x32\x17.johnny.Account.LogType\x12\x0e\n\x06module\x18\x03 \x01(\t\x12\x0e\n\x06source\x18\x04 \x01(\t\x12\x0f\n\x07initial\x18\x05 \x01(\t\x12\x38\n\x18\x65xclude_instrument_types\x18\x06 \x03(\x0e\x32\x16.johnny.InstrumentType\"*\n\x07LogType\x12\x10\n\x0cTRANSACTIONS\x10\x01\x12\r\n\tPOSITIONS\x10\x02*e\n\x0eInstrumentType\x12\x0b\n\x07Unknown\x10\x00\x12\n\n\x06\x45quity\x10\x01\x12\x10\n\x0c\x45quityOption\x10\x02\x12\n\n\x06\x46uture\x10\x03\x12\x10\n\x0c\x46utureOption\x10\x04\x12\n\n\x06\x43rypto\x10\x05')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x18johnny/base/config.proto\x12\x06johnny\"\xba\x01\n\x06\x43onfig\x12\x1d\n\x05input\x18\x01 \x01(\x0b\x32\x0e.johnny.Inputs\x12\x1f\n\x06output\x18\x02 \x01(\x0b\x32\x0f.johnny.Outputs\x12\x44\n\x1c\x66utures_option_month_mapping\x18\x03 \x01(\x0b\x32\x1a.johnny.FutOptMonthMappingB\x02\x18\x01\x12*\n\x0cpresentation\x18\x04 \x01(\x0b\x32\x14.johnny.Presentation\">\n\x06Inputs\x12!\n\x08\x61\x63\x63ounts\x18\x01 \x03(\x0b\x32\x0f.johnny.Account\x12\x11\n\tchains_db\x18\x02 \x01(\t\"p\n\x07Outputs\x12\x11\n\tchains_db\x18\x01 \x01(\t\x12\x14\n\x0ctransactions\x18\x02 \x01(\t\x12\x18\n\x10transactions_csv\x18\x03 \x01(\t\x12\x0e\n\x06\x63hains\x18\x04 \x01(\t\x12\x12\n\nchains_csv\x18\x05 \x01(\t\"\xa9\x01\n\x12\x46utOptMonthMapping\x12/\n\x06months\x18\x01 \x03(\x0b\x32\x1f.johnny.FutOptMonthMapping.Item\x1a\x62\n\x04Item\x12\x16\n\x0eoption_product\x18\x01 \x01(\t\x12\x14\n\x0coption_month\x18\x02 \x01(\t\x12\x16\n\x0e\x66uture_product\x18\x03 \x01(\t\x12\x14\n\x0c\x66uture_month\x18\x04 \x01(\t\"R\n\x0cPresentation\x12\x15\n\rignore_groups\x18\x01 \x03(\t\x12\x13\n\x0bignore_tags\x18\x02 \x03(\t\x12\x16\n\x0eignore_mindate\x18\x03 \x01(\t\"\x9d\x02\n\x07\x41\x63\x63ount\x12\x10\n\x08nickname\x18\x01 \x01(\t\x12\x11\n\tsheetname\x18\x07 \x01(\t\x12,\n\tbeancount\x18\x08 \x01(\x0b\x32\x19.johnny.BeancountAccounts\x12(\n\x07logtype\x18\x02 \x01(\x0e\x32\x17.johnny.Account.LogType\x12\x0e\n\x06module\x18\x03 \x01(\t\x12\x0e\n\x06source\x18\x04 \x01(\t\x12\x0f\n\x07initial\x18\x05 \x01(\t\x12\x38\n\x18\x65xclude_instrument_types\x18\x06 \x03(\x0e\x32\x16.johnny.InstrumentType\"*\n\x07LogType\x12\x10\n\x0cTRANSACTIONS\x10\x01\x12\r\n\tPOSITIONS\x10\x02\"\x89\x01\n\x11\x42\x65\x61ncountAccounts\x12\x16\n\x0e\x61\x63\x63ount_assets\x18\x01 \x01(\t\x12\x14\n\x0c\x61\x63\x63ount_cash\x18\x02 \x01(\t\x12\x13\n\x0b\x61\x63\x63ount_pnl\x18\x03 \x01(\t\x12\x1b\n\x13\x61\x63\x63ount_commissions\x18\x04 \x01(\t\x12\x14\n\x0c\x61\x63\x63ount_fees\x18\x05 \x01(\t*\xa8\x01\n\x0eInstrumentType\x12\x0b\n\x07Unknown\x10\x00\x12\n\n\x06\x45quity\x10\x01\x12\x10\n\x0c\x45quityOption\x10\x02\x12\x13\n\x0fNonEquityOption\x10\x03\x12\x10\n\x0c\x43ollectibles\x10\x04\x12\n\n\x06\x46uture\x10\x05\x12\x10\n\x0c\x46utureOption\x10\x06\x12\t\n\x05Index\x10\x07\x12\x0f\n\x0bIndexOption\x10\x08\x12\n\n\x06\x43rypto\x10\t')
 
 _INSTRUMENTTYPE = DESCRIPTOR.enum_types_by_name['InstrumentType']
 InstrumentType = enum_type_wrapper.EnumTypeWrapper(_INSTRUMENTTYPE)
 Unknown = 0
 Equity = 1
 EquityOption = 2
-Future = 3
-FutureOption = 4
-Crypto = 5
+NonEquityOption = 3
+Collectibles = 4
+Future = 5
+FutureOption = 6
+Index = 7
+IndexOption = 8
+Crypto = 9
 
 
 _CONFIG = DESCRIPTOR.message_types_by_name['Config']
@@ -34,6 +38,7 @@ _FUTOPTMONTHMAPPING = DESCRIPTOR.message_types_by_name['FutOptMonthMapping']
 _FUTOPTMONTHMAPPING_ITEM = _FUTOPTMONTHMAPPING.nested_types_by_name['Item']
 _PRESENTATION = DESCRIPTOR.message_types_by_name['Presentation']
 _ACCOUNT = DESCRIPTOR.message_types_by_name['Account']
+_BEANCOUNTACCOUNTS = DESCRIPTOR.message_types_by_name['BeancountAccounts']
 _ACCOUNT_LOGTYPE = _ACCOUNT.enum_types_by_name['LogType']
 Config = _reflection.GeneratedProtocolMessageType('Config', (_message.Message,), {
   'DESCRIPTOR' : _CONFIG,
@@ -85,13 +90,20 @@ Account = _reflection.GeneratedProtocolMessageType('Account', (_message.Message,
   })
 _sym_db.RegisterMessage(Account)
 
+BeancountAccounts = _reflection.GeneratedProtocolMessageType('BeancountAccounts', (_message.Message,), {
+  'DESCRIPTOR' : _BEANCOUNTACCOUNTS,
+  '__module__' : 'johnny.base.config_pb2'
+  # @@protoc_insertion_point(class_scope:johnny.BeancountAccounts)
+  })
+_sym_db.RegisterMessage(BeancountAccounts)
+
 if _descriptor._USE_C_DESCRIPTORS == False:
 
   DESCRIPTOR._options = None
   _CONFIG.fields_by_name['futures_option_month_mapping']._options = None
   _CONFIG.fields_by_name['futures_option_month_mapping']._serialized_options = b'\030\001'
-  _INSTRUMENTTYPE._serialized_start=901
-  _INSTRUMENTTYPE._serialized_end=1002
+  _INSTRUMENTTYPE._serialized_start=1088
+  _INSTRUMENTTYPE._serialized_end=1256
   _CONFIG._serialized_start=37
   _CONFIG._serialized_end=223
   _INPUTS._serialized_start=225
@@ -105,7 +117,9 @@ if _descriptor._USE_C_DESCRIPTORS == False:
   _PRESENTATION._serialized_start=575
   _PRESENTATION._serialized_end=657
   _ACCOUNT._serialized_start=660
-  _ACCOUNT._serialized_end=899
-  _ACCOUNT_LOGTYPE._serialized_start=857
-  _ACCOUNT_LOGTYPE._serialized_end=899
+  _ACCOUNT._serialized_end=945
+  _ACCOUNT_LOGTYPE._serialized_start=903
+  _ACCOUNT_LOGTYPE._serialized_end=945
+  _BEANCOUNTACCOUNTS._serialized_start=948
+  _BEANCOUNTACCOUNTS._serialized_end=1085
 # @@protoc_insertion_point(module_scope)

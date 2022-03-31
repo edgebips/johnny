@@ -48,9 +48,10 @@ def chains(ctx: click.Context):
     chains = petl.frompickle(config.output.chains)
     chains = chains.convert('days', Decimal)
     for chain in chains.records():
+        # TODO(blais): Remove
         if chain.group != "Investment":
             continue
-        beanjohn.RenderChainToBeancount(chain, filename, sys.stdout)
+        beanjohn.RenderChainToBeancount(config, chain, filename, sys.stdout)
 
 
 if __name__ == "__main__":
