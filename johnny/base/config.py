@@ -20,6 +20,9 @@ from johnny.base.etl import petl, Table
 from google.protobuf import text_format
 
 
+LogType = Account.LogType
+
+
 def ToText(message) -> str:
     """Convert a proto message to pretty-printed text."""
     string = text_format.MessageToString(message)
@@ -57,7 +60,7 @@ def Validate(config: Config):
 
     # Ensure required fields are set.
     for a in config.input.accounts:
-        if not a.HasField("logtype"):
+        if not a.logtype:
             raise ConfigError("Log type is not set")
 
 

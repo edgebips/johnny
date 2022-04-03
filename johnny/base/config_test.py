@@ -13,7 +13,7 @@ class TestConfig(unittest.TestCase):
         cfg = config_pb2.Config()
         account = cfg.input.accounts.add()
         account.nickname = "etrade"
-        account.logtype = config_pb2.Account.LogType.TRANSACTIONS
+        account.logtype.append(config_pb2.Account.LogType.TRANSACTIONS)
 
 
 if __name__ == "__main__":

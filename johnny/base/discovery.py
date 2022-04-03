@@ -9,7 +9,7 @@ __license__ = "GNU GPLv2"
 
 from decimal import Decimal
 from os import path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Set
 import collections
 import glob
 import importlib
@@ -82,7 +82,7 @@ def ReadInitialPositions(filename: str) -> Table:
 
 
 def ReadConfiguredInputs(
-    config: configlib.Config, logtype: Optional[Any] = None
+    config: configlib.Config, filter_logtypes: Optional[Set['LogType']] = None
 ) -> Dict[int, Table]:
     """Read the explicitly configured inputs in the config file.
     Returns tables for the transactions and positions."""
@@ -90,35 +90,36 @@ def ReadConfiguredInputs(
     # Parse and accumulate by log type.
     tablemap = collections.defaultdict(list)
     for account in config.input.accounts:
-        if logtype is not None and logtype != account.logtype:
-            continue
-        output_tables = tablemap[account.logtype]
+        for logtype in account.logtype:
+            if filter_logtypes and logtype not in filter_logtypes:
+                continue
+            output_tables = tablemap[logtype]
 
-        # Incorporate initial positions.
-        if account.initial:
-            table = ReadInitialPositions(account.initial)
-            if table is not None:
-                output_tables.append(table.update("account", account.nickname))
+            # Incorporate initial positions.
+            if account.initial:
+                table = ReadInitialPositions(account.initial)
+                if table is not None:
+                    output_tables.append(table.update("account", account.nickname))
 
-        # Import module transactions.
-        module = importlib.import_module(account.module)
-        table = module.Import(account.source, config)
-        if table is None:
-            continue
+            # Import module transactions.
+            module = importlib.import_module(account.module)
+            table = module.Import(account.source, config)
+            if table is None:
+                continue
 
-        # Filter out instrument types.
-        if account.exclude_instrument_types:
-            exclude_instrument_types = set(
-                configlib.InstrumentType.Name(instype)
-                for instype in account.exclude_instrument_types
-            )
-            table = (
-                table.applyfn(instrument.Expand, "symbol")
-                .selectnotin("instype", exclude_instrument_types)
-                .applyfn(instrument.Shrink)
-            )
+            # Filter out instrument types.
+            if account.exclude_instrument_types:
+                exclude_instrument_types = set(
+                    configlib.InstrumentType.Name(instype)
+                    for instype in account.exclude_instrument_types
+                )
+                table = (
+                    table.applyfn(instrument.Expand, "symbol")
+                    .selectnotin("instype", exclude_instrument_types)
+                    .applyfn(instrument.Shrink)
+                )
 
-        output_tables.append(table.update("account", account.nickname))
+            output_tables.append(table.update("account", account.nickname))
 
     # Concatenate tables for each logtype.
     bytype = {}

@@ -122,10 +122,11 @@ message Account {
 
   // Importer type: transactions or positions.
   enum LogType {
-    TRANSACTIONS = 1;
-    POSITIONS = 2;
+    TRANSACTIONS = 1; // Trades of instruments.
+    POSITIONS = 2;    // Positions snapshot in time.
+    OTHER = 3;        // Non-trades and other balance-affecting entries.
   }
-  optional LogType logtype = 2;
+  repeated LogType logtype = 2;
 
   // Source module to use. This is a Python module-level path. This can be of
   // the form 'johnny.source.tastyworks_csv.transactions' for example.

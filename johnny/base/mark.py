@@ -77,7 +77,7 @@ def GetPriceMap(
     # Read the positions files as a source of prices and override the price map
     # with those prices where present.
     logtables = discovery.ReadConfiguredInputs(
-        config, configlib.Account.LogType.POSITIONS
+        config, {configlib.Account.LogType.POSITIONS}
     )
     positions = logtables.get(configlib.Account.LogType.POSITIONS, None)
     if positions:
