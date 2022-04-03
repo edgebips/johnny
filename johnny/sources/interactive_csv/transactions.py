@@ -50,6 +50,7 @@ from dateutil import parser
 
 import mulmat
 from mulmat import multipliers
+from johnny.base.config import Account
 from johnny.base import config as configlib
 from johnny.base import discovery
 from johnny.base import instrument
@@ -384,11 +385,11 @@ def GetTransactions(filename: str) -> Tuple[Table, Table]:
     return trade, nontrade
 
 
-def Import(source: str, config: configlib.Config) -> Table:
+def Import(source: str, config: configlib.Config, logtype: "LogType") -> Table:
     """Process the filename, normalize, and output as a table."""
     filename = discovery.GetLatestFile(source)
-    table, non_trades = GetTransactions(filename)
-    return table
+    transactions, other = GetTransactions(filename)
+    return {Account.TRANSACTIONS: transactions, Account.OTHER: other}[logtype]
 
 
 @click.command()

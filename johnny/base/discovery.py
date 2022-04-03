@@ -21,6 +21,7 @@ from johnny.base.etl import petl, Table
 from johnny.base import instrument
 from johnny.base import transactions as txnlib
 from johnny.base import config as configlib
+from johnny.base.config import Account
 
 
 ZERO = Decimal(0)
@@ -81,7 +82,7 @@ def ReadInitialPositions(filename: str) -> Table:
     return table
 
 
-def ReadConfiguredInputs(
+def ImportConfiguredInputs(
     config: configlib.Config, filter_logtypes: Optional[Set['LogType']] = None
 ) -> Dict[int, Table]:
     """Read the explicitly configured inputs in the config file.
@@ -96,14 +97,14 @@ def ReadConfiguredInputs(
             output_tables = tablemap[logtype]
 
             # Incorporate initial positions.
-            if account.initial:
+            if logtype == Account.TRANSACTIONS and account.initial:
                 table = ReadInitialPositions(account.initial)
                 if table is not None:
                     output_tables.append(table.update("account", account.nickname))
 
             # Import module transactions.
             module = importlib.import_module(account.module)
-            table = module.Import(account.source, config)
+            table = module.Import(account.source, config, logtype)
             if table is None:
                 continue
 
@@ -119,15 +120,19 @@ def ReadConfiguredInputs(
                     .applyfn(instrument.Shrink)
                 )
 
-            output_tables.append(table.update("account", account.nickname))
+            if "account" in table.fieldnames():
+                table = table.update("account", account.nickname)
+            output_tables.append(table)
 
     # Concatenate tables for each logtype.
     bytype = {}
     for t_logtype, tables in tablemap.items():
         table = petl.cat(*tables)
-        if t_logtype == configlib.Account.LogType.TRANSACTIONS:
+        if t_logtype == Account.TRANSACTIONS:
             bytype[t_logtype] = table.sort(("account", "datetime"))
-        elif t_logtype == configlib.Account.LogType.POSITIONS:
+        elif t_logtype == Account.POSITIONS:
             bytype[t_logtype] = table.sort(("account", "symbol"))
+        elif t_logtype == Account.OTHER:
+            bytype[t_logtype] = table
 
     return bytype

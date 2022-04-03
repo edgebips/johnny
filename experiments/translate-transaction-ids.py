@@ -31,7 +31,7 @@ def main(config: Optional[str]):
     filename = configlib.GetConfigFilenameWithDefaults(config)
     config = configlib.ParseFile(filename)
     chains_db = configlib.ReadChains(config.input.chains_db)
-    logtables = discovery.ReadConfiguredInputs(config)
+    logtables = discovery.ImportConfiguredInputs(config)
     table = logtables[configlib.Account.LogType.TRANSACTIONS].selectne(
         "transaction_new_id", None
     )

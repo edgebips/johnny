@@ -45,6 +45,7 @@ from more_itertools import first
 
 from mulmat import months
 from johnny.base import config as configlib
+from johnny.base.config import Account
 from johnny.base import discovery
 from johnny.base import instrument
 from johnny.base import positions as poslib
@@ -331,10 +332,11 @@ def GetPositions(filename: str) -> Table:
     return table
 
 
-def Import(source: str, config: configlib.Config) -> Table:
+def Import(source: str, config: configlib.Config, logtype: "LogType") -> Table:
     """Process the filename, normalize, and output as a table."""
     filename = discovery.GetLatestFile(source)
-    return GetPositions(filename)
+    positions = GetPositions(filename)
+    return {Account.POSITIONS: positions}[logtype]
 
 
 @click.command()

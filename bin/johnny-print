@@ -54,8 +54,9 @@ def cli(ctx: click.Context, config: Optional[str], expand: bool):
 
 def GetLogTables(config: configlib.Config, logtype: int) -> Table:
     """Process the log tables."""
-    logtables = discovery.ReadConfiguredInputs(config)
-    return logtables[logtype]
+    logtables = discovery.ImportConfiguredInputs(config, {logtype})
+    opt_table = logtables.get(logtype)
+    return opt_table if opt_table is not None else petl.empty()
 
 
 @cli.command()
@@ -73,6 +74,14 @@ def rawpos(ctx: click.Context):
     "Find, process and print positions."
     table = GetLogTables(ctx.obj['config'], configlib.Account.LogType.POSITIONS)
     print_table(table, ctx.obj['expand'])
+
+
+@cli.command()
+@click.pass_context
+def rawother(ctx: click.Context):
+    "Find, process and print non-trades."
+    table = GetLogTables(ctx.obj['config'], configlib.Account.LogType.OTHER)
+    print_table(table, False)
 
 
 def print_table(table: Table, expand: bool):

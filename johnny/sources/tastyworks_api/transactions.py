@@ -26,6 +26,7 @@ from dateutil import parser
 import pytz
 import tzlocal
 
+from johnny.base.config import Account
 from johnny.base import config as configlib
 from johnny.base import transactions as txnlib
 from johnny.base.etl import petl, Table, Record, WrapRecords
@@ -84,7 +85,7 @@ def PreprocessTransactions(items: Iterator[Tuple[str, Json]]) -> Iterator[Json]:
 
 # A list of (transaction-type, transaction-sub-type) to process.
 # The other types are ignored.
-ALLOW_TYPES = {
+TRANSACTION_TYPES = {
     # Futures trades.
     ("Trade", "Buy"): "Trade",
     ("Trade", "Sell"): "Trade",
@@ -115,23 +116,26 @@ ALLOW_TYPES = {
 }
 
 OTHER_TYPES = {
-    ("Money Movement", "Balance Adjustment"),
-    ("Money Movement", "Credit Interest"),
+    ("Money Movement", "Balance Adjustment"): "Other",
+    ("Money Movement", "Credit Interest"): "Other",
     # Note: This contains amounts affecting balance for futures.
-    ("Money Movement", "Mark to Market"),
-    ("Money Movement", "Transfer"),
-    ("Money Movement", "Withdrawal"),
-    ("Money Movement", "Deposit"),
-    ("Money Movement", "Dividend"),
-    ("Money Movement", "Fee"),
+    ("Money Movement", "Mark to Market"): "Other",
+    ("Money Movement", "Transfer"): "Other",
+    ("Money Movement", "Withdrawal"): "Other",
+    ("Money Movement", "Deposit"): "Other",
+    ("Money Movement", "Dividend"): "Other",
+    ("Money Movement", "Fee"): "Other",
 }
+
+ALL_TYPES = {}
+ALL_TYPES.update(TRANSACTION_TYPES)
+ALL_TYPES.update(OTHER_TYPES)
 
 
 def GetRowType(rec: Record) -> bool:
     """Predicate to filter out row types we're not interested in."""
     typekey = (rec["transaction-type"], rec["transaction-sub-type"])
-    assert typekey in ALLOW_TYPES or typekey in OTHER_TYPES, rec
-    return ALLOW_TYPES.get(typekey, None)
+    return ALL_TYPES[typekey]
 
 
 def MapAccountNumber(number: str) -> str:
@@ -238,7 +242,7 @@ def GetOrderId(order_id: Optional[int], rec: Record) -> str:
         return "w{}".format(rec.transaction_id)
 
 
-def GetTransactions(filename: str) -> Tuple[Table, Table]:
+def GetTransactions(filename: str) -> Table:
     """Open a local database of Tastyworks API transactions and normalize it."""
 
     # Convert numerical fields to decimals.
@@ -251,7 +255,9 @@ def GetTransactions(filename: str) -> Tuple[Table, Table]:
         petl.fromdicts(items)
         # Add row type and filter out the row types we're not interested
         # in.
-        .addfield("rowtype", GetRowType).select(lambda r: r.rowtype is not None)
+        .addfield("rowtype", GetRowType).selectin(
+            "rowtype", set(TRANSACTION_TYPES.values())
+        )
     )
 
     table = (
@@ -311,9 +317,33 @@ def GetTransactions(filename: str) -> Tuple[Table, Table]:
     return table
 
 
-def Import(source: str, config: configlib.Config) -> Table:
+def GetOther(filename: str) -> Table:
+    # Convert numerical fields to decimals.
+    db = shelve.open(filename, "r")
+    items = PreprocessTransactions(db.items())
+
+    # Filter rows that we care about. Note that this removes mark-to-market
+    # entries.
+    filt_items = (
+        petl.fromdicts(items)
+        # Add row type and filter out the row types we're not interested
+        # in.
+        .addfield("rowtype", GetRowType).selectin("rowtype", set(OTHER_TYPES.values()))
+    )
+
+    table = filt_items.addfield("datetime", ParseTime)
+
+    return table
+
+
+def Import(source: str, config: configlib.Config, logtype: "LogType") -> Table:
     """Process the filename, normalize, and output as a table."""
-    return GetTransactions(source)
+    if logtype == Account.TRANSACTIONS:
+        return GetTransactions(source)
+    elif logtype == Account.OTHER:
+        return GetOther(source)
+    else:
+        raise KeyError(f"Invalid logtype {logtype}")
 
 
 @click.command()

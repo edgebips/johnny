@@ -44,7 +44,7 @@ def ImportTransactions(
 
     # Read the inputs.
     with log("ImportTransactions.read"):
-        logtables = discovery.ReadConfiguredInputs(
+        logtables = discovery.ImportConfiguredInputs(
             config, {configlib.Account.LogType.TRANSACTIONS}
         )
         transactions = logtables[configlib.Account.LogType.TRANSACTIONS]
