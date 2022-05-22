@@ -198,11 +198,9 @@ def ParseInstrumentDescription(string: str, symroot: str) -> instrument.Instrume
     # Handle Equity, e.g.,
     # ISHARES TRUST CORE S&P TTL STK ETF
     # ISHARES TRUST RUS 2000 GRW ETF
-    match = re.fullmatch(r"(.*) ETF( NEW)?", string)
-    if match:
-        return instrument.Instrument(underlying=symroot)
-
-    raise ValueError("Could not parse description: '{}'".format(string))
+    # BARCLAYS BANK PLC IPATH SER B BLMBRG ALUMI *CLBL
+    return instrument.Instrument(underlying=symroot)
+    #raise ValueError("Could not parse description: '{}'".format(string))
 
 
 def InferCostFromPnl(rec: Record) -> Decimal:

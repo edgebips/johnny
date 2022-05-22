@@ -13,6 +13,7 @@ from typing import Any, Dict, Optional, Set
 import collections
 import glob
 import importlib
+import re
 
 from more_itertools import last
 from dateutil import parser
@@ -38,6 +39,20 @@ def GetLatestFile(source: str) -> Optional[str]:
         return None
     _, filename = last(filenames)
     return filename
+
+
+def GetLatestFilePerYear(source: str) -> Dict[int, str]:
+    """Given a globbing pattern, find the most recent file matching the pattern
+    for each year, based on the prefix (for the year) and timestamp (for latest)."""
+    yeardict = collections.defaultdict(list)
+    for filename in glob.glob(source, recursive=True):
+        match = re.match(r"(\d{4})\b", path.basename(filename))
+        if match:
+            key = int(match.group(1))
+            yeardict[key].append(filename)
+    return {
+        year: max(filenames, key=path.getctime)
+        for year, filenames in yeardict.items()}
 
 
 def ReadInitialPositions(filename: str) -> Table:
@@ -83,7 +98,7 @@ def ReadInitialPositions(filename: str) -> Table:
 
 
 def ImportConfiguredInputs(
-    config: configlib.Config, filter_logtypes: Optional[Set['LogType']] = None
+    config: configlib.Config, filter_logtypes: Optional[Set["LogType"]] = None
 ) -> Dict[int, Table]:
     """Read the explicitly configured inputs in the config file.
     Returns tables for the transactions and positions."""
