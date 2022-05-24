@@ -93,6 +93,11 @@ message Chain {
   // newlines).
   optional string comment = 6;
 
+  // Annual volatility at the point of entry, in fractional points, e.g., 20%
+  // annual vol is 0.20.
+  optional float implied_vol = 16;
+  optional float realized_vol = 17;
+
   // Probability of profit of the strategy at entry, used to compute or set a
   // target. This is very important, as it allows us to semi-automate trade
   // management. We use Kelly's criterion to fill in the win/loss chain P/L
