@@ -46,7 +46,7 @@ def main(config: Optional[str], extra_downloads: Optional[str]):
     config = configlib.ParseFile(filename)
 
     regexps = {
-        "johnny.sources.tastyworks_csv.transactions": "tasty.*\.csv$",
+        "johnny.sources.tastyworks_csv.positions": "tastyworks_positions.*\.csv$",
         "johnny.sources.thinkorswim_csv.transactions": ".*AccountStatement\.csv$",
         "johnny.sources.thinkorswim_csv.positions": ".*PositionStatement\.csv$",
         "johnny.sources.interactive_csv.transactions": "funds_and_trades_for_johnny\.csv$",

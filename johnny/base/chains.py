@@ -50,7 +50,8 @@ Chains = configlib.Chains
 
 
 ZERO = Decimal(0)
-Q = Decimal("0.01")
+Q2 = Decimal("0.01")
+Q1 = Decimal("0.1")
 
 
 def ChainTransactions(
@@ -422,7 +423,7 @@ def PositionCost(rec: Record) -> Decimal:
 
 def _CalculateNetLiq(pairs: Iterator[Tuple[str, Decimal]]):
     return Decimal(sum(cost for rowtype, cost in pairs if rowtype == "Mark")).quantize(
-        Q
+        Q2
     )
 
 
@@ -466,10 +467,10 @@ def _CalculateProbabilities(rec: Record) -> Optional[Decimal]:
     pnl_win = abs(float(rec.init)) * target_frac
     pnl_loss = pnl_win * (pop / (1 - pop))
     return Probabilities(
-        Decimal(pop).quantize(Q),
-        Decimal(target_frac).quantize(Q),
-        Decimal(pnl_win).quantize(Q),
-        Decimal(-pnl_loss).quantize(Q),
+        Decimal(pop).quantize(Q2),
+        Decimal(target_frac).quantize(Q2),
+        Decimal(pnl_win).quantize(Q2),
+        Decimal(-pnl_loss).quantize(Q2),
     )
 
 
@@ -502,7 +503,18 @@ def _NumAdjustments(rec: Record) -> int:
 def _CalculatePnlFrac(r: Record) -> Decimal:
     """Calculate the P/L fraction."""
     denom = r.pnl_win if r.pnl_chain * r.pnl_win > 0 else -r.pnl_loss
-    return (r.pnl_chain / denom).quantize(Q) if denom else ZERO
+    return (r.pnl_chain / denom).quantize(Q2) if denom else ZERO
+
+
+def GetStdevAgainstRealized(fieldname: str, chain: Record) -> float:
+    volatility = getattr(chain, fieldname, 0.) or 0.
+    days = (chain.maxdate - chain.mindate).days
+    time = days / 252
+    exp_vol = math.sqrt((volatility ** 2) * time)
+    cost = chain.init
+    mark = chain.net_liq
+    returns = float(mark + cost) / float(cost)
+    return Decimal(returns / exp_vol).quantize(Q1) if exp_vol else None
 
 
 def TransactionsTableToChainsTable(
@@ -528,7 +540,7 @@ def TransactionsTableToChainsTable(
         "mindate": ("datetime", lambda g: min(g).date()),
         "maxdate": ("datetime", lambda g: max(g).date()),
         "underlyings": ("symbol", _GetUnderlyings),
-        "pnl_chain": ("cost", lambda vlist: sum(vlist).quantize(Q)),
+        "pnl_chain": ("cost", lambda vlist: sum(vlist).quantize(Q2)),
         "net_liq": (("rowtype", "cost"), _CalculateNetLiq),
         "commissions": ("commissions", sum),
         "fees": ("fees", sum),
@@ -573,7 +585,11 @@ def TransactionsTableToChainsTable(
         # Calculate net liq win/loss equivalent to match on the platform.
         .addfield("net_win", lambda r: r.net_liq + (r.pnl_win - r.pnl_chain))
         .addfield("net_loss", lambda r: r.net_liq + (r.pnl_loss - r.pnl_chain))
-        .cutout("prob", "chain")
+        .cutout("prob")
+        # Numbers Vs. Volatility
+        .addfield("realized_vol", partial(_GetChainAttribute, "realized_vol"))
+        .addfield("stdev_real", partial(GetStdevAgainstRealized, "realized_vol"))
+        .cutout("chain")
         # Mark missing groups with a string that can be filtered on.
         # TODO(blais): Move this to the presentation layer.
         .convert("group", lambda v: v or "NoGroup")
@@ -612,6 +628,7 @@ def TransactionsTableToChainsTable(
         "net_liq",
         "net_loss",
         "fifo_cost",
+        "stdev_real",
         "commissions",
         "fees",
         "group",
