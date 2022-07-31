@@ -587,8 +587,10 @@ def TransactionsTableToChainsTable(
         .addfield("net_loss", lambda r: r.net_liq + (r.pnl_loss - r.pnl_chain))
         .cutout("prob")
         # Numbers Vs. Volatility
-        .addfield("realized_vol", partial(_GetChainAttribute, "realized_vol"))
-        .addfield("stdev_real", partial(GetStdevAgainstRealized, "realized_vol"))
+        .addfield("vol_realized", partial(_GetChainAttribute, "vol_realized"))
+        .addfield("vol_implied", partial(_GetChainAttribute, "vol_implied"))
+        .addfield("stdev_real", partial(GetStdevAgainstRealized, "vol_realized"))
+        .addfield("stdev_implied", partial(GetStdevAgainstRealized, "vol_implied"))
         .cutout("chain")
         # Mark missing groups with a string that can be filtered on.
         # TODO(blais): Move this to the presentation layer.
