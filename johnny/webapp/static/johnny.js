@@ -27,7 +27,9 @@ function CreateChainsTable(id, extra_config) {
             {targets: ['init', 'pnl_chain', 'pnl_win', 'pnl_loss',
                        'pnl_frac', 'target', 'pop',
                        'net_win', 'net_liq', 'net_loss', 'fifo_cost',
-                       'commissions', 'fees'],
+                       'commissions', 'fees',
+                       'vol_real', 'return_real', 'stdev_real',
+                       'vol_impl', 'return_impl', 'stdev_impl'],
              className: 'dt-body-right'},
         ],
 

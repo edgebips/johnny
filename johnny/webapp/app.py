@@ -154,7 +154,17 @@ STATE = None
 _STATE_LOCK = threading.Lock()
 
 
-def ToHtmlString(table: Table, cls: str, ids: List[str] = None) -> bytes:
+def ToHtmlString(ftable: Table, cls: str, ids: List[str] = None) -> bytes:
+    table = (
+        ftable.convert("vol_real", "{:.1%}".format)
+        .convert("return_real", "{:.1%}".format)
+        .convert("stdev_real", "{}x".format)
+        #
+        .convert("vol_impl", "{:.1%}".format)
+        .convert("return_impl", "{:.1%}".format)
+        .convert("stdev_impl", "{}x".format)
+    )
+
     sink = petl.MemorySource()
     table.tohtml(sink, vrepr=vrepr)
     html = sink.getvalue().decode("utf8")

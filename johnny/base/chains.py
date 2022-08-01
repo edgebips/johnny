@@ -50,8 +50,10 @@ Chains = configlib.Chains
 
 
 ZERO = Decimal(0)
-Q2 = Decimal("0.01")
+Q0 = Decimal("1")
 Q1 = Decimal("0.1")
+Q2 = Decimal("0.01")
+Q3 = Decimal("0.001")
 
 
 def ChainTransactions(
@@ -506,15 +508,22 @@ def _CalculatePnlFrac(r: Record) -> Decimal:
     return (r.pnl_chain / denom).quantize(Q2) if denom else ZERO
 
 
-def GetStdevAgainstRealized(fieldname: str, chain: Record) -> float:
-    volatility = getattr(chain, fieldname, 0.) or 0.
-    days = (chain.maxdate - chain.mindate).days
-    time = days / 252
-    exp_vol = math.sqrt((volatility ** 2) * time)
-    cost = chain.init
-    mark = chain.net_liq
-    returns = float(mark + cost) / float(cost)
-    return Decimal(returns / exp_vol).quantize(Q1) if exp_vol else None
+Returns = collections.namedtuple("Returns", "volatility returns move stdev")
+
+
+def GetReturns(fieldname: str, rec: Record) -> float:
+    volatility = getattr(rec.chain, fieldname, 0.0) or 0.0
+    days = (rec.maxdate - rec.mindate).days
+    time = days / 365
+    total_vol = Decimal(math.sqrt((volatility**2) * time))
+    cost = -rec.init
+    mark = rec.net_liq
+    returns = rec.pnl_chain / cost
+    move = Decimal(total_vol * cost).quantize(Q2) if volatility else None
+    stdev = (returns / total_vol).quantize(Q2) if volatility else None
+    return Returns(
+        Decimal(total_vol).quantize(Q3), Decimal(returns).quantize(Q3), move, stdev
+    )
 
 
 def TransactionsTableToChainsTable(
@@ -587,10 +596,26 @@ def TransactionsTableToChainsTable(
         .addfield("net_loss", lambda r: r.net_liq + (r.pnl_loss - r.pnl_chain))
         .cutout("prob")
         # Numbers Vs. Volatility
-        .addfield("vol_realized", partial(_GetChainAttribute, "vol_realized"))
-        .addfield("vol_implied", partial(_GetChainAttribute, "vol_implied"))
-        .addfield("stdev_real", partial(GetStdevAgainstRealized, "vol_realized"))
-        .addfield("stdev_implied", partial(GetStdevAgainstRealized, "vol_implied"))
+        .addfield("_realized", partial(GetReturns, "vol_realized"))
+        .addfields(
+            [
+                ("vol_real", lambda r: r._realized.volatility),
+                ("return_real", lambda r: r._realized.returns),
+                ("move_real", lambda r: r._realized.move),
+                ("stdev_real", lambda r: r._realized.stdev),
+            ]
+        )
+        .cutout("_realized")
+        .addfield("_implied", partial(GetReturns, "vol_implied"))
+        .addfields(
+            [
+                ("vol_impl", lambda r: r._implied.volatility),
+                ("return_impl", lambda r: r._implied.returns),
+                ("move_impl", lambda r: r._implied.move),
+                ("stdev_impl", lambda r: r._implied.stdev),
+            ]
+        )
+        .cutout("_implied")
         .cutout("chain")
         # Mark missing groups with a string that can be filtered on.
         # TODO(blais): Move this to the presentation layer.
@@ -630,7 +655,16 @@ def TransactionsTableToChainsTable(
         "net_liq",
         "net_loss",
         "fifo_cost",
+        #
+        "vol_real",
+        "return_real",
+        "move_real",
         "stdev_real",
+        "vol_impl",
+        "return_impl",
+        "move_impl",
+        "stdev_impl",
+        #
         "commissions",
         "fees",
         "group",
