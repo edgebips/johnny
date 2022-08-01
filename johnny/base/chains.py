@@ -581,6 +581,8 @@ def TransactionsTableToChainsTable(
         )
         .addfield("group", partial(_GetChainAttribute, "group"))
         .addfield("strategy", partial(_GetChainAttribute, "strategy"))
+        .addfield("investment", partial(_GetChainAttribute, "investment"))
+        .convert("investment", lambda v: "INVEST" if True else "TRADING")
         .addfield(
             "term", lambda r: "LT" if _GetChainAttribute("long_term", r) else "ST"
         )
@@ -669,6 +671,7 @@ def TransactionsTableToChainsTable(
         "fees",
         "group",
         "strategy",
+        "investment",
         "term",
     )
 

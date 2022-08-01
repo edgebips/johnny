@@ -155,15 +155,19 @@ _STATE_LOCK = threading.Lock()
 
 
 def ToHtmlString(ftable: Table, cls: str, ids: List[str] = None) -> bytes:
-    table = (
-        ftable.convert("vol_real", "{:.1%}".format)
-        .convert("return_real", "{:.1%}".format)
-        .convert("stdev_real", "{}x".format)
-        #
-        .convert("vol_impl", "{:.1%}".format)
-        .convert("return_impl", "{:.1%}".format)
-        .convert("stdev_impl", "{}x".format)
-    )
+    # Convert some set of tables to percents for display.
+    fieldnames = set(ftable.fieldnames())
+    table = ftable
+    for name, fmtfunc in [
+        ("vol_real", "{:.1%}".format),
+        ("return_real", "{:.1%}".format),
+        ("stdev_real", lambda v: v or ZERO),
+        ("vol_impl", "{:.1%}".format),
+        ("return_impl", "{:.1%}".format),
+        ("stdev_impl", lambda v: v or ZERO),
+    ]:
+        if name in fieldnames:
+            table = table.convert(name, fmtfunc)
 
     sink = petl.MemorySource()
     table.tohtml(sink, vrepr=vrepr)

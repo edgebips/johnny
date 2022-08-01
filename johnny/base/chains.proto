@@ -74,14 +74,39 @@ message Chain {
   // Status of the chain. If not set, this is equivalent to AUTO.
   optional ChainStatus status = 2;
 
-  // User-associated trade group or line of business. This can be used to split
-  // up your trades in different groups, e.g. "MemeStocks", "ShortPremium",
-  // "LongStock".
+  // A boolean flag, indicating that this chain is to be considered part of
+  // one's "long term investments," not really to be included in active trading
+  // positions. It's also not used to a "core portfolio," i.e., a set of
+  // directional positions to trade around of in a trading portfolio. Rather,
+  // the main usage of this flag is to distinguish a set of positions as being
+  // not part of an actively traded portfolio. It also distinguishes how the
+  // transactions should be exported to Beancount, transactions on these
+  // positions are typically exported as individual trades (not many changes),
+  // not as an overall chain P/L. They could also be excluded from reporting
+  // main trading activity, though executed in the same accounts. (This could be
+  // a "supergroup" string field where "supergroup/group" is a hierarchy, and it
+  // might be converted to that eventually.)
+  //
+  // Historical note: I used to have a special group to identify those
+  // investments I kept from the past and am tracking in accounting more than in
+  // Johnny, those I'm not considering part of the list of active trading
+  // positions, but I would still want to use the "group" field to inform what
+  // rationale I put the position for. This more explicit field replaces that.
+  optional bool investment = 18;
+
+  // User-associated trade group, strategy or line of business. This can be used
+  // to split up your trades in different groups (e.g. "MemeStocks",
+  // "ShortPremium", "TailWeeklies"). The group identifies the common rationale
+  // or edge being exploited in this chain. These are your "trading strategies."
   optional string group = 3;
 
-  // Initial strategy used, e.g. "Strangle", "BrokenWingButterfly", etc. The
-  // software may attempt to set a value for this, but you can override it in
-  // the configuration file.
+  // Initial theta/delta/gamma strategy used, e.g. "Strangle",
+  // "BrokenWingButterfly", etc. The software may attempt to set a value for
+  // this, but you can override it in the configuration file. Note that this
+  // does not refer to the rationale or particular edge that the position is
+  // exploiting, but rather to the mechanical shape of the options position used
+  // to implement exposure. Retail traders call this "strategy" and this is the
+  // terminology I'm choosing here. See "group" for the other kind of strategy.
   optional string strategy = 4;
 
   // Any arbitrary tags that can be associated with this chain. These aren't
