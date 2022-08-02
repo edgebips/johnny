@@ -29,6 +29,9 @@ message Config {
 
   // Options for the presentation of results.
   optional Presentation presentation = 4;
+
+  // Betas and index prices databases.
+  optional FallbackDB fallback_database = 5;
 }
 
 // Configuration for inputs to be imported.
@@ -185,4 +188,25 @@ message BeancountAccounts {
   optional string account_pnl = 3;
   optional string account_commissions = 4;
   optional string account_fees = 5;
+}
+
+// A static database of (date, underlying, beta, SPY-price) tuples used to fill
+// in where brokers do not provide information. This is used to fill in
+// information about SPY-weighted dollar deltas for Interactive Brokers. Fill
+// this in to avoid having to support pulling historical data, if you have just
+// a few datapoints.
+message FallbackDB {
+  repeated DatedValue betas = 1;
+  repeated DatedValue index_prices = 2;
+}
+
+message DatedValue {
+  // Symbol of the underlying name.
+  optional string symbol = 1;
+
+  // YYYY-MM-DD date of the beta.
+  optional string date = 2;
+
+  // Beta value.
+  optional float value = 3;
 }
