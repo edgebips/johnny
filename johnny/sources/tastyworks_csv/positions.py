@@ -28,6 +28,9 @@ from johnny.base.number import ToDecimal
 from johnny.sources.tastyworks_csv import symbols
 
 
+Q2 = Decimal("0.01")
+
+
 _INSTYPES = {
     "STOCK": "Equity",
     "EQUITY": "Equity",
@@ -55,6 +58,13 @@ def ConvertPoP(pop_str: str) -> Decimal:
             return Decimal(pop_str.rstrip("%"))
     except Exception as exc:
         raise ValueError("Decimal error: {} on '{}'".format(exc, pop_str))
+
+
+def GetIndexPrice(r: Record) -> Decimal:
+    # Delta: is dollar-deltas from TW.
+    # β Delta: is SPY-weighted deltas.
+    # Beta: Morningstar betas.
+    return (r["Delta"] / r["β Delta"] * r["mark"] * r["Beta"]).quantize(Q2)
 
 
 def GetPositions(filename: str) -> Table:
@@ -92,6 +102,7 @@ def GetPositions(filename: str) -> Table:
                 "Theta",
                 "Vega",
                 "IV Rank",
+                "Beta",
             ],
             ToDecimal,
         )
@@ -108,20 +119,14 @@ def GetPositions(filename: str) -> Table:
         .rename("P/L Day", "pnl_day")
         # Add a group field, though there aren't any groupings yet.
         .addfield("group", None)
+        # Process beta and back out index price from beta-delta.
+        .addfield("index_price", GetIndexPrice)
+        .rename("Beta", "beta")
+        # Add per-option delta.
+        .rename("/ Delta", "unit_delta")
         # .addfield('DELTA_DIFFS', lambda r: r['Delta'] / r['/ Delta'] if r['/ Delta'] else '')
         # 'instype'
-        .cut(
-            "account",
-            "group",
-            "symbol",
-            "quantity",
-            "price",
-            "mark",
-            "cost",
-            "net_liq",
-            "pnl_open",
-            "pnl_day",
-        )
+        .cut(poslib.FIELDS)
     )
 
     return table

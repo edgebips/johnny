@@ -12,6 +12,13 @@ Assumptions:
 - You have groups of assets, and have "Show Groups" enabled.
 - You have inserted the columns listed under 'FIELDS' below, including the
   various greeks and notional values to sum over.
+- You have inserted the following columns:
+
+  * "Delta": which is the SPY-weighted dollar delta
+  * "OptionDelta": which is per-option delta.
+  * "Beta": You have inserted the *vanilla* beta (which is the MorningStar beta
+    used in computing SPY-weighted dollar delta).
+  * You have "Beta Weighting" turned on with SPY.
 
 Instructions:
 
@@ -44,6 +51,7 @@ import click
 from more_itertools import first
 
 from mulmat import months
+from mulmat import multipliers
 from johnny.base import config as configlib
 from johnny.base.config import Account
 from johnny.base import discovery
@@ -64,19 +72,13 @@ ZERO = Decimal(0)
 FIELDS = ["Delta", "Gamma", "Theta", "Vega", "Beta", "Net Liq", "P/L Open", "P/L Day"]
 
 
-def ParseNumber(string: str) -> Decimal:
-    """Parse a single number string."""
-    if string in {"N/A", "N/A (Split Position)"}:
-        return Decimal("0")
-    sign = 1
-    match = re.match(r"\((.*)\)", string)
-    if match:
-        sign = -1
-        string = match.group(1)
-    return (
-        Decimal(string.replace("$", "").replace(",", "")).quantize(Decimal("0.01"))
-        * sign
-    )
+def SafeToDecimal(string: str) -> Optional[Decimal]:
+    if string == "loading":
+        return None
+    elif string == "<empty>":
+        return ZERO
+    else:
+        return ToDecimal(string)
 
 
 class Group(NamedTuple):
@@ -156,7 +158,7 @@ def ParseInstrumentDescription(string: str, symroot: str) -> instrument.Instrume
     # 1/125000 JUN 21 (European) /EUUM21 1.13 PUT
     match = re.match(
         r"1/(\d+) ([A-Z]{3}) (2\d)(?: \(([^)]*)\))? "
-        fr"{_FUTSYM} ([0-9.]+) (PUT|CALL)",
+        rf"{_FUTSYM} ([0-9.]+) (PUT|CALL)",
         string,
     )
     if match:
@@ -193,14 +195,16 @@ def ParseInstrumentDescription(string: str, symroot: str) -> instrument.Instrume
     if match:
         symbol = match.group(2)
         underlying = symbol[:-1] + "2" + symbol[-1:]
-        return instrument.Instrument(underlying=underlying)
+        short_under = underlying[:-3]
+        multiplier = multipliers.MULTIPLIERS[short_under]
+        return instrument.Instrument(underlying=underlying, multiplier=multiplier)
 
     # Handle Equity, e.g.,
     # ISHARES TRUST CORE S&P TTL STK ETF
     # ISHARES TRUST RUS 2000 GRW ETF
     # BARCLAYS BANK PLC IPATH SER B BLMBRG ALUMI *CLBL
     return instrument.Instrument(underlying=symroot)
-    #raise ValueError("Could not parse description: '{}'".format(string))
+    # raise ValueError("Could not parse description: '{}'".format(string))
 
 
 def InferCostFromPnl(rec: Record) -> Decimal:
@@ -258,8 +262,12 @@ def FoldInstrument(table: Table) -> Table:
         .rename("Net Liq", "net_liq")
         .rename("P/L Open", "pnl_open")
         .rename("P/L Day", "pnl_day")
+        .rename("OptionDelta", "unit_delta")
+        .rename("Beta", "beta")
         # Convert numbers.
         .convert(["price", "mark", "net_liq", "pnl_open", "pnl_day"], ToDecimal)
+        .convert(["unit_delta", "beta", "Delta"], SafeToDecimal)
+        .addfield("index_price", GetIndexPrice)
         # Make up missing 'cost' field.
         #
         # Unfortunately the cost isn't provided directly, but we infer it
@@ -276,10 +284,20 @@ def FoldInstrument(table: Table) -> Table:
             "net_liq",
             "pnl_open",
             "pnl_day",
+            "unit_delta",
+            "beta",
+            "index_price",
         )
     )
 
     return ReduceFragmentedPositions(table)
+
+
+def GetIndexPrice(r: Record) -> Decimal:
+    # Delta: is SPY-weighted dollar-deltas from TW.
+    # Beta: Morningstar betas.
+    delta = r["quantity"] * r._instrument.multiplier * r["unit_delta"]
+    return (delta / r["Delta"] * r["mark"] * r["beta"]).quantize(Q)
 
 
 def ReduceFragmentedPositions(table: Table) -> Table:
@@ -306,6 +324,8 @@ def ReduceFragmentedPositions(table: Table) -> Table:
 def GetPositions(filename: str) -> Table:
     """Read and parse the positions statement."""
 
+    debug = False
+
     # Read the positions table.
     with open(filename) as csvfile:
         lines = csvfile.readlines()
@@ -319,13 +339,18 @@ def GetPositions(filename: str) -> Table:
         if x.table.nrows() == 0:
             continue
 
+        if debug:
+            print("-" * 100)
+            print(x.table.lookallstr())
         gtable = FoldInstrument(x.table).addfield("group", x.name, index=0)
+        if debug:
+            print(gtable.lookallstr())
 
         tables.append(gtable)
 
     # Add the account number.
     account = utils.GetAccountNumber(filename)
-    table = petl.cat(*tables).addfield("account", account, index=0)
+    table = petl.cat(*tables).addfield("account", account, index=0).cut(poslib.FIELDS)
 
     return table
 

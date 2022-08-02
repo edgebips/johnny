@@ -387,8 +387,20 @@ def GetTransactions(filename: str) -> Tuple[Table, Table]:
 
 def Import(source: str, config: configlib.Config, logtype: "LogType") -> Table:
     """Process the filename, normalize, and output as a table."""
-    filename = discovery.GetLatestFile(source)
-    transactions, other = GetTransactions(filename)
+    fnmap = discovery.GetLatestFilePerYear(source)
+
+    transactions_list = []
+    other_list = []
+    for year, filename in sorted(fnmap.items()):
+        transactions, other = GetTransactions(filename)
+        transactions_list.append(
+            transactions.select(lambda r, y=year: r.datetime.year == y)
+        )
+        other_list.append(other.select(lambda r, y=year: r.datetime.year == y))
+
+    transactions = petl.cat(*transactions_list)
+    other = petl.cat(*other_list)
+
     return {Account.TRANSACTIONS: transactions, Account.OTHER: other}[logtype]
 
 

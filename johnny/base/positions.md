@@ -37,6 +37,23 @@ Here is the definition of the fields we're expecting from the positions file;
 - `net_liq: Decimal`: The total value of this position, as marked by the `mark`
   field. This is a signed value as well, following the `mark` field.
 
+- `unit_delta: Decimal`: The per-unit delta (option delta) of the instrument
+  (range: between 0 and 1). In thinkorswim, this is the OptionDelta. In
+  tastyworks, it is the "/ Delta" column. This can be used to compute absolute
+  dollar-deltas in order to compute leverage ratios.
+
+- `beta: Decimal`: The beta of the instrument to `SPY`. This is used to compute
+  portfolio-adjusted deltas (e.g. SPY deltas) and portfolio expected moves.
+  Note: The betas unfortunately tend to come from Morningstar and tend to be
+  unreliable, especially around corporate actions and for stocks with meme-like
+  behavior.
+
+- `index_price: Decimal`: The price of the index instrument (`SPY`) used for
+  beta calculations. Since the positions may be imported at different times,
+  having the actual price imported from the file will improve the accuracy of
+  other derived quantities. Note that imports at different times from different
+  files will see different values for the index.
+
 Note that pairs of `price` and `cost`, `mark` and `net_liq` are redundant. We
 could simplify the requirements on this file and derive some of these quantities
 ourselves.

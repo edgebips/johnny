@@ -24,6 +24,9 @@ FIELDS = [
     "mark",
     "cost",
     "net_liq",
+    "unit_delta",
+    "beta",
+    "index_price",
 ]
 
 
@@ -54,3 +57,6 @@ def ValidatePositionRecord(r: Record):
     assert isinstance(r.mark, Decimal)
     assert isinstance(r.cost, Decimal)
     assert isinstance(r.net_liq, Decimal)
+    assert isinstance(r.unit_delta, Decimal)
+    assert isinstance(r.beta, Decimal)
+    assert isinstance(r.index_price, Decimal)
