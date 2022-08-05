@@ -46,7 +46,7 @@ def chains(ctx: click.Context):
     filename = ctx.obj["filename"]
     config = ctx.obj["config"]
     chains = petl.frompickle(config.output.chains)
-    chains = chains.convert('days', Decimal)
+    chains = chains.convert("days", Decimal)
     for chain in chains.records():
         # TODO(blais): Remove
         if chain.group != "Investment":

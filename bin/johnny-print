@@ -39,17 +39,19 @@ from johnny.base.etl import petl, Table
 
 
 @click.group()
-@click.option('--config', '-c',
-              help="Configuration filename. Default to $JOHNNY_CONFIG")
-@click.option('--expand', '-e', is_flag=True,
-              help="Expand instrument symbol before output")
+@click.option(
+    "--config", "-c", help="Configuration filename. Default to $JOHNNY_CONFIG"
+)
+@click.option(
+    "--expand", "-e", is_flag=True, help="Expand instrument symbol before output"
+)
 @click.pass_context
 def cli(ctx: click.Context, config: Optional[str], expand: bool):
     "General purpose command-line printer tool."
-    logging.basicConfig(level=logging.INFO, format='%(levelname)-8s: %(message)s')
-    ctx.obj['expand'] = expand
+    logging.basicConfig(level=logging.INFO, format="%(levelname)-8s: %(message)s")
+    ctx.obj["expand"] = expand
     filename = configlib.GetConfigFilenameWithDefaults(config)
-    ctx.obj['config'] = configlib.ParseFile(filename)
+    ctx.obj["config"] = configlib.ParseFile(filename)
 
 
 def GetLogTables(config: configlib.Config, logtype: int) -> Table:
@@ -63,31 +65,32 @@ def GetLogTables(config: configlib.Config, logtype: int) -> Table:
 @click.pass_context
 def rawtxns(ctx: click.Context):
     "Find, process and print transactions."
-    table = (GetLogTables(ctx.obj['config'], configlib.Account.LogType.TRANSACTIONS)
-             .sort(['datetime', 'account', 'transaction_id']))
-    print_table(table, ctx.obj['expand'])
+    table = GetLogTables(
+        ctx.obj["config"], configlib.Account.LogType.TRANSACTIONS
+    ).sort(["datetime", "account", "transaction_id"])
+    print_table(table, ctx.obj["expand"])
 
 
 @cli.command()
 @click.pass_context
 def rawpos(ctx: click.Context):
     "Find, process and print positions."
-    table = GetLogTables(ctx.obj['config'], configlib.Account.LogType.POSITIONS)
-    print_table(table, ctx.obj['expand'])
+    table = GetLogTables(ctx.obj["config"], configlib.Account.LogType.POSITIONS)
+    print_table(table, ctx.obj["expand"])
 
 
 @cli.command()
 @click.pass_context
 def rawother(ctx: click.Context):
     "Find, process and print non-trades."
-    table = GetLogTables(ctx.obj['config'], configlib.Account.LogType.OTHER)
+    table = GetLogTables(ctx.obj["config"], configlib.Account.LogType.OTHER)
     print_table(table, False)
 
 
 def print_table(table: Table, expand: bool):
     """Print the table, given the options."""
     if expand:
-        table = instrument.Expand(table, 'symbol')
+        table = instrument.Expand(table, "symbol")
     print(table.lookallstr())
 
 
@@ -95,7 +98,7 @@ def print_table(table: Table, expand: bool):
 @click.pass_context
 def imported(ctx: click.Context):
     "Find, process and print positions."
-    config = ctx.obj['config']
+    config = ctx.obj["config"]
     imported = petl.frompickle(config.output.transactions)
     print(imported.lookallstr())
 
@@ -104,14 +107,13 @@ def imported(ctx: click.Context):
 @click.pass_context
 def marks(ctx: click.Context):
     "Print out marks."
-    config = ctx.obj['config']
+    config = ctx.obj["config"]
     transactions = petl.frompickle(config.output.transactions)
     # Mark the transactions.
     price_map = mark.GetPriceMap(transactions, config)
     transactions = mark.Mark(transactions, price_map)
     # Print out the marks.
-    marks = (transactions
-             .selecteq('rowtype', 'Mark'))
+    marks = transactions.selecteq("rowtype", "Mark")
     print(marks.lookallstr())
 
 
@@ -119,7 +121,7 @@ def marks(ctx: click.Context):
 @click.pass_context
 def chains(ctx: click.Context):
     "Print out marked chains."
-    config = ctx.obj['config']
+    config = ctx.obj["config"]
     chains = petl.frompickle(config.output.chains)
     print(chains.lookallstr())
 
@@ -128,11 +130,12 @@ def chains(ctx: click.Context):
 @click.pass_context
 def multi(ctx: click.Context):
     "Print out chains with multiple underlyings."
-    config = ctx.obj['config']
-    chains = (petl.frompickle(config.output.chains)
-              .select(lambda r: ',' in r.underlyings))
+    config = ctx.obj["config"]
+    chains = petl.frompickle(config.output.chains).select(
+        lambda r: "," in r.underlyings
+    )
     print(chains.lookallstr())
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     cli(obj={})

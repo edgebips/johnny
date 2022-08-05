@@ -126,7 +126,9 @@ def import_(config: Optional[str], force: bool, light: bool):
     with log("read_chains"):
         chains_db = configlib.ReadChains(config.input.chains_db)
     with log("split_positions"):
-        ptransactions = split.SplitTransactions(chains_db.split_transactions, ptransactions)
+        ptransactions = split.SplitTransactions(
+            chains_db.split_transactions, ptransactions
+        )
 
     with log("chains"):
         ctransactions, cchains_db = chainslib.ChainTransactions(
