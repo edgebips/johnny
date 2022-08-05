@@ -54,7 +54,9 @@ from johnny.base.etl import petl, Table, Record
     type=click.Path(exists=False),
     help="Output CSV filename.",
 )
-def main(config: Optional[str], from_: dt.datetime, to: dt.datetime, output: Optional[str]):
+def main(
+    config: Optional[str], from_: dt.datetime, to: dt.datetime, output: Optional[str]
+):
     "Find, process and print transactions."
 
     filename = configlib.GetConfigFilenameWithDefaults(config)

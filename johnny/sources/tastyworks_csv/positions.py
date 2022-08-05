@@ -139,7 +139,6 @@ def Import(source: str, config: configlib.Config, logtype: "LogType") -> Table:
     return {Account.POSITIONS: positions}[logtype]
 
 
-
 def ReadPricesFromPositionsFile(filename: str) -> Mapping[str, Decimal]:
     """Read the CSV file, normalize the symbols and return the prices."""
     if not filename or not path.exists(filename):

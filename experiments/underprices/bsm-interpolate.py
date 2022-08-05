@@ -41,7 +41,7 @@ def black_scholes(
     """Evaluate BS'73 for a call or put option."""
     pc = 1 if putcall == "CALL" else -1
     sigma_dt = sigma * sqrt(T)
-    d1 = (numpy.log(S / K) + (r + sigma ** 2 / 2) * T) / sigma_dt
+    d1 = (numpy.log(S / K) + (r + sigma**2 / 2) * T) / sigma_dt
     d2 = d1 - sigma_dt
     return pc * S * norm.cdf(pc * d1) - (pc * K * exp(-r * T)) * norm.cdf(pc * d2)
 

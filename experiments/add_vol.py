@@ -44,9 +44,7 @@ def main(config: Optional[str]):
         if chain_row is None:
             continue
 
-        rows.append(
-            (chain.chain_id, chain_row.underlyings, chain_row.mindate)
-        )
+        rows.append((chain.chain_id, chain_row.underlyings, chain_row.mindate))
 
     print(petl.wrap([("chain_id", "underlyings", "mindate")] + rows).lookallstr())
 

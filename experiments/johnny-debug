@@ -39,7 +39,7 @@ ZERO = Decimal(0)
 
 
 @click.command()
-@click.argument('config_filename', type=click.Path(exists=True))
+@click.argument("config_filename", type=click.Path(exists=True))
 def debug(config_filename: str):
     """Parse the configuration, the sources, transform, and save."""
     config = configlib.ParseFile(config_filename)
@@ -47,10 +47,12 @@ def debug(config_filename: str):
     price_map = mark.GetPriceMap(transactions, config)
     transactions = mark.Mark(transactions, price_map)
     chains, _ = chainslib.TransactionsTableToChainsTable(transactions, config)
-    print(chains
-          #.selecteq('underlying', '')
-          .lookallstr())
+    print(
+        chains
+        # .selecteq('underlying', '')
+        .lookallstr()
+    )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     debug()

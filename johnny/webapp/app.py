@@ -326,7 +326,9 @@ def chain(chain_id: str):
     txns = instrument.Expand(txns, "symbol")
 
     # Get the corresponding set of matches.
-    matches = match.GetChainMatchesFromTransactions(txns, match.ShortBasisReportingMethod.INVERT)
+    matches = match.GetChainMatchesFromTransactions(
+        txns, match.ShortBasisReportingMethod.INVERT
+    )
 
     # Split up P/L from static and dynamic deltas.
     static, dynamic = txns.biselect(

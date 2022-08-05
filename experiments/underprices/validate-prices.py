@@ -45,31 +45,34 @@ from johnny.base.etl import petl
 from johnny.base.etl import Record
 
 
-STOCK_RENAMES = {'LB': ('BBWI', datetime.date(2021, 8, 3))}
+STOCK_RENAMES = {"LB": ("BBWI", datetime.date(2021, 8, 3))}
 
 
-Candle = collections.namedtuple('Candle', 'timestamp open low high close volume')
-Q = Decimal('0.00001')
-Q2 = Decimal('0.01')
+Candle = collections.namedtuple("Candle", "timestamp open low high close volume")
+Q = Decimal("0.00001")
+Q2 = Decimal("0.01")
 
 
 def price_history_to_arrays(history):
     """Convert response from GetPriceHistory to NumPy arrays."""
-    candles = history['candles']
+    candles = history["candles"]
     num = len(candles)
-    convert = lambda fname, dtype: numpy.fromiter((candle[fname] for candle in candles),
-                                                  dtype=dtype, count=num)
-    return Candle(convert('datetime', int)/1000,
-                  convert('open', float),
-                  convert('low', float),
-                  convert('high', float),
-                  convert('close', float),
-                  convert('volume', int))
+    convert = lambda fname, dtype: numpy.fromiter(
+        (candle[fname] for candle in candles), dtype=dtype, count=num
+    )
+    return Candle(
+        convert("datetime", int) / 1000,
+        convert("open", float),
+        convert("low", float),
+        convert("high", float),
+        convert("close", float),
+        convert("volume", int),
+    )
 
 
-def interpolate_price(candles: Candle,
-                      timestamp: int,
-                      debug: Optional[bool] = False) -> Optional[float]:
+def interpolate_price(
+    candles: Candle, timestamp: int, debug: Optional[bool] = False
+) -> Optional[float]:
     """Compute an interpolated price using the candles we happen to have."""
 
     # Find the closest two data points.
@@ -89,7 +92,7 @@ def interpolate_price(candles: Candle,
 
     # Convex interpolation.
     fraction = (timestamp - ts_before) / (ts_after - ts_before)
-    price = (1-fraction) * price_before + fraction * price_after
+    price = (1 - fraction) * price_before + fraction * price_after
     if ts_before == -numpy.inf or ts_after == +numpy.inf:
         return None
 
@@ -97,9 +100,17 @@ def interpolate_price(candles: Candle,
     dt_after = datetime.datetime.fromtimestamp(ts_after)
     dtime = datetime.datetime.fromtimestamp(timestamp)
     if debug:
-        print(dt_before, dtime, dt_after, " = ",
-              fraction, "   ",
-              price_before, price, price_after)
+        print(
+            dt_before,
+            dtime,
+            dt_after,
+            " = ",
+            fraction,
+            "   ",
+            price_before,
+            price,
+            price_after,
+        )
     return price
 
 
@@ -130,10 +141,13 @@ def get_split_adjustment(rec: Record) -> Decimal:
                     multiplier *= split
     return multiplier
 
+
 def get_stock_price(rec: Record) -> Decimal:
-    return (Decimal(rec.db[0] * rec.split_adj).quantize(Q2)
-            if rec.db is not None and rec.db[0] is not None
-            else Decimal(0))
+    return (
+        Decimal(rec.db[0] * rec.split_adj).quantize(Q2)
+        if rec.db is not None and rec.db[0] is not None
+        else Decimal(0)
+    )
 
 
 EXPIRATION_TIME = datetime.time(16, 0, 0)
@@ -152,8 +166,9 @@ def get_days_to_expiration(rec: Record) -> Decimal:
 
 def get_implied_volatility(rec: Record) -> Decimal:
     """If possible, compute the IV."""
-    if (not re.match('.*Option$', rec.instype) or
-        not (rec.expi_days and rec.stock_price)):
+    if not re.match(".*Option$", rec.instype) or not (
+        rec.expi_days and rec.stock_price
+    ):
         return None
 
     time_annual = rec.expi_days / 365
@@ -166,13 +181,30 @@ def get_implied_volatility(rec: Record) -> Decimal:
         strike_price = float(rec.strike)
         try:
             vol = black_scholes.implied_volatility.implied_volatility(
-                option_price, stock_price, strike_price,
-                time_annual, RISK_FREE_RATE, flag)
+                option_price,
+                stock_price,
+                strike_price,
+                time_annual,
+                RISK_FREE_RATE,
+                flag,
+            )
         except exceptions.VolatilityValueException as exc:
-            logging.debug("Skip chain with invalid constraint: {} ({})".format(
-                rec.chain_id, (
-                    option_price, stock_price, strike_price, '|',
-                    time_annual, RISK_FREE_RATE, flag, ':', exc)))
+            logging.debug(
+                "Skip chain with invalid constraint: {} ({})".format(
+                    rec.chain_id,
+                    (
+                        option_price,
+                        stock_price,
+                        strike_price,
+                        "|",
+                        time_annual,
+                        RISK_FREE_RATE,
+                        flag,
+                        ":",
+                        exc,
+                    ),
+                )
+            )
             vol = None
     return vol
 
@@ -190,20 +222,20 @@ def process_matches(greeks_mapping, miter):
 
     # Fail chains with positions other than equity options. We don't have
     # futures outrights pricing data, and don't support static deltas just yet.
-    if set(table.values('rowtype')) != {'EquityOption'}:
+    if set(table.values("rowtype")) != {"EquityOption"}:
         logging.debug("Invalid chain with non equity options")
         return None
 
     # Fail chains with missing IV.
-    if table.select('iv', None).nrows() > 0:
+    if table.select("iv", None).nrows() > 0:
         logging.debug("Invalid chain with missing implied volatilities")
         return None
 
     stack = []
     for rec in table.namedtuples():
-        if rec.effect == 'OPENING':
+        if rec.effect == "OPENING":
             stack.append(rec)
-        elif rec.effect == 'CLOSING':
+        elif rec.effect == "CLOSING":
             quantity = rec.quantity
             while quantity != 0:
                 if not stack:
@@ -211,8 +243,9 @@ def process_matches(greeks_mapping, miter):
                 rec_last = stack.pop()
                 match_quantity = min(quantity, rec_last.quantity)
                 if match_quantity < rec_last.quantity:
-                    stack.append(rec_last._replace(
-                        quantity=rec_last.quantity - match_quantity))
+                    stack.append(
+                        rec_last._replace(quantity=rec_last.quantity - match_quantity)
+                    )
                 quantity -= match_quantity
                 opening = rec_last._replace(quantity=match_quantity)
                 closing = rec._replace(quantity=match_quantity)
@@ -224,82 +257,84 @@ def process_matches(greeks_mapping, miter):
                 greeks = compute_greek_differentials(opening, closing)
                 greeks_mapping[closing.transaction_id] = greeks
 
-    assert quantity == float(0
+    assert quantity == float(0)
 
 
 def process_chain(giter):
     """Process an entire chain."""
     rows = list(giter)
     table = petl.wrap([rows[0].flds] + rows)
-    print('-' * 120)
+    print("-" * 120)
     print(table.lookallstr())
 
-                            greeks_mapping
-    matches = (table
-               .aggregate('match_id', partial(process_matches, greeks_mapping)))
+    # greeks_mapping
+    matches = table.aggregate("match_id", partial(process_matches, greeks_mapping))
     _ = list(matches)
 
 
-def compute_greek_differentials(opening, closing):
-
-
-
 @click.command()
-@click.option('--config', '-c', type=click.Path(exists=True),
-              help="Configuration filename. Default to $JOHNNY_CONFIG")
-@click.option('--retry', is_flag=True, default=False,
-              help="Clear missing values before starting")
-@click.argument('database') # help="Location of DBM price database"
-def main(config: Optional[str],
-         retry: Optional[bool],
-         database: str):
-    logging.basicConfig(level=logging.INFO, format='%(levelname)-8s: %(message)s')
+@click.option(
+    "--config",
+    "-c",
+    type=click.Path(exists=True),
+    help="Configuration filename. Default to $JOHNNY_CONFIG",
+)
+@click.option(
+    "--retry", is_flag=True, default=False, help="Clear missing values before starting"
+)
+@click.argument("database")  # help="Location of DBM price database"
+def main(config: Optional[str], retry: Optional[bool], database: str):
+    logging.basicConfig(level=logging.INFO, format="%(levelname)-8s: %(message)s")
 
-    with shelve.open(database, 'r') as pricedb:
+    with shelve.open(database, "r") as pricedb:
 
-        fields = ('chain_id', 'rowtype', 'datetime', 'symbol', 'underlying',
-                  'price', 'strike', 'expiration', 'putcall')
+        fields = (
+            "chain_id",
+            "rowtype",
+            "datetime",
+            "symbol",
+            "underlying",
+            "price",
+            "strike",
+            "expiration",
+            "putcall",
+        )
 
         filename = configlib.GetConfigFilenameWithDefaults(config)
         config = configlib.ParseFile(filename)
         transactions = (
             petl.frompickle(config.output.transactions)
-            .applyfn(instrument.Expand, 'symbol')
-
+            .applyfn(instrument.Expand, "symbol")
             # Fetch the database.
-            .addfield('db', lambda r: pricedb.get(
-                "{}.{}".format(r.underlying, r.datetime), None))
-
-            # Compute the split adjustment and split adjusted stock price.
-            .addfield('split_adj', get_split_adjustment)
-            .addfield('stock_price', get_stock_price)
-
-            # Compute days to expiration.
-            .addfield('expi_days', get_days_to_expiration)
-
-            # Compute implied volatility.
-            .addfield('iv', get_implied_volatility)
-
-            .cutout('db')
+            .addfield(
+                "db",
+                lambda r: pricedb.get("{}.{}".format(r.underlying, r.datetime), None),
             )
+            # Compute the split adjustment and split adjusted stock price.
+            .addfield("split_adj", get_split_adjustment)
+            .addfield("stock_price", get_stock_price)
+            # Compute days to expiration.
+            .addfield("expi_days", get_days_to_expiration)
+            # Compute implied volatility.
+            .addfield("iv", get_implied_volatility)
+            .cutout("db")
+        )
 
-        #print(transactions.aggregate('match_id', print_group).lookallstr())
-
+        # print(transactions.aggregate('match_id', print_group).lookallstr())
 
         chains = (
             transactions
-
             # Process entire chains.
-            .aggregate('chain_id', process_chain)
-            )
+            .aggregate("chain_id", process_chain)
+        )
 
-            # # Move these filters in the chain aggregator.
-            # .selectin('instype', {'Equity', 'EquityOption'})
-            # # TODO(blais): Replace this with 'IndexOption'.
-            # .selectnotin('underlying', {'VIX'})
+        # # Move these filters in the chain aggregator.
+        # .selectin('instype', {'Equity', 'EquityOption'})
+        # # TODO(blais): Replace this with 'IndexOption'.
+        # .selectnotin('underlying', {'VIX'})
 
-            # .cut(fields)
-            # .aggregate('chain_id', process_chain))
+        # .cut(fields)
+        # .aggregate('chain_id', process_chain))
 
         _ = list(chains.records())
 
@@ -373,34 +408,29 @@ def main(config: Optional[str],
             #     if invalid:
             #         return
 
-
-
-
             filename = configlib.GetConfigFilenameWithDefaults(config)
             config = configlib.ParseFile(filename)
             transactions = (
                 petl.frompickle(config.output.transactions)
-                .applyfn(instrument.Expand, 'symbol')
-
+                .applyfn(instrument.Expand, "symbol")
                 # Move these filters in the chain aggregator.
-                .selectin('instype', {'Equity', 'EquityOption'})
+                .selectin("instype", {"Equity", "EquityOption"})
                 # TODO(blais): Replace this with 'IndexOption'.
-                .selectnotin('underlying', {'VIX'})
-
+                .selectnotin("underlying", {"VIX"})
                 .cut(fields)
-                .aggregate('chain_id', process_chain))
+                .aggregate("chain_id", process_chain)
+            )
             if 1:
                 print(transactions.lookallstr())
                 raise SystemExit
-
 
     if 0:
         for row in transactions.records():
             print(row)
             continue
 
-            dtime = row['datetime']
-            symbol = row['underlying']
+            dtime = row["datetime"]
+            symbol = row["underlying"]
             key = "{}.{}".format(symbol, dtime)
             if key in pricedb:
                 logging.info(f"Skipping for {symbol}, {dtime}")
@@ -409,14 +439,18 @@ def main(config: Optional[str],
             delta = datetime.timedelta(minutes=15)
             start = int((dtime - delta).timestamp() * 1000)
             end = int((dtime + delta).timestamp() * 1000)
-            hist = tdapi.GetPriceHistory(symbol=symbol,
-                                         frequency=5, frequencyType='minute',
-                                         startDate=start, endDate=end)
+            hist = tdapi.GetPriceHistory(
+                symbol=symbol,
+                frequency=5,
+                frequencyType="minute",
+                startDate=start,
+                endDate=end,
+            )
             if IsRateLimited(hist):
                 logging.info("Throttling for a few seconds; not retrying failed query.")
                 time.sleep(5)
                 continue
-            if not ('candles' in hist and hist['candles']):
+            if not ("candles" in hist and hist["candles"]):
                 logging.info(f"Empty for {symbol}, {dtime}: {hist}")
                 pricedb[key] = None
                 continue
@@ -431,5 +465,5 @@ def main(config: Optional[str],
             time.sleep(0.1)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

@@ -264,7 +264,9 @@ def _AddMarkTransactions(
         accum(rec, "MARK")
 
 
-def GetChainMatchesFromTransactions(txns: Table, short_method: ShortBasisReportingMethod) -> Table:
+def GetChainMatchesFromTransactions(
+    txns: Table, short_method: ShortBasisReportingMethod
+) -> Table:
     """Extract a list of trade matches from the list of transactions.
 
     Note: This will work only for a single chain.

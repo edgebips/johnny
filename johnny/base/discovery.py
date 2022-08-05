@@ -51,8 +51,8 @@ def GetLatestFilePerYear(source: str) -> Dict[int, str]:
             key = int(match.group(1))
             yeardict[key].append(filename)
     return {
-        year: max(filenames, key=path.getctime)
-        for year, filenames in yeardict.items()}
+        year: max(filenames, key=path.getctime) for year, filenames in yeardict.items()
+    }
 
 
 def ReadInitialPositions(filename: str) -> Table:
