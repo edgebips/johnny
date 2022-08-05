@@ -41,7 +41,7 @@ from johnny.base import strategy as strategylib
 from johnny.base import instrument
 from johnny.base import inventories
 from johnny.base import mark
-from johnny.base.etl import AssertColumns, Record, Table
+from johnny.base.etl import AssertColumns, Record, Table, WrapRecords
 from johnny.utils import timing
 
 ChainStatus = configlib.ChainStatus
@@ -676,6 +676,17 @@ def TransactionsTableToChainsTable(
     )
 
     return chains_table, itransactions
+
+
+def GetChainsAndTransactions(chains: Table, transactions: Table) -> Tuple[Table, Table]:
+    """A routine that produces chains and their associated lists of transactions."""
+    sorted_chains = chains.sort(["underlyings", "chain_id", "mindate"])
+    txns_chain_map = transactions.recordlookup("chain_id")
+    bychain_map = collections.defaultdict(list)
+    for chain in sorted_chains.records():
+        tchain = WrapRecords([chain])
+        txns = WrapRecords(txns_chain_map[chain.chain_id])
+        yield tchain, txns
 
 
 def ScrubConfig(transactions: Table, chains_db: Chains) -> Chains:

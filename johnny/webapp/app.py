@@ -326,7 +326,7 @@ def chain(chain_id: str):
     txns = instrument.Expand(txns, "symbol")
 
     # Get the corresponding set of matches.
-    matches = match.GetChainMatchesFromTransactions(txns, match.ShortMethod.INVERT)
+    matches = match.GetChainMatchesFromTransactions(txns, match.ShortBasisReportingMethod.INVERT)
 
     # Split up P/L from static and dynamic deltas.
     static, dynamic = txns.biselect(
@@ -806,7 +806,7 @@ def timeline_account_png():
     return plot_timeline(chains, "account")
 
 
-def get_mark_position(r: Record) -> Decimal:
+def get_signed_quantity(r: Record) -> Decimal:
     """Convert mark transaction to position (investing the sign)."""
     sign = +1 if r.instruction == "SELL" else -1
     return sign * r.quantity
@@ -814,7 +814,7 @@ def get_mark_position(r: Record) -> Decimal:
 
 def get_notional(r: Record) -> Decimal:
     """Calculate the notional risk of the position."""
-    mquantity = r.position * r.multiplier
+    mquantity = r.squantity * r.multiplier
     if r.instype in {"EquityOption", "FutureOption"}:
         return (mquantity * r.strike).quantize(Q)
     elif r.instype in {"Equity"}:
@@ -846,7 +846,7 @@ def leverage():
         STATE.positions
         # Convert Mark rows to position quantities.
         .applyfn(instrument.Expand, "symbol")
-        .addfield("position", get_mark_position)
+        .addfield("squantity", get_signed_quantity)
         .cutout("instruction", "quantity")
         # Compute the put/call notional risks associated with the position.
         .addfield("notional", get_notional)

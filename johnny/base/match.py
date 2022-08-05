@@ -71,9 +71,17 @@ ZERO = Decimal(0)
 Q = Decimal("0.01")
 
 
-class ShortMethod(enum.Enum):
+# TODO(blais): Rename this.
+class ShortBasisReportingMethod(enum.Enum):
+    """How short positions cost and proceeds are handled."""
+
+    # Do nothing, keep the numbers inverted.
     NONE = "none"
+
+    # Swap cost and proceeds. TODO(blais): Rename this.
     INVERT = "invert"
+
+    # Nullify the cost and set proceeds equal to P/L.
     NULLIFY = "nullify"
 
 
@@ -256,9 +264,18 @@ def _AddMarkTransactions(
         accum(rec, "MARK")
 
 
-def GetChainMatchesFromTransactions(txns: Table, short_method: ShortMethod) -> Table:
-    """Extract a list of trade matches from the list of transactions."""
-    chain_id = next(iter(txns.values("chain_id")))
+def GetChainMatchesFromTransactions(txns: Table, short_method: ShortBasisReportingMethod) -> Table:
+    """Extract a list of trade matches from the list of transactions.
+
+    Note: This will work only for a single chain.
+    """
+    chain_ids = set(txns.values("chain_id"))
+    if len(chain_ids) > 1:
+        raise ValueError(
+            "GetChainMatchesFromTransactions() is called for multiple chains. "
+            "This is an error"
+        )
+    chain_id = next(iter(chain_ids))
     ctxns = (
         txns.movefield("chain_id", 0)
         .movefield("account", 1)
@@ -281,6 +298,7 @@ def GetChainMatchesFromTransactions(txns: Table, short_method: ShortMethod) -> T
         "instype": ("instype", lambda g: next(iter(set(g)))),
         "quantity": _EstimateMatchQuantity,
         "long_short": _LongShortIndicator,
+        "infer_term": _LongTermShortTerm,
     }
     cmatches = ctxns.aggregate("match_id", funcs)
 
@@ -310,9 +328,9 @@ def GetChainMatchesFromTransactions(txns: Table, short_method: ShortMethod) -> T
     )
 
     # Handle P/L specially on short options.
-    if short_method == ShortMethod.INVERT:
+    if short_method == ShortBasisReportingMethod.INVERT:
         cmatches = _ShortOptionsInvert(cmatches)
-    elif short_method == ShortMethod.NULLIFY:
+    elif short_method == ShortBasisReportingMethod.NULLIFY:
         cmatches = _ShortOptionsNullify(cmatches)
 
     return cmatches.cut(
@@ -333,6 +351,7 @@ def GetChainMatchesFromTransactions(txns: Table, short_method: ShortMethod) -> T
         # "underlying",
         "account",
         "chain_id",
+        "infer_term",
         # "category",
     )
 
@@ -350,8 +369,23 @@ def _EstimateMatchQuantity(rows: List[Record]) -> int:
 
 
 def _LongShortIndicator(rows: List[Record]) -> int:
+    """Whether we bought or sold."""
     first_row = min(rows, key=lambda row: row.datetime)
     return first_row.instruction
+
+
+ONE_YEAR = datetime.timedelta(days=365)
+
+
+def _LongTermShortTerm(rows: List[Record]) -> int:
+    """Attempt to identify Long-term vs. short-term of a match."""
+    irows = iter(rows)
+    opening_date = next(irows).datetime.date()
+    lt_st = set((row.datetime.date() - opening_date) >= ONE_YEAR for row in irows)
+    if len(lt_st) == 1:
+        return "LT" if lt_st.pop() else "ST"
+    else:
+        return "?"
 
 
 def _CostOpened(rows: List[Record]) -> str:
