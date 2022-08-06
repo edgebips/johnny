@@ -350,8 +350,19 @@ def Import(source: str, config: configlib.Config, logtype: "LogType") -> Table:
 @click.argument("database", type=click.Path(resolve_path=True, exists=True))
 def main(database: str):
     """Normalizer for database of unprocessed transactions to normalized form."""
-    table = GetTransactions(database)
-    print(table.lookallstr())
+
+    if 0:
+        transactions = Import(database, None, Account.TRANSACTIONS)
+        transactions = GetTransactions(database)
+        print(transactions.lookallstr())
+
+    if 1:
+        nontrades = Import(database, None, Account.OTHER)
+        #print(nontrades.lookallstr())
+        for rec in nontrades.aggregate(
+            ["transaction-type", "transaction-sub-type"], WrapRecords
+        ).records():
+            print(rec.value.lookallstr())
 
 
 if __name__ == "__main__":

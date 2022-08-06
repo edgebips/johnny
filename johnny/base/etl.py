@@ -5,6 +5,7 @@ __license__ = "GNU GPLv2"
 
 from decimal import Decimal
 from typing import Any, List, Set, Tuple, Union
+import itertools
 
 import petl
 import petl.config
@@ -23,8 +24,10 @@ Record = petl.Record
 ASSERT = False
 
 
-def WrapRecords(records: List[Record]) -> Table:
+def WrapRecords(records: Union[List[Record], itertools._grouper]) -> Table:
     """Wrap up a list of records back to a table."""
+    if isinstance(records, itertools._grouper):
+        records = list(records)
     return petl.wrap([records[0].flds] + records)
 
 

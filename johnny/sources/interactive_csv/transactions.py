@@ -385,8 +385,7 @@ def GetTransactions(filename: str) -> Tuple[Table, Table]:
     return trade, nontrade
 
 
-def Import(source: str, config: configlib.Config, logtype: "LogType") -> Table:
-    """Process the filename, normalize, and output as a table."""
+def ImportAll(source: str, config: configlib.Config) -> Dict["LogType", Table]:
     fnmap = discovery.GetLatestFilePerYear(source)
 
     transactions_list = []
@@ -396,26 +395,35 @@ def Import(source: str, config: configlib.Config, logtype: "LogType") -> Table:
         transactions_list.append(
             transactions.select(lambda r, y=year: r.datetime.year == y)
         )
-        other_list.append(other.select(lambda r, y=year: r.datetime.year == y))
+        other_list.append(other.select(lambda r, y=year: r.Date.year == y))
 
     transactions = petl.cat(*transactions_list)
     other = petl.cat(*other_list)
 
-    return {Account.TRANSACTIONS: transactions, Account.OTHER: other}[logtype]
+    return {Account.TRANSACTIONS: transactions, Account.OTHER: other}
+
+
+def Import(source: str, config: configlib.Config, logtype: "LogType") -> Table:
+    """Process the filename, normalize, and output as a table."""
+    return ImportAll(source, config)[logtype]
 
 
 @click.command()
-@click.argument("filename", type=click.Path(resolve_path=True, exists=True))
+@click.argument("source", type=click.Path())
 @click.option("--cash", is_flag=True, help="Print out cash transactions.")
-def main(filename: str, cash):
+def main(source: str, cash: bool):
     """Simple local runner for this translator."""
-    trades_tables = []
-    logging.info(filename)
-    trades_table, other_table = GetTransactions(filename)
-    trades_tables.append(trades_table)
-    trades = petl.cat(*trades_tables)
-    print(trades.lookallstr())
-    print(other_table.lookallstr())
+
+    alltypes = ImportAll(source, None)
+
+    if 1:
+        nontrades = alltypes[Account.OTHER]
+        for rec in nontrades.aggregate("type", WrapRecords).records():
+            print(rec.value.lookallstr())
+
+    if 0:
+        transactions = alltypes[Account.TRANSACTIONS]
+        print(transactions.lookallstr())
 
 
 if __name__ == "__main__":

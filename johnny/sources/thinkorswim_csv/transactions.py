@@ -912,7 +912,7 @@ def GetTransactions(filename: str) -> Tuple[Table, Table]:
     # Split up the "Futures Statements" table and process non-trade entries.
     futures = tables["Futures Statements"]
     futures_trade, futures_nontrade = SplitFuturesStatements(futures, trade_hist)
-    futures_entries = ProcessNonTradeFutures(cashbal_nontrade)
+    futures_entries = ProcessNonTradeFutures(futures_nontrade)
 
     # Match up the equities and futures statements entries to the trade
     # history and ensure a perfect match, returning groups of (date-time,
@@ -1027,8 +1027,7 @@ def PrepareTables(filename: str) -> Dict[str, Table]:
     return prepared_tables
 
 
-def Import(source: str, config: configlib.Config, logtype: "LogType") -> Table:
-    """Process the filename, normalize, and output as a table."""
+def ImportAll(source: str, config: configlib.Config) -> Dict["LogType", Table]:
     fnmap = discovery.GetLatestFilePerYear(source)
 
     transactions_list = []
@@ -1038,22 +1037,37 @@ def Import(source: str, config: configlib.Config, logtype: "LogType") -> Table:
         transactions_list.append(
             transactions.select(lambda r, y=year: r.datetime.year == y)
         )
-        other_list.append(other.select(lambda r, y=year: r.datetime.year == y))
+        other = other.select(lambda r, y=year: r.datetime.year == y)
+        other_list.append(other)
 
     transactions = petl.cat(*transactions_list)
     other = petl.cat(*other_list)
 
-    return {Account.TRANSACTIONS: transactions, Account.OTHER: other}[logtype]
+    return {Account.TRANSACTIONS: transactions, Account.OTHER: other}
+
+
+def Import(source: str, config: configlib.Config, logtype: "LogType") -> Table:
+    """Process the filename, normalize, and output as a table."""
+    return ImportAll(source, config)[logtype]
 
 
 @click.command()
-@click.argument("filename", type=click.Path(resolve_path=True, exists=True))
+@click.argument("source", type=click.Path())
 @click.option("--cash", is_flag=True, help="Print out cash transactions.")
-def main(filename: str, cash):
+def main(source: str, cash: bool):
     """Simple local runner for this translator."""
-    trades_table, other_table = GetTransactions(filename)
-    table = trades_table if not cash else other_table
-    print(table.lookallstr())
+
+    alltypes = ImportAll(source, None)
+
+    if 1:
+        nontrades = alltypes[Account.OTHER]
+        # print(nontrades.lookallstr())
+        for rec in nontrades.aggregate("type", WrapRecords).records():
+            print(rec.value.lookallstr())
+
+    if 0:
+        transactions = alltypes[Account.TRANSACTIONS]
+        print(transactions.lookallstr())
 
 
 if __name__ == "__main__":
