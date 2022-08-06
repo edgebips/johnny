@@ -16,8 +16,8 @@ FIELDS = [
     "transaction_id",
     "datetime",
     "description",
-    "type",
     "symbol",
+    "type",
     "ref",
     "amount",
     "balance",
@@ -66,7 +66,7 @@ def ValidateRecord(r: Record):
     assert isinstance(r.datetime, datetime.datetime)
     assert not IsZoneAware(r.datetime)
     assert r.description and isinstance(r.description, str)
-    assert r.type is Noneor isinstance(r.type, str)
+    assert r.type is None or isinstance(r.type, str)
     assert r.symbol is None or isinstance(r.symbol, str)
     assert r.ref is None or isinstance(r.ref, str)
     assert isinstance(r.amount, Decimal)

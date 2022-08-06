@@ -61,7 +61,7 @@ from johnny.base.etl import petl, Table, Record, WrapRecords
 from johnny.sources.thinkorswim_csv import symbols
 from johnny.sources.thinkorswim_csv import utils
 from johnny.utils import csv_utils
-
+from johnny.sources.interactive_csv import nontrades
 
 Table = petl.Table
 Record = petl.Record
@@ -278,6 +278,7 @@ def GetTransactions(filename: str) -> Tuple[Table, Table]:
                 "Debit",
                 "Credit",
                 "Amount",
+                "Balance",
             ],
             lambda v: Decimal(v) if v else "",
         )
@@ -417,9 +418,15 @@ def main(source: str, cash: bool):
     alltypes = ImportAll(source, None)
 
     if 1:
-        nontrades = alltypes[Account.OTHER]
-        for rec in nontrades.aggregate("type", WrapRecords).records():
-            print(rec.value.lookallstr())
+        other = alltypes[Account.OTHER]
+        if 0:
+            for rec in other.aggregate("ActivityCode", WrapRecords).records():
+                print(rec.value.lookallstr())
+        else:
+             nother = nontrades.ConvertNonTrades(other)
+             for rec in nother.aggregate("type", WrapRecords).records():
+                 print(rec.value.lookallstr())
+             print(nother.lookallstr())
 
     if 0:
         transactions = alltypes[Account.TRANSACTIONS]
