@@ -49,4 +49,4 @@ def GetRowType(rec: Record) -> str:
         return "Adjustment"
     if code == "DIV":
         return "Dividend"
-    return "?"
+    raise ValueError(f"Could not find rowtype for {rec}")

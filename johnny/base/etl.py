@@ -4,7 +4,7 @@ __copyright__ = "Copyright (C) 2021  Martin Blais"
 __license__ = "GNU GPLv2"
 
 from decimal import Decimal
-from typing import Any, List, Set, Tuple, Union
+from typing import Any, List, Set, Tuple, Union, Optional
 import itertools
 
 import petl
@@ -28,6 +28,8 @@ def WrapRecords(records: Union[List[Record], itertools._grouper]) -> Table:
     """Wrap up a list of records back to a table."""
     if isinstance(records, itertools._grouper):
         records = list(records)
+    if not records:
+        return petl.empty()
     return petl.wrap([records[0].flds] + records)
 
 
@@ -102,3 +104,10 @@ def Replace(rec: Record, **kwargs) -> Record:
         idx = rec.flds.index(key)
         lrec[idx] = value
     return type(rec)(lrec, rec.flds)
+
+
+def Assert(cond: bool, message: Optional[str] = None):
+    if message:
+        assert cond, message
+    else:
+        assert cond
