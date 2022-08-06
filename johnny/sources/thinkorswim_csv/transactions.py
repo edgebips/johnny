@@ -46,9 +46,10 @@ from johnny.base import instrument
 from johnny.base import inventories
 from johnny.base import number
 from johnny.base import transactions as txnlib
-from johnny.base.etl import petl, Table, Record, WrapRecords
+from johnny.base.etl import petl, Table, Record, WrapRecords, Assert
 from johnny.sources.thinkorswim_csv import symbols
 from johnny.sources.thinkorswim_csv import utils
+from johnny.sources.thinkorswim_csv import nontrades
 from johnny.utils import csv_utils
 
 
@@ -119,18 +120,6 @@ def SplitFuturesStatements(futures: Table, trade_hist: Table) -> Tuple[Table, Ta
     return trade, nontrade
 
 
-def ProcessNonTradeCash(nontrade: Table) -> Any:
-    """Produce the non-trade 'Cash Balance' entries."""
-    # TODO(blais):
-    return nontrade
-
-
-def ProcessNonTradeFutures(nontrade: Table) -> Any:
-    """Produce the non-trade 'Futures Statements' entries."""
-    # TODO(blais):
-    return nontrade
-
-
 def ReconcilePairsOrderIds(table: Table, threshold: int) -> Table:
     """On a pairs trade, the time issued will be identical, but we will find two
     distinct symbols and order ids (one that is 1 or 2 integer apart). We reduce
@@ -171,7 +160,7 @@ def ReconcilePairsOrderIds(table: Table, threshold: int) -> Table:
 
 def ProcessTradeHistory(
     equities_cash: Table, futures_cash: Table, trade_hist: Table
-) -> Tuple[List[Any], List[Any]]:
+) -> Tuple[List[Any], List[Any], Table, Table]:
     """Join the trade history table with the equities table.
 
     Note that the equities table does not contian the ref ids, so they we have
@@ -194,11 +183,13 @@ def ProcessTradeHistory(
     # Process the equities cash table.
     def MatchTradingRows(cash_table: Table):
         order_groups = []
+        other_rows = []
         mapping = cash_table.recordlookup("datetime")
         for dtime, cash_rows in mapping.items():
             # If the transaction is not a trade, ignore it.
             # Dividends, expirations are processed elsewhere.
             if not any(crow.type == "TRD" for crow in cash_rows):
+                other_rows.extend(cash_rows)
                 continue
 
             # Pull up the rows corresponding to this cash statement and remove
@@ -214,12 +205,12 @@ def ProcessTradeHistory(
 
             order_groups.append((dtime, cash_rows, trade_rows))
 
-        return order_groups
+        return order_groups, other_rows
 
     # Fetch the trade history rows for equities.
-    equities_groups = MatchTradingRows(equities_cash)
+    equities_groups, equities_others = MatchTradingRows(equities_cash)
     # Fetch the trade history rows for futures.
-    futures_groups = MatchTradingRows(futures_cash)
+    futures_groups, futures_others = MatchTradingRows(futures_cash)
 
     # Assert that the trade history table has been fully accounted for.
     if trade_hist_map:
@@ -228,7 +219,12 @@ def ProcessTradeHistory(
             "{}".format(trade_hist_map)
         )
 
-    return equities_groups, futures_groups
+    return (
+        equities_groups,
+        futures_groups,
+        WrapRecords(equities_others),
+        WrapRecords(futures_others),
+    )
 
 
 def _CreateInstrument(r: Record) -> str:
@@ -248,10 +244,14 @@ def GetOrderIdFromSymbol(rec: Record) -> str:
 def ProcessExpirationsToTransactions(cash_table: Table) -> Table:
     """Look at cash table and extract and normalize expirations from it."""
 
+    expirations, rest = cash_table.biselect(lambda r: r.type == "RAD")
+
     expirations = (
-        cash_table.selecteq("type", "RAD")
-        .select(
-            lambda r: re.match(r"REMOVAL OF OPTION DUE TO EXPIRATION", r.description)
+        expirations.addfield(
+            "valid_expi",
+            lambda r: Assert(
+                re.match(r"REMOVAL OF OPTION DUE TO EXPIRATION", r.description)
+            ),
         )
         .addfield("_x", _ParseExpirationDescriptionDetailed)
         .convert("quantity", lambda _, r: r._x["quantity"], pass_row=True)
@@ -305,7 +305,17 @@ def ProcessExpirationsToTransactions(cash_table: Table) -> Table:
             "description",
         )
     )
-    return expirations
+    return expirations, rest
+
+
+def ProcessDividends(table: Table) -> Tuple[Table, Table]:
+    table = table.addfield(
+        "valid_div",
+        lambda r: Assert(
+            r.type == "DOI" and r.description.startswith("ORDINARY DIVIDEND")
+        ),
+    )
+    return table, petl.empty()
 
 
 Group = Tuple[datetime.date, List[Record], List[Record]]
@@ -907,27 +917,47 @@ def GetTransactions(filename: str) -> Tuple[Table, Table]:
     # Split up the "Cash Balance" table and process non-trade entries.
     cashbal = tables["Cash Balance"]
     equities_trade, cashbal_nontrade = SplitCashBalance(cashbal, trade_hist)
-    cashbal_entries = ProcessNonTradeCash(cashbal_nontrade)
 
     # Split up the "Futures Statements" table and process non-trade entries.
     futures = tables["Futures Statements"]
     futures_trade, futures_nontrade = SplitFuturesStatements(futures, trade_hist)
-    futures_entries = ProcessNonTradeFutures(futures_nontrade)
 
     # Match up the equities and futures statements entries to the trade
     # history and ensure a perfect match, returning groups of (date-time,
     # cash-rows, trade-rows), properly matched.
-    equities_groups, futures_groups = ProcessTradeHistory(
+    equities_groups, futures_groups, equities_rest, futures_rest = ProcessTradeHistory(
         equities_trade, futures_trade, trade_hist
     )
+    # print(other_rows.lookallstr())
+    # raise
 
     # Convert matched groups of rows to trnasctions.
     equities_txns = SplitGroupsToTransactions(equities_groups, False)
     futures_txns = SplitGroupsToTransactions(futures_groups, True)
 
+    # TODO(blais): Remove
+    if 0:
+        equities_trade.tocsv("/tmp/before_equities.csv")
+        futures_trade.tocsv("/tmp/before_futures.csv")
+        equities_rest.tocsv("/tmp/after_equities.csv")
+        futures_rest.tocsv("/tmp/after_futures.csv")
+
     # Extract and process expirations.
-    equities_expi = ProcessExpirationsToTransactions(equities_trade)
-    futures_expi = ProcessExpirationsToTransactions(futures_trade)
+    equities_expi, equities_rest = ProcessExpirationsToTransactions(equities_rest)
+    futures_expi, futures_rest = ProcessExpirationsToTransactions(futures_rest)
+
+    # Extract and process dividends.
+    if 0:
+        equities_divs, equities_rest = ProcessDividends(equities_rest)
+        futures_divs, futures_rest = ProcessDividends(futures_rest)
+    else:
+        equities_divs, equities_rest = petl.empty(), petl.empty()
+        futures_divs, futures_rest = petl.empty(), petl.empty()
+
+    # Check we processed all transactions.
+    for rest in equities_rest, futures_rest:
+        if rest.nrows() != 0:
+            raise ValueError(f"Remaining unprocessed transactions: {rest}")
 
     # Concatenate the tables.
     fieldnames = equities_txns.columns()
@@ -960,7 +990,11 @@ def GetTransactions(filename: str) -> Tuple[Table, Table]:
     # Make the final ordering correct and finalize the columns.
     txns = txns.cut(txnlib.FIELDS)
 
-    cash_accounts = petl.cat(cashbal_entries, futures_entries)
+    cash_accounts = petl.cat(
+        cashbal_nontrade, futures_nontrade,
+        # Note: For now the dividends are returned as part of non-trades.
+        equities_divs, futures_divs
+    )
 
     return txns, cash_accounts
 
@@ -1059,13 +1093,21 @@ def main(source: str, cash: bool):
 
     alltypes = ImportAll(source, None)
 
-    if 1:
-        nontrades = alltypes[Account.OTHER]
-        # print(nontrades.lookallstr())
-        for rec in nontrades.aggregate("type", WrapRecords).records():
-            print(rec.value.lookallstr())
-
     if 0:
+        other = alltypes[Account.OTHER]
+        # print(other.lookallstr())
+
+        if 1:
+            if 0:
+                for rec in other.aggregate("type", WrapRecords).records():
+                    print(rec.value.lookallstr())
+            else:
+                nother = nontrades.ConvertNonTrades(other)
+                for rec in nother.aggregate("type", WrapRecords).records():
+                    print(rec.value.lookallstr())
+                # print(nother.lookallstr())
+
+    if 1:
         transactions = alltypes[Account.TRANSACTIONS]
         print(transactions.lookallstr())
 
