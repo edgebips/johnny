@@ -61,6 +61,10 @@ ZERO = Decimal(0)
 Q3 = Decimal("0.001")
 
 
+# Include the commnissions on the last leg. This matches the worksheets.
+DO_COMMISSIONS_LAST_LEG = False
+
+
 def SplitCashBalance(statement: Table, trade_hist: Table) -> Tuple[Table, Table]:
     """Split the cash statement between simple cash effects vs. trades.
     Trades includes expirations and dividend events."""
@@ -447,7 +451,7 @@ def SplitGroupsToTransactions(groups: List[Group], is_futures: bool) -> Table:
                 )
                 symbol = str(inst)
 
-                if 0:
+                if DO_COMMISSIONS_LAST_LEG:
                     # Include the commnissions on the last leg. This matches the
                     # worksheets.
                     if index == 1:
