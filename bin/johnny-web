@@ -11,4 +11,4 @@ if [ -z "${JOHNNY_CONFIG}" -o ! -f "${JOHNNY_CONFIG}" ]; then
     exit 1
 fi
 
-FLASK_ENV=development FLASK_APP=johnny.webapp.app flask run
+JUPYTER_PLATFORM_DIRS=1 FLASK_DEBUG=1 FLASK_APP=johnny.webapp.app flask run
