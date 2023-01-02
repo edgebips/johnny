@@ -1,0 +1,9 @@
+click
+simplejson
+protobuf
+more_itertools
+networkx
+tzlocal
+seaborn
+matplotlib
+pygraphviz

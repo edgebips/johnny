@@ -351,13 +351,11 @@ def chain(chain_id: str):
     else:
         history_html = RenderHistoryText(txns)
 
-    return flask.render_template(
-        "chain.html",
+    args = dict(
         chain_id=chain_id,
         comment=chain_obj.comment if chain_obj else "",
         chain=ToHtmlString(chain, "chain_summary"),
         chain_proto=flask.url_for("chain_proto", chain_id=chain_id),
-        bchain=flask.url_for("bchain", chain_id=chain_id),
         transactions=ToHtmlString(txns, "chain_transactions"),
         matches=ToHtmlString(matches, "chain_matches"),
         history=history_html,
@@ -367,6 +365,10 @@ def chain(chain_id: str):
         pnl_dynamic=pnl_dynamic,
         **GetNavigation(),
     )
+    if beanjohn:
+        args.update(
+            bchain=flask.url_for("bchain", chain_id=chain_id))
+    return flask.render_template("chain.html", **args)
 
 
 # Note: This will never be called if we couldn't import Beancount, i.e., if

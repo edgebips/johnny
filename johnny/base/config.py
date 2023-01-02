@@ -3,11 +3,12 @@
 __copyright__ = "Copyright (C) 2021  Martin Blais"
 __license__ = "GNU GPLv2"
 
-import os
 from os import path
-import re
-import logging
 from typing import Mapping, Optional, Tuple
+import copy
+import logging
+import os
+import re
 
 # pylint: disable=unused-import
 from johnny.base.config_pb2 import Config, Account
@@ -39,10 +40,29 @@ def GetConfigFilenameWithDefaults(filename: Optional[str]) -> str:
     return filename
 
 
+def PerformReplacements(config: Config) -> Config:
+    """Replace environment variables in the config filenames."""
+    config = copy.deepcopy(config)
+
+    for account in config.input.accounts:
+        account.source = path.expandvars(account.source)
+        account.initial = path.expandvars(account.initial)
+    config.input.chains_db = path.expandvars(config.input.chains_db)
+
+    config.output.chains_db = path.expandvars(config.output.chains_db)
+    config.output.transactions = path.expandvars(config.output.transactions)
+    config.output.transactions_csv = path.expandvars(config.output.transactions_csv)
+    config.output.chains = path.expandvars(config.output.chains)
+    config.output.chains_csv = path.expandvars(config.output.chains_csv)
+
+    return config
+
+
 def ParseFile(filename: str) -> Config:
     """Parse a text-formatted proto configuration file."""
     with open(filename) as infile:
         config = text_format.Parse(infile.read(), Config())
+    config = PerformReplacements(config)
     Validate(config)
     return config
 
