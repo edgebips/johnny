@@ -46,11 +46,11 @@ def main(config: Optional[str], extra_downloads: Optional[str]):
     config = configlib.ParseFile(filename)
 
     regexps = {
-        "johnny.sources.tastyworks_csv.positions": "tastyworks_positions.*\.csv$",
-        "johnny.sources.thinkorswim_csv.transactions": ".*AccountStatement\.csv$",
-        "johnny.sources.thinkorswim_csv.positions": ".*PositionStatement\.csv$",
-        "johnny.sources.interactive_csv.transactions": "funds_and_trades_for_johnny\.csv$",
-        "johnny.sources.interactive_csv.positions": "positions_for_johnny\.csv$",
+        "johnny.sources.tastyworks_csv.positions": r"tastyworks_positions.*\.csv$",
+        "johnny.sources.thinkorswim_csv.transactions": r".*AccountStatement\.csv$",
+        "johnny.sources.thinkorswim_csv.positions": r".*PositionStatement\.csv$",
+        "johnny.sources.interactive_csv.transactions": r"funds_and_trades_for_johnny\.csv$",
+        "johnny.sources.interactive_csv.positions": r"positions_for_johnny\.csv$",
     }
 
     download_dirs = DOWNLOAD_DIRS

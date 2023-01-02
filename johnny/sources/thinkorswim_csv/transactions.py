@@ -46,7 +46,7 @@ from johnny.base import instrument
 from johnny.base import inventories
 from johnny.base import number
 from johnny.base import transactions as txnlib
-from johnny.base.etl import petl, Table, Record, WrapRecords
+from johnny.base.etl import petl, Table, Record, Replace, WrapRecords
 from johnny.sources.thinkorswim_csv import symbols
 from johnny.sources.thinkorswim_csv import utils
 from johnny.utils import csv_utils
@@ -361,7 +361,7 @@ _TXN_FIELDS = (
 
 
 def SplitGroupsToTransactions(groups: List[Group], is_futures: bool) -> Table:
-    """Convert groups of cash and trade rows to Beancount transactions."""
+    """Convert groups of cash and trade rows to transactions."""
 
     rows = [_TXN_FIELDS]
     for group in groups:
@@ -396,7 +396,16 @@ def SplitGroupsToTransactions(groups: List[Group], is_futures: bool) -> Table:
         else:
             message = "Impossible to match up cash and trade rows."
             if is_futures:
-                raise ValueError(message)
+                # Match up multiples of repeated rows.
+                multiple, mod = divmod(len(trade_rows), len(cash_rows))
+                if mod == 0:
+                    urows = set(
+                        Replace(crow, rowid=None, balance=None) for crow in cash_rows
+                    )
+                    if len(urows) == 1:
+                        subgroups.append((cash_rows, trade_rows))
+                    else:
+                        raise ValueError(message)
             else:
                 # logging.warning(message)
                 subgroups.append((cash_rows, trade_rows))
@@ -460,6 +469,7 @@ def SplitGroupsToTransactions(groups: List[Group], is_futures: bool) -> Table:
                     fees,
                     row_desc,
                 )
+
                 rows.append(txn)
 
     return petl.wrap(rows)
@@ -758,7 +768,7 @@ def _ParseTradeDescription(description: str) -> Dict[str, Any]:
     # '1/-1/1/-1 CUSTOM SPX 100 (Weeklys) 16 APR 21/16 APR 21 [AM]/19 MAR 21/19 MAR 21 3990/3980/4000/4010 CALL/CALL/CALL/CALL'
     # '5/-4 CUSTOM SPX 100 16 APR 21 [AM]/16 APR 21 [AM] 3750/3695 PUT/PUT'
     match = re.match(
-        f"(?P<shape>-?\d+(?:/-?\d+)*) (?P<strategy>~IRON CONDOR|CUSTOM|BACKRATIO) "
+        rf"(?P<shape>-?\d+(?:/-?\d+)*) (?P<strategy>~IRON CONDOR|CUSTOM|BACKRATIO) "
         f"{underlying} {details}",
         rest,
     )
@@ -788,7 +798,7 @@ def _ParseTradeDescription(description: str) -> Dict[str, Any]:
         return {"strategy": "SINGLE", "quantity": quantity, "symbol": sub["underlying"]}
 
     # 'GAMR 100 16 APR 21 100 PUT'  (-> SINGLE)
-    match = re.match(f"{underlying} \d+ {details}", rest)
+    match = re.match(rf"{underlying} \d+ {details}", rest)
     if match:
         sub = match.groupdict()
         return {
@@ -830,9 +840,9 @@ def _ParseExpirationDescription(description: str) -> Dict[str, Any]:
             "REMOVAL OF OPTION DUE TO EXPIRATION ",
             "(?P<quantity>[+-]?[0-9.]+) ",
             "(?P<underlying>[A-Z/:]+) ",
-            "(?P<multiplier>\d+) ",
-            "(?P<suffix>\(.*\) )?",
-            "(?P<expiration>\d+ [A-Z]{3} \d+) ",
+            r"(?P<multiplier>\d+) ",
+            r"(?P<suffix>\(.*\) )?",
+            r"(?P<expiration>\d+ [A-Z]{3} \d+) ",
             "(?P<strike>[0-9.]+) ",
             "(?P<side>PUT|CALL)",
         ]
@@ -860,9 +870,9 @@ def _ParseExpirationDescriptionDetailed(rec: Record) -> Dict[str, Any]:
             "REMOVAL OF OPTION DUE TO EXPIRATION ",
             "(?P<quantity>[+-]?[0-9.]+) ",
             "(?P<underlying>[A-Z/:]+) ",
-            "(?P<multiplier>\d+) ",
-            "(?P<suffix>\(.*\) )?",
-            "(?P<expiration>\d+ [A-Z]{3} \d+) ",
+            r"(?P<multiplier>\d+) ",
+            r"(?P<suffix>\(.*\) )?",
+            r"(?P<expiration>\d+ [A-Z]{3} \d+) ",
             "(?P<strike>[0-9.]+) ",
             "(?P<putcall>PUT|CALL)",
         ]
