@@ -209,7 +209,10 @@ def ProcessTradeHistory(
 
             order_groups.append((dtime, cash_rows, trade_rows))
 
-        return order_groups, other_rows
+        # Ensure that even an empty table has the right field names.
+        other_table = petl.wrap([cash_table[0]] + other_rows)
+
+        return order_groups, other_table
 
     # Fetch the trade history rows for equities.
     equities_groups, equities_others = MatchTradingRows(equities_cash)
@@ -223,12 +226,7 @@ def ProcessTradeHistory(
             "{}".format(trade_hist_map)
         )
 
-    return (
-        equities_groups,
-        futures_groups,
-        WrapRecords(equities_others),
-        WrapRecords(futures_others),
-    )
+    return (equities_groups, futures_groups, equities_others, futures_others)
 
 
 def _CreateInstrument(r: Record) -> str:
@@ -942,36 +940,25 @@ def GetTransactions(filename: str) -> Tuple[Table, Table]:
     equities_groups, futures_groups, equities_rest, futures_rest = ProcessTradeHistory(
         equities_trade, futures_trade, trade_hist
     )
-    # print(other_rows.lookallstr())
-    # raise
 
     # Convert matched groups of rows to trnasctions.
     equities_txns = SplitGroupsToTransactions(equities_groups, False)
     futures_txns = SplitGroupsToTransactions(futures_groups, True)
-
-    # TODO(blais): Remove
-    if 0:
-        equities_trade.tocsv("/tmp/before_equities.csv")
-        futures_trade.tocsv("/tmp/before_futures.csv")
-        equities_rest.tocsv("/tmp/after_equities.csv")
-        futures_rest.tocsv("/tmp/after_futures.csv")
 
     # Extract and process expirations.
     equities_expi, equities_rest = ProcessExpirationsToTransactions(equities_rest)
     futures_expi, futures_rest = ProcessExpirationsToTransactions(futures_rest)
 
     # Extract and process dividends.
-    if 0:
-        equities_divs, equities_rest = ProcessDividends(equities_rest)
-        futures_divs, futures_rest = ProcessDividends(futures_rest)
-    else:
-        equities_divs, equities_rest = petl.empty(), petl.empty()
-        futures_divs, futures_rest = petl.empty(), petl.empty()
+    equities_divs, equities_rest = ProcessDividends(equities_rest)
+    futures_divs, futures_rest = ProcessDividends(futures_rest)
 
-    # Check we processed all transactions.
+    # Check we processed all transactions and that the rest are empty.
     for rest in equities_rest, futures_rest:
         if rest.nrows() != 0:
             raise ValueError(f"Remaining unprocessed transactions: {rest}")
+
+    print(equities_divs.lookallstr())
 
     # Concatenate the tables.
     fieldnames = equities_txns.columns()
@@ -1004,13 +991,13 @@ def GetTransactions(filename: str) -> Tuple[Table, Table]:
     # Make the final ordering correct and finalize the columns.
     txns = txns.cut(txnlib.FIELDS)
 
-    cash_accounts = petl.cat(
+    nontrade = petl.cat(
         cashbal_nontrade, futures_nontrade,
         # Note: For now the dividends are returned as part of non-trades.
         equities_divs, futures_divs
     )
 
-    return txns, cash_accounts
+    return txns, nontrade
 
 
 def OrderSequence(prv: Optional[int], cur: Optional[int], nxt: Optional[int]) -> int:
@@ -1109,9 +1096,9 @@ def main(source: str, cash: bool):
 
     if 0:
         other = alltypes[Account.OTHER]
-        # print(other.lookallstr())
+        print(other.lookallstr())
 
-        if 1:
+        if 0:
             if 0:
                 for rec in other.aggregate("type", WrapRecords).records():
                     print(rec.value.lookallstr())

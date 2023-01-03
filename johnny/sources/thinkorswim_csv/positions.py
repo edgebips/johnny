@@ -14,6 +14,8 @@ Assumptions:
   various greeks and notional values to sum over.
 - You have inserted the following columns:
 
+  * "Net Liq":
+  * "Trade Price":
   * "Delta": which is the SPY-weighted dollar delta
   * "OptionDelta": which is per-option delta.
   * "Beta": You have inserted the *vanilla* beta (which is the MorningStar beta
