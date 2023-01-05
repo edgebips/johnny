@@ -153,6 +153,9 @@ def Process(
         elif rec.rowtype in {"Expire", "Assign", "Exercise"}:
             inv.expire(rec, accum, rec.rowtype)
 
+        elif rec.rowtype in {"Dividend"}:
+            inv.receive(rec, accum, rec.rowtype)
+
         else:
             raise ValueError(f"Invalid row type: {rec.rowtype}")
 
@@ -279,7 +282,9 @@ def GetChainMatchesFromTransactions(
         )
     chain_id = next(iter(chain_ids))
     ctxns = (
-        txns.movefield("chain_id", 0)
+        txns
+        .selectin("effect", {"OPENING", "CLOSING"})  # Remove Dividends.
+        .movefield("chain_id", 0)
         .movefield("account", 1)
         .convert("chain_id", lambda _: "")
         .sort(["match_id", "datetime"])

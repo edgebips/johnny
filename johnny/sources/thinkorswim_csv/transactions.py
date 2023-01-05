@@ -57,6 +57,7 @@ Table = petl.Table
 Record = petl.Record
 debug = False
 Config = Any
+ONE = Decimal(1)
 ZERO = Decimal(0)
 Q3 = Decimal("0.001")
 
@@ -210,7 +211,7 @@ def ProcessTradeHistory(
             order_groups.append((dtime, cash_rows, trade_rows))
 
         # Ensure that even an empty table has the right field names.
-        other_table = petl.wrap([cash_table[0]] + other_rows)
+        other_table = petl.wrap([cash_table.header()] + other_rows)
 
         return order_groups, other_table
 
@@ -311,12 +312,59 @@ def ProcessExpirationsToTransactions(cash_table: Table) -> Table:
 
 
 def ProcessDividends(table: Table) -> Tuple[Table, Table]:
-    table = table.addfield(
-        "valid_div",
-        lambda r: Assert(
-            r.type == "DOI" and r.description.startswith("ORDINARY DIVIDEND")
-        ),
+    """Check that the entire table contains only dividends."""
+    table = (
+        table.addfield(
+            "valid_div",
+            lambda r: Assert(
+                r.type == "DOI" and r.description.startswith("ORDINARY DIVIDEND")
+            ),
+        )
+        .addfield("order_id", lambda r: r["rowid"])
+        .addfield("pair_id", lambda r: r["rowid"])
+        .capture(
+            "description", r"ORDINARY DIVIDEND~(.*)", ["symbol"], include_original=True
+        )
+        .cutout("quantity")
+        .rename("amount", "quantity")
+        .addfield("underlying", lambda r: r["symbol"])
+        .addfield("rowtype", "Dividend")
+        .addfield("instruction", "")
+        .addfield("effect", "")
+        .addfield("instype", "Equity")
+        .addfield("expiration", None)
+        .addfield("expcode", None)
+        .addfield("putcall", None)
+        .addfield("strike", None)
+        .addfield("multiplier", ONE)
+        .addfield("price", ONE)
+        .addfield("commissions", ZERO)
+        .rename("misc_fees", "fees")
+        .cut(
+            [
+                "datetime",
+                "order_id",
+                "pair_id",
+                "rowtype",
+                "instruction",
+                "effect",
+                "symbol",
+                "instype",
+                "underlying",
+                "expiration",
+                "expcode",
+                "putcall",
+                "strike",
+                "multiplier",
+                "quantity",
+                "price",
+                "commissions",
+                "fees",
+                "description",
+            ]
+        )
     )
+
     return table, petl.empty()
 
 
@@ -958,13 +1006,20 @@ def GetTransactions(filename: str) -> Tuple[Table, Table]:
         if rest.nrows() != 0:
             raise ValueError(f"Remaining unprocessed transactions: {rest}")
 
-    print(equities_divs.lookallstr())
+    if 0:
+        print(equities_txns.head(24).lookallstr())
+        print(equities_divs.head(24).lookallstr())
 
     # Concatenate the tables.
     fieldnames = equities_txns.columns()
-    txns = petl.cat(equities_txns, equities_expi, futures_txns, futures_expi).sort(
-        "datetime"
-    )
+    txns = petl.cat(
+        equities_txns,
+        equities_expi,
+        #equities_divs,
+        futures_txns,
+        futures_expi,
+        #futures_divs,
+    ).sort("datetime")
 
     # Add a cost column, calculated from the data.
     # Note that for futures contracts this includes the notional value.
@@ -991,11 +1046,7 @@ def GetTransactions(filename: str) -> Tuple[Table, Table]:
     # Make the final ordering correct and finalize the columns.
     txns = txns.cut(txnlib.FIELDS)
 
-    nontrade = petl.cat(
-        cashbal_nontrade, futures_nontrade,
-        # Note: For now the dividends are returned as part of non-trades.
-        equities_divs, futures_divs
-    )
+    nontrade = petl.cat(cashbal_nontrade, futures_nontrade)
 
     return txns, nontrade
 
@@ -1108,7 +1159,7 @@ def main(source: str, cash: bool):
                     print(rec.value.lookallstr())
                 # print(nother.lookallstr())
 
-    if 1:
+    if 0:
         transactions = alltypes[Account.TRANSACTIONS]
         print(transactions.lookallstr())
 

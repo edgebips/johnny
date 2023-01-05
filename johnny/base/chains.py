@@ -118,7 +118,7 @@ def Group(
         for transaction_id in chain.ids
     }
 
-    # Select only remaining transactions not account for by final chains.
+    # Select only remaining transactions not accounted for by final chains.
     match_transactions = transactions.selectnotin("transaction_id", final_txn_chain_map)
 
     # Update the chain mapping with chains that are active or closed, so
@@ -511,6 +511,7 @@ def _CalculatePnlFrac(r: Record) -> Decimal:
 Returns = collections.namedtuple("Returns", "volatility returns move stdev")
 
 
+# TODO(blais): Compute IRR annualized returns using cash flows.
 def GetReturns(fieldname: str, rec: Record) -> float:
     volatility = getattr(rec.chain, fieldname, 0.0) or 0.0
     days = (rec.maxdate - rec.mindate).days
@@ -858,3 +859,12 @@ def AcceptChain(
     # Set group.
     if group:
         chain.group = group
+
+
+
+# TODO: First import all historical without dividends and commit.
+# TODO: UnFINAL all chains for the dividends to CLOSED (script?)
+# TODO: Detect dividends that couldn't be matched to any trade and fail them
+# TODO: Match up all the existing dividends to those trades.
+# TODO: Implement for TW as well.
+# TODO: Work on the rest of nontrades.

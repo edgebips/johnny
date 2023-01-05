@@ -49,13 +49,13 @@ def IsZoneAware(d: datetime.datetime) -> bool:
 
 
 # Valid row types.
-ROW_TYPES = {"Trade", "Expire", "Open", "Mark", "Assign", "Exercise"}
+ROW_TYPES = {"Trade", "Expire", "Open", "Mark", "Assign", "Exercise", "Dividend"}
 
 # Valid effect types. The empty string is used to indicate "unknown".
 EFFECT = {"OPENING", "CLOSING", ""}
 
 # Valid instructions.
-INSTRUCTION = {"BUY", "SELL"}
+INSTRUCTION = {"BUY", "SELL", ""}
 
 
 def ValidateFieldNames(table: Table):
