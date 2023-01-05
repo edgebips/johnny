@@ -280,6 +280,11 @@ def favicon():
     return flask.redirect(flask.url_for("static", filename="favicon.ico"))
 
 
+@app.errorhandler(404)
+def resource_not_found(e):
+    return flask.jsonify(error=str(e)), 404
+
+
 def render_chains(chains: Table) -> flask.Response:
     ids = chains.values("chain_id")
     chains = chains.convert("chain_id", partial(AddUrl, "chain", "chain_id"))
@@ -317,6 +322,8 @@ def chains():
 def chain(chain_id: str):
     # Get the chain object from the configuration.
     chain_obj = STATE.chains_map.get(chain_id)
+    if chain_obj is None:
+        flask.abort(404, description=f"Chain '{chain_id}' not found")
 
     # Isolate the chain summary data.
     chain = STATE.chains.selecteq("chain_id", chain_id)
@@ -345,11 +352,8 @@ def chain(chain_id: str):
     pnl_static = agg_cost(static)
     pnl_dynamic = agg_cost(dynamic)
 
-    # TODO(blais): Isolate this to a function.
-    if 0:
-        history_html = RenderHistorySVG(txns)
-    else:
-        history_html = RenderHistoryText(txns)
+    # TODO(blais): Implement SVG and isolate its rendering to a function.
+    history_html = RenderHistoryText(txns) if 1 else RenderHistorySVG(txns)
 
     args = dict(
         chain_id=chain_id,
