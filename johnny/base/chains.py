@@ -144,7 +144,7 @@ def Group(
                 raise KeyError("Node without type for: {}".format(transaction_id))
             if node["type"] == "txn":
                 chain_txns.append(node["rec"])
-        assert chain_txns, "Invalid empty chain: {}".format(chain_txns)
+        assert chain_txns, "Invalid empty chain: {}".format(cc)
 
         chain_id = ChainName(chain_txns, txn_chain_map)
 
@@ -242,6 +242,9 @@ def _LinkByOverlapping(transactions: Table) -> List[Tuple[str, str]]:
     expiration exists in that underlying. We're not bothering to inspect
     match_id at all. This is a bit more general and correct than
     _LinkByOverlappingMatch().
+
+    Note that this function also supports dividends and ties them into
+    transactions with matching positions in the underlying present.
     """
     AssertColumns(
         transactions,
@@ -269,7 +272,7 @@ def _LinkByOverlapping(transactions: Table) -> List[Tuple[str, str]]:
     # Run through matching in order to figure out overlaps.
     # This is a mapping of (account, underlying) to a mapping of (expiration, Term).
     # A Term object contains all the options positions for that expiration in
-    # the `quantities` attribue.
+    # the `quantities` attribute.
     # `expiration` can be `None` in order to track positions in the underlying.
     inventory = collections.defaultdict(dict)
     links = []
@@ -294,7 +297,7 @@ def _LinkByOverlapping(transactions: Table) -> List[Tuple[str, str]]:
             term = undermap[expiration] = Term(term_id)
 
         if isnew:
-            if expiration is None:
+            if expiration is None and rec.rowtype != "Dividend":
                 # This is an underlying, not an option on one.
                 # Link it to all the currently active expirations.
                 for uexpiration, expterm in undermap.items():
@@ -302,24 +305,25 @@ def _LinkByOverlapping(transactions: Table) -> List[Tuple[str, str]]:
                         continue
                     links.append((term.id, expterm.id))
             else:
-                # This is an option.
+                # This is an option or a dividend.
                 # Link it to the underlying if it is active.
                 if None in undermap:
                     outterm = undermap[None]
                     links.append((term.id, outterm.id))
 
-        sign = -1 if rec.instruction == "SELL" else +1
-        term.quantities[rec.symbol] += sign * rec.quantity
-        transaction_links.append((term.id, rec.transaction_id))
-        if term.quantities[rec.symbol] == ZERO:
-            del term.quantities[rec.symbol]
+        if rec.rowtype != "Dividend":
+            sign = -1 if rec.instruction == "SELL" else +1
+            term.quantities[rec.symbol] += sign * rec.quantity
+            transaction_links.append((term.id, rec.transaction_id))
+            if term.quantities[rec.symbol] == ZERO:
+                del term.quantities[rec.symbol]
         if not term.quantities:
             del undermap[expiration]
 
     # Sanity check. All positions should have been closed (`Mark` rows close
     # outstanding positions) and the resulting inventory should be completely
     # empty.
-    inventory = {key: undermap for key, undermap in undermap.items() if undermap}
+    inventory = {key: undermap for key, undermap in inventory.items() if undermap}
     if inventory:
         logging.error("Inventory not empty: {}".format(inventory))
 

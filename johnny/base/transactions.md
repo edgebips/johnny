@@ -38,11 +38,10 @@ A normalized transactions table contains the following columns and data types.
   * `Exercise` (an exercise, a removal type of event),
   * `Mark` (a virtual sale).
   * `Open` (a virtual transaction to create an opening balance)
+  * `Dividend` (a dividend payment associated with this trade)
 
   `Mark` is never inserted by the normalization code, that's something that is
   inserted by further processing code.
-
-  Future values will include `Dividend`.
 
   Also note that for 'Assign' and 'Exercise', the corresponding stock actions
   are categorized as 'Trade'.

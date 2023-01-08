@@ -37,7 +37,6 @@ TEMPLATE_POST = """
 )
 def main(config: Optional[str]):
     if config is None:
-        chains_db = configlib.ReadChains(config.input.chains_db)
         filename = configlib.GetConfigFilenameWithDefaults(config)
         config = configlib.ParseFile(filename)
         chains_filename = config.input.chains_db
