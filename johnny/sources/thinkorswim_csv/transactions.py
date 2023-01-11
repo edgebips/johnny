@@ -1006,10 +1006,6 @@ def GetTransactions(filename: str) -> Tuple[Table, Table]:
         if rest.nrows() != 0:
             raise ValueError(f"Remaining unprocessed transactions: {rest}")
 
-    timestamp = int(datetime.datetime.now().timestamp())
-    equities_divs.tocsv(f"/tmp/equities_divs_{timestamp}.csv")
-    futures_divs.tocsv(f"/tmp/futures_divs_{timestamp}.csv")
-
     # Concatenate the tables.
     fieldnames = equities_txns.columns()
     txns = petl.cat(
