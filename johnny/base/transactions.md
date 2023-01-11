@@ -43,6 +43,10 @@ A normalized transactions table contains the following columns and data types.
   `Mark` is never inserted by the normalization code, that's something that is
   inserted by further processing code.
 
+  `Dividend` needs to have a price of 1.0 and `quantity` and `cost` values equal
+  to the dollar amount of the dividend. Furthermore, note that the date of the
+  dividend may follow the closing date by a number of days (currently 5).
+
   Also note that for 'Assign' and 'Exercise', the corresponding stock actions
   are categorized as 'Trade'.
 
