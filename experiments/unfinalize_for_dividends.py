@@ -48,8 +48,8 @@ def main(config: Optional[str], output: Optional[str], filenames: List[str]):
     transactions = petl.frompickle(config.output.transactions).applyfn(
         instrument.Expand, "symbol"
     )
-    # price_map = mark.GetPriceMap(transactions, config)
-    # transactions = mark.Mark(transactions, price_map)
+    price_map = mark.GetPriceMap(transactions, config)
+    transactions = mark.Mark(transactions, price_map)
     transactions_map = transactions.recordlookupone("transaction_id")
 
     # Read the list of dividend rows.
@@ -59,18 +59,19 @@ def main(config: Optional[str], output: Optional[str], filenames: List[str]):
     if 0:
         print(dividends.lookallstr())
 
-    # Precompute a mapping of instrument to chains potentially involved.
+    # Precompute a mapping of (account, symbol) to chains potentially involved.
     symbol_map = collections.defaultdict(set)
     for chain in chains_db.chains:
         for transaction_id in chain.ids:
             rec = transactions_map[transaction_id]
             if rec.instype == "Equity":
-                symbol_map[rec.symbol].add(chain.chain_id)
+                symbol_map[(rec.account, rec.symbol)].add(chain.chain_id)
 
     # Find an associate a chain to each dividend.
     def FindChain(div: Record):
+        # TODO(blais): Should use the nickname from the very top.
         matching_chains = []
-        for chain_id in symbol_map[div.symbol]:
+        for chain_id in symbol_map[(div.account, div.symbol)]:
             chain = chain_map[chain_id]
             transactions = [transactions_map[id] for id in chain.ids]
             mindate = min([rec.datetime for rec in transactions])
@@ -85,7 +86,9 @@ def main(config: Optional[str], output: Optional[str], filenames: List[str]):
                 matching_chains.append(chain)
         return [chain.chain_id for chain in matching_chains]
 
-    dividends = dividends.addfield("chains", FindChain)
+    dividends = dividends.convert("account", lambda v: "x{}".format(v[-4:-2])).addfield(
+        "chains", FindChain
+    )
 
     # Print out the dividends with associated chain.
     if 1:

@@ -113,6 +113,8 @@ TRANSACTION_TYPES = {
     # Transfers.
     ("Receive Deliver", "ACAT"): "Trade",
     ("Receive Deliver", "ACAT"): "Trade",
+    # Dividends.
+    ("Money Movement", "Dividend"): "Dividend",
 }
 
 OTHER_TYPES = {
@@ -123,7 +125,6 @@ OTHER_TYPES = {
     ("Money Movement", "Transfer"): "Other",
     ("Money Movement", "Withdrawal"): "Other",
     ("Money Movement", "Deposit"): "Other",
-    ("Money Movement", "Dividend"): "Other",
     ("Money Movement", "Fee"): "Other",
 }
 
@@ -159,6 +160,8 @@ def GetPosEffect(rec: Record) -> Optional[str]:
     """Get position effect."""
     if rec.rowtype in {"Expire", "Exercise", "Assign"}:
         return "CLOSING"
+    if rec.rowtype in {"Dividend"}:
+        return ""
     action = rec["action"]
     if action.endswith("to Open"):
         return "OPENING"
@@ -185,10 +188,12 @@ def GetInstruction(rec: Record) -> Optional[str]:
         raise NotImplementedError("Unknown instruction: '{}'".format(rec.Action))
 
 
-def ConvertSafeInteger(value_str: str) -> Decimal:
+def ConvertSafeInteger(value_str: Optional[str], rec: Record) -> Decimal:
     """Convert and round integer values to decimal and leave fractional alone.
     This is only used to trim unnecessary trailing ".0" suffixes.
     """
+    if rec.rowtype == "Dividend":
+        return rec["value"]
     rounded_value_str = re.sub(r"\.0$", "", value_str)
     return Decimal(rounded_value_str)
 
@@ -228,6 +233,8 @@ def CalculatePrice(value: str, rec: Record) -> Decimal:
     """Clean up prices and calculate them where missing."""
     if rec["transaction-sub-type"] in {"Forward Split", "Reverse Split"}:
         return abs(rec.cost / rec.quantity / rec.instrument.multiplier)
+    if rec["rowtype"] == "Dividend":
+        return ONE
     if value is None:
         return ZERO
     return Decimal(value)
@@ -285,7 +292,7 @@ def GetTransactions(filename: str) -> Table:
         .addfield("effect", GetPosEffect)
         .addfield("instruction", GetInstruction)
         # Safely convert quantity field to a numerical value.
-        .convert("quantity", ConvertSafeInteger)
+        .convert("quantity", ConvertSafeInteger, pass_row=True)
         # Rename commissions.
         .rename("commission", "commissions")
         # Compute total fees.
@@ -351,12 +358,13 @@ def Import(source: str, config: configlib.Config, logtype: "LogType") -> Table:
 def main(database: str):
     """Normalizer for database of unprocessed transactions to normalized form."""
 
-    if 0:
+    if 1:
         transactions = Import(database, None, Account.TRANSACTIONS)
         transactions = GetTransactions(database)
-        print(transactions.lookallstr())
+        #print(transactions.lookallstr())
+        #print(transactions.selecteq("rowtype", "Dividend").tocsv("/tmp/divs_roth.csv"))
 
-    if 1:
+    if 0:
         nontrades = Import(database, None, Account.OTHER)
         #print(nontrades.lookallstr())
         for rec in nontrades.aggregate(
