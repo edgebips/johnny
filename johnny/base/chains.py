@@ -279,9 +279,14 @@ def _LinkByOverlapping(transactions: Table) -> List[Tuple[str, str]]:
     transaction_links = []
     idgen = iter(itertools.count(start=1))
     for rec in transactions.records():
+        print()
+        print(rec)
+
         # Get a mapping for each underlying. In that submapping, the special key
         # 'None' refers to the position of the underlying outright.
         undermap = inventory[(rec.account, rec.underlying)]
+        if rec["rowtype"] == "Dividend":
+            print(undermap)
 
         # Potentially allocate a new position for the expiration (or lack
         # thereof). (Note that undermap is mutating if the key is new.) Also
@@ -289,6 +294,7 @@ def _LinkByOverlapping(transactions: Table) -> List[Tuple[str, str]]:
         # need to insert a unique id.
         expiration = _GetExpiration(rec)
         isnew = expiration not in undermap
+        print(f"isnew = {isnew}")
         term_id = "{}/{}/{}/{}".format(
             rec.account, rec.underlying, expiration, next(idgen)
         )
@@ -305,9 +311,11 @@ def _LinkByOverlapping(transactions: Table) -> List[Tuple[str, str]]:
                         continue
                     links.append((term.id, expterm.id))
             else:
+                print("DIVIDEND")
                 # This is an option or a dividend.
                 # Link it to the underlying if it is active.
                 if None in undermap:
+                    print("XXX")
                     outterm = undermap[None]
                     links.append((term.id, outterm.id))
 

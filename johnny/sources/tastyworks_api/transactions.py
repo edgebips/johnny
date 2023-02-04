@@ -361,8 +361,8 @@ def main(database: str):
     if 1:
         transactions = Import(database, None, Account.TRANSACTIONS)
         transactions = GetTransactions(database)
-        #print(transactions.lookallstr())
-        #print(transactions.selecteq("rowtype", "Dividend").tocsv("/tmp/divs_roth.csv"))
+        #print(transactions.head(10).lookallstr())
+        transactions.selecteq("rowtype", "Dividend").tocsv()
 
     if 0:
         nontrades = Import(database, None, Account.OTHER)

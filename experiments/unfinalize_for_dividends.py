@@ -99,9 +99,11 @@ def main(config: Optional[str], output: Optional[str], filenames: List[str]):
         if chain.status == ChainStatus.FINAL:
             chain.status = ChainStatus.CLOSED
 
-    if output:
-        with open(output, "w") as f:
-            f.write(configlib.ToText(chains_db))
+    if not output:
+        output = chains_filename + ".new"
+    print(f"# Outputting to {output}")
+    with open(output, "w") as f:
+        f.write(configlib.ToText(chains_db))
 
 
 if __name__ == "__main__":
