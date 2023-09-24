@@ -32,6 +32,7 @@ FIELDS = [
     "quantity",
     "price",
     "cost",
+    "cash",
     "commissions",
     "fees",
     # Descriptive info
@@ -96,7 +97,13 @@ def ValidateTransactionRecord(r: Record):
     ), r
     assert isinstance(r.price, Decimal)
     assert isinstance(r.cost, Decimal)
+    assert isinstance(r.cash, Decimal)
     assert isinstance(r.commissions, Decimal)
     assert isinstance(r.fees, Decimal)
 
     assert isinstance(r.description, str)
+
+    if r.rowtype == "Dividend":
+        assert not r.quantity
+        assert not r.price
+        assert not r.cost

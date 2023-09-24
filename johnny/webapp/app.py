@@ -342,15 +342,16 @@ def chain(chain_id: str):
         lambda r: r.instype in {"Equity", "Future", "Crypto"}
     )
 
-    def agg_cost(table):
-        agg_table = table.aggregate(None, {"cost": ("cost", sum)})
-        values = agg_table.values("cost")
+    def agg_field(table, fieldname):
+        agg_table = table.aggregate(None, {fieldname: (fieldname, sum)})
+        values = agg_table.values(fieldname)
         if not values:
             return ZERO
         return next(iter(values)).quantize(Q)
 
-    pnl_static = agg_cost(static)
-    pnl_dynamic = agg_cost(dynamic)
+    pnl_static = agg_field(static, "cost")
+    pnl_dynamic = agg_field(dynamic, "cost")
+    pnl_cash = agg_field(txns, "cash")
 
     # TODO(blais): Implement SVG and isolate its rendering to a function.
     history_html = RenderHistoryText(txns) if 1 else RenderHistorySVG(txns)
@@ -367,6 +368,7 @@ def chain(chain_id: str):
         xrefs=chain_obj.xrefs,
         pnl_static=pnl_static,
         pnl_dynamic=pnl_dynamic,
+        pnl_cash=pnl_cash,
         **GetNavigation(),
     )
     if beanjohn:

@@ -43,9 +43,10 @@ A normalized transactions table contains the following columns and data types.
   `Mark` is never inserted by the normalization code, that's something that is
   inserted by further processing code.
 
-  `Dividend` needs to have a price of 1.0 and `quantity` and `cost` values equal
-  to the dollar amount of the dividend. Furthermore, note that the date of the
-  dividend may follow the closing date by a number of days (currently 5).
+  `Dividend` needs to have a `price`, `quantity` and `cost` values of zero or
+  empty and a `cash` colum equal to the dollar amount of the dividend.
+  Furthermore, note that the date of the dividend may follow the closing date by
+  a number of days (currently 5).
 
   Also note that for 'Assign' and 'Exercise', the corresponding stock actions
   are categorized as 'Trade'.
@@ -99,6 +100,9 @@ A normalized transactions table contains the following columns and data types.
 
 - `cost: Decimal`: The dollar amount of the position change minus commissions
   and fees. This is a signed number.
+
+- `cash: Decimal`: A dollar amount of cash deposited (removed) associated with
+  the position. This should be left unset except for rows of type `Dividend`.
 
 - `commissions: Decimal`: The dollar amount of commissions charged. This is a
   signed number, usually negative. These are the fees paid to the broker for

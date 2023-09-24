@@ -279,14 +279,9 @@ def _LinkByOverlapping(transactions: Table) -> List[Tuple[str, str]]:
     transaction_links = []
     idgen = iter(itertools.count(start=1))
     for rec in transactions.records():
-        print()
-        print(rec)
-
         # Get a mapping for each underlying. In that submapping, the special key
         # 'None' refers to the position of the underlying outright.
         undermap = inventory[(rec.account, rec.underlying)]
-        if rec["rowtype"] == "Dividend":
-            print(undermap)
 
         # Potentially allocate a new position for the expiration (or lack
         # thereof). (Note that undermap is mutating if the key is new.) Also
@@ -294,7 +289,11 @@ def _LinkByOverlapping(transactions: Table) -> List[Tuple[str, str]]:
         # need to insert a unique id.
         expiration = _GetExpiration(rec)
         isnew = expiration not in undermap
-        print(f"isnew = {isnew}")
+        if rec["rowtype"] == "Dividend":
+            # There needs to be an active underlying, otherwise why are we
+            # receiving a dividend?.
+            assert not isnew
+
         term_id = "{}/{}/{}/{}".format(
             rec.account, rec.underlying, expiration, next(idgen)
         )
@@ -306,25 +305,35 @@ def _LinkByOverlapping(transactions: Table) -> List[Tuple[str, str]]:
             if expiration is None and rec.rowtype != "Dividend":
                 # This is an underlying, not an option on one.
                 # Link it to all the currently active expirations.
-                for uexpiration, expterm in undermap.items():
+                for uexpiration, expiration_term in undermap.items():
                     if uexpiration is None:
                         continue
-                    links.append((term.id, expterm.id))
+                    links.append((term.id, expiration_term.id))
             else:
-                print("DIVIDEND")
-                # This is an option or a dividend.
+                # This is an option.
                 # Link it to the underlying if it is active.
                 if None in undermap:
-                    print("XXX")
-                    outterm = undermap[None]
-                    links.append((term.id, outterm.id))
+                    outright_term = undermap[None]
+                    links.append((term.id, outright_term.id))
+        else:
+            if rec.rowtype == "Dividend":
+                # This is a dividend.
+                # Link it to the underlying.
+                # Assert that it's active.
+                if None in undermap:
+                    outright_term = undermap[None]
+                    links.append((term.id, outright_term.id))
 
+        # Link this record (by transaction id) to this term.
+        transaction_links.append((term.id, rec.transaction_id))
+
+        # Update quantities.
         if rec.rowtype != "Dividend":
             sign = -1 if rec.instruction == "SELL" else +1
             term.quantities[rec.symbol] += sign * rec.quantity
-            transaction_links.append((term.id, rec.transaction_id))
             if term.quantities[rec.symbol] == ZERO:
                 del term.quantities[rec.symbol]
+
         if not term.quantities:
             del undermap[expiration]
 
@@ -426,7 +435,7 @@ def PositionCost(rec: Record) -> Decimal:
 
     inv = collections.defaultdict(inventories.FifoInventory)
     for txn in rec.txns:
-        if txn.rowtype == "Mark":
+        if txn.rowtype in {"Mark", "Dividend"}:
             continue
         sign = +1 if txn.instruction == "SELL" else -1
         unit_cost = abs(txn.cost / txn.quantity)
@@ -437,6 +446,12 @@ def PositionCost(rec: Record) -> Decimal:
 
 def _CalculateNetLiq(pairs: Iterator[Tuple[str, Decimal]]):
     return Decimal(sum(cost for rowtype, cost in pairs if rowtype == "Mark")).quantize(
+        Q2
+    )
+
+
+def _CalculateCash(pairs: Iterator[Tuple[str, Decimal]]):
+    return Decimal(sum(cost for rowtype, cost in pairs if rowtype == "Dividend")).quantize(
         Q2
     )
 
@@ -566,6 +581,7 @@ def TransactionsTableToChainsTable(
         "net_liq": (("rowtype", "cost"), _CalculateNetLiq),
         "commissions": ("commissions", sum),
         "fees": ("fees", sum),
+        "pnl_cash": (("rowtype", "cost"), _CalculateCash),
     }
 
     transaction_map = transactions.recordlookupone("transaction_id")
@@ -666,6 +682,7 @@ def TransactionsTableToChainsTable(
         "pnl_frac",
         "target",
         "pop",
+        "pnl_cash",
         "net_win",
         "net_liq",
         "net_loss",
