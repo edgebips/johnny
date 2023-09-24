@@ -28,6 +28,7 @@ from johnny.base.number import ToDecimal
 from johnny.sources.tastyworks_csv import symbols
 
 
+ZERO = Decimal(0)
 Q2 = Decimal("0.01")
 
 
@@ -64,7 +65,9 @@ def GetIndexPrice(r: Record) -> Decimal:
     # Delta: is dollar-deltas from TW.
     # β Delta: is SPY-weighted deltas.
     # Beta: Morningstar betas.
-    return (r["Delta"] / r["β Delta"] * r["mark"] * r["Beta"]).quantize(Q2)
+    if r["β Delta"]:
+        return (r["Delta"] / r["β Delta"] * r["mark"] * r["Beta"]).quantize(Q2)
+    return ZERO
 
 
 def GetPositions(filename: str) -> Table:
