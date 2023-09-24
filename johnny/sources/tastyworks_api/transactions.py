@@ -188,12 +188,12 @@ def GetInstruction(rec: Record) -> Optional[str]:
         raise NotImplementedError("Unknown instruction: '{}'".format(rec.Action))
 
 
-def ConvertSafeInteger(value_str: Optional[str], rec: Record) -> Decimal:
+def ConvertQuantity(value_str: Optional[str], rec: Record) -> Decimal:
     """Convert and round integer values to decimal and leave fractional alone.
     This is only used to trim unnecessary trailing ".0" suffixes.
     """
     if rec.rowtype == "Dividend":
-        return rec["value"]
+        return ZERO
     rounded_value_str = re.sub(r"\.0$", "", value_str)
     return Decimal(rounded_value_str)
 
@@ -209,6 +209,9 @@ def CalculateFees(rec: Record) -> Decimal:
 
 def CalculateCost(rec: Record) -> Decimal:
     """Calculate the raw cost."""
+    if rec["rowtype"] == "Dividend":
+        return ZERO
+
     derived_net_value = rec["value"] + rec["commissions"] + rec["fees"]
     assert rec["net-value"] == derived_net_value, (rec["net-value"], derived_net_value)
 
@@ -229,12 +232,17 @@ def CalculateCost(rec: Record) -> Decimal:
     return value
 
 
+def CalculateCash(rec: Record) -> Decimal:
+    """Calculate the cash portion, from dividends."""
+    return rec["value"] if rec["rowtype"] == "Dividend" else ZERO
+
+
 def CalculatePrice(value: str, rec: Record) -> Decimal:
     """Clean up prices and calculate them where missing."""
     if rec["transaction-sub-type"] in {"Forward Split", "Reverse Split"}:
         return abs(rec.cost / rec.quantity / rec.instrument.multiplier)
     if rec["rowtype"] == "Dividend":
-        return ONE
+        return ZERO
     if value is None:
         return ZERO
     return Decimal(value)
@@ -292,13 +300,15 @@ def GetTransactions(filename: str) -> Table:
         .addfield("effect", GetPosEffect)
         .addfield("instruction", GetInstruction)
         # Safely convert quantity field to a numerical value.
-        .convert("quantity", ConvertSafeInteger, pass_row=True)
+        .convert("quantity", ConvertQuantity, pass_row=True)
         # Rename commissions.
         .rename("commission", "commissions")
         # Compute total fees.
         .addfield("fees", CalculateFees)
         # Compute cost and verify the totals.
         .addfield("cost", CalculateCost)
+        # Compute dividends and other cash.
+        .addfield("cash", CalculateCash)
         # Convert price to decimal.
         .convert("price", CalculatePrice, pass_row=True)
         # .cut(txnlib.FIELDS) TODO(blais): Restore this.
@@ -314,6 +324,7 @@ def GetTransactions(filename: str) -> Table:
             "quantity",
             "price",
             "cost",
+            "cash",
             "commissions",
             "fees",
             "description",
