@@ -581,7 +581,7 @@ def TransactionsTableToChainsTable(
         "net_liq": (("rowtype", "cost"), _CalculateNetLiq),
         "commissions": ("commissions", sum),
         "fees": ("fees", sum),
-        "pnl_cash": (("rowtype", "cost"), _CalculateCash),
+        "pnl_cash": (("rowtype", "cash"), _CalculateCash),
     }
 
     transaction_map = transactions.recordlookupone("transaction_id")

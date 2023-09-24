@@ -36,7 +36,7 @@ from os import path
 from typing import Any, Dict, List, Optional, Tuple, Union, Iterable
 import collections
 import csv
-import datetime
+import datetime as dt
 import hashlib
 import itertools
 import logging
@@ -83,8 +83,8 @@ def GetAssetClass(v: str) -> str:
         raise ValueError(f"Unknown value {v}")
 
 
-def GetExpiration(v: str) -> Optional[datetime.date]:
-    return datetime.datetime.strptime(v, "%Y-%m-%d").date() if v else ""
+def GetExpiration(v: str) -> Optional[dt.date]:
+    return dt.datetime.strptime(v, "%Y-%m-%d").date() if v else ""
 
 
 def GetSymbol(rec: Record) -> instrument.Instrument:
@@ -238,7 +238,7 @@ def GetTransactions(filename: str) -> Tuple[Table, Table]:
     table = (
         tablemap["STFU"]
         # Convert date.
-        .convert("Date", lambda v: datetime.datetime.strptime(v, "%Y-%m-%d").date())
+        .convert("Date", lambda v: dt.datetime.strptime(v, "%Y-%m-%d").date())
         # .sort('Date')
         # Keep just some of the fields.
         .cut(
@@ -301,20 +301,36 @@ def GetTransactions(filename: str) -> Tuple[Table, Table]:
     )
 
     # We're going to split the statement of funds between trade and non-trade data.
-    #
-    # Important note: for now, dividends aren't incorporated; they need to be
-    # added to Johnny in the long run.
-    trade, nontrade = table.biselect(lambda r: r.ActivityCode in {"BUY", "SELL"})
+    trade, nontrade = table.biselect(lambda r: r.ActivityCode in {"BUY", "SELL", "DIV"})
 
-    # Join some of the rows rom the trades table.
+    # Join datetime and pos-effect rom the trades table.
     trnt = (
         tablemap["TRNT"]
         .convert("DateTime", lambda v: parser.parse(v))
         .convert("Open/CloseIndicator", GetEffect)
         .cut("TradeID", "DateTime", "Open/CloseIndicator")
-        .rename({"DateTime": "datetime", "Open/CloseIndicator": "effect"})
+        .rename(
+            {
+                "DateTime": "datetime",
+                "Open/CloseIndicator": "effect",
+            }
+        )
     )
-    trade = petl.leftjoin(trade, trnt, key="TradeID").cutout("Date")
+    trade = petl.leftjoin(trade, trnt, key="TradeID")
+
+    # Dividends don't have a datetime and pos-effect. Fill them in.
+    time_open = dt.time(9, 30)
+    trade = (
+        trade.convert("effect", lambda v: "" if v is None else v)
+        .convert(
+            "datetime",
+            lambda v, r: (
+                dt.datetime.combine(r["Date"], time_open) if v is None else v
+            ),
+            pass_row=True,
+        )
+        .cutout("Date")
+    )
 
     # Join some of the rows rom the commissions table.
     unbc = ProcessCommissions(tablemap["UNBC"])
@@ -354,6 +370,19 @@ def GetTransactions(filename: str) -> Tuple[Table, Table]:
 
     # Normalize the rest of the fields.
     trade = (
+        # Verify the trade commission.
+        trade.addfield(
+            "cdiff",
+            lambda r: (r["TradeCommission"] - (r["commissions"] + r["fees"])).quantize(
+                Decimal("0.00001")
+            ),
+        )
+        .cutout("TradeCommission", "cdiff")
+        .rename("ActivityCode", "rowtype")
+        .convert("rowtype", lambda v: "Dividend" if v == "DIV" else "Trade")
+        .addfield("cash", lambda r: r["Amount"] if r["rowtype"] == "Dividend" else ZERO)
+    )
+    trade = (
         trade.rename(
             {
                 "ClientAccountID": "account",
@@ -366,18 +395,14 @@ def GetTransactions(filename: str) -> Tuple[Table, Table]:
                 "ActivityDescription": "description",
             }
         )
+        # Fill in for missing order ids (from dividends).
+        .convert(
+            "order_id",
+            (lambda v, r: v if v else "o{}".format(r.transaction_id)),
+            pass_row=True,
+        )
         # Absolute value for quantity.
         .convert("quantity", abs)
-        # Verify the trade commission.
-        .addfield(
-            "cdiff",
-            lambda r: (r["TradeCommission"] - (r["commissions"] + r["fees"])).quantize(
-                Decimal("0.00001")
-            ),
-        )
-        .cutout("TradeCommission", "cdiff")
-        .cutout("ActivityCode", "TradeID")
-        .addfield("rowtype", "Trade")
     )
 
     # Reorder the final fields.
@@ -423,10 +448,10 @@ def main(source: str, cash: bool):
             for rec in other.aggregate("ActivityCode", WrapRecords).records():
                 print(rec.value.lookallstr())
         else:
-             nother = nontrades.ConvertNonTrades(other)
-             for rec in nother.aggregate("type", WrapRecords).records():
-                 print(rec.value.lookallstr())
-             print(nother.lookallstr())
+            nother = nontrades.ConvertNonTrades(other)
+            for rec in nother.aggregate("type", WrapRecords).records():
+                print(rec.value.lookallstr())
+            print(nother.lookallstr())
 
     if 0:
         transactions = alltypes[Account.TRANSACTIONS]

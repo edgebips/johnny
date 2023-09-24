@@ -15,37 +15,19 @@ from johnny.base import config as configlib
 from johnny.base import discovery
 from johnny.base import instrument
 from johnny.base import mark
-from johnny.base.etl import petl, Table
-
-
-def GetLogTables(config: configlib.Config, logtype: int) -> Table:
-    """Process the log tables."""
-    logtables = discovery.ImportConfiguredInputs(config, {logtype})
-    opt_table = logtables.get(logtype)
-    return opt_table if opt_table is not None else petl.empty()
-
-
-def PrintTable(table: Table, expand: bool):
-    """Print the table, given the options."""
-    if expand:
-        table = instrument.Expand(table, "symbol")
-    print(table.lookallstr())
+from johnny.base.etl import petl, Table, WrapRecords
 
 
 def main():
     filename = configlib.GetConfigFilenameWithDefaults(None)
     config = configlib.ParseFile(filename)
     transactions = petl.frompickle(config.output.transactions)
+    # print(transactions.lookallstr())
 
-    header = transactions.header()
-    def agg(chain):
-        table = petl.wrap(list(itertools.chain([header], chain)))
-        dividends = table.selecteq("rowtype", "Dividend")
+    for rec in transactions.aggregate("chain_id", WrapRecords).records():
+        dividends = rec.value.selecteq("rowtype", "Dividend")
         if petl.nrows(dividends):
-            print(table.lookallstr())
-
-    table = transactions.aggregate("chain_id", agg)
-    list(table)
+            print(rec.value.lookallstr())
 
 
 if __name__ == "__main__":
