@@ -286,6 +286,7 @@ def ProcessExpirationsToTransactions(cash_table: Table) -> Table:
         .addfield("commissions", ZERO)
         .rename("commissions_fees", "fees")
         .addfield("price", ZERO)
+        .addfield("cash", ZERO)
         # Clean up for the final table.
         .cut(
             "datetime",
@@ -303,6 +304,7 @@ def ProcessExpirationsToTransactions(cash_table: Table) -> Table:
             "multiplier",
             "quantity",
             "price",
+            "cash",
             "commissions",
             "fees",
             "description",
@@ -325,8 +327,6 @@ def ProcessDividends(table: Table) -> Tuple[Table, Table]:
         .capture(
             "description", r"ORDINARY DIVIDEND~(.*)", ["symbol"], include_original=True
         )
-        .cutout("quantity")
-        .rename("amount", "quantity")
         .addfield("underlying", lambda r: r["symbol"])
         .addfield("rowtype", "Dividend")
         .addfield("instruction", "")
@@ -337,7 +337,10 @@ def ProcessDividends(table: Table) -> Tuple[Table, Table]:
         .addfield("putcall", None)
         .addfield("strike", None)
         .addfield("multiplier", ONE)
-        .addfield("price", ONE)
+        .cutout("quantity")
+        .addfield("quantity", ZERO)
+        .addfield("price", ZERO)
+        .rename("amount", "cash")
         .addfield("commissions", ZERO)
         .rename("misc_fees", "fees")
         .cut(
@@ -358,6 +361,7 @@ def ProcessDividends(table: Table) -> Tuple[Table, Table]:
                 "multiplier",
                 "quantity",
                 "price",
+                "cash",
                 "commissions",
                 "fees",
                 "description",
@@ -414,6 +418,7 @@ _TXN_FIELDS = (
     "multiplier",
     "quantity",
     "price",
+    "cash",
     "commissions",
     "fees",
     "description",
@@ -525,6 +530,7 @@ def SplitGroupsToTransactions(groups: List[Group], is_futures: bool) -> Table:
                     trow.multiplier,
                     trow.quantity,
                     trow.price,
+                    ZERO,
                     commissions,
                     fees,
                     row_desc,
@@ -1137,8 +1143,10 @@ def Import(source: str, config: configlib.Config, logtype: "LogType") -> Table:
 @click.argument("source", type=click.Path())
 @click.option("--cash", is_flag=True, help="Print out cash transactions.")
 def main(source: str, cash: bool):
-    """Simple local runner for this translator."""
+    """Simple local runner for this translator.
 
+    `source` is a globbing pattern matching the files we can process.
+    """
     alltypes = ImportAll(source, None)
 
     if 0:
@@ -1155,7 +1163,7 @@ def main(source: str, cash: bool):
                     print(rec.value.lookallstr())
                 # print(nother.lookallstr())
 
-    if 0:
+    if 1:
         transactions = alltypes[Account.TRANSACTIONS]
         print(transactions.lookallstr())
 
