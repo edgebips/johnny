@@ -8,6 +8,9 @@ from typing import Callable, Tuple
 import datetime
 import functools
 
+import pyarrow as pa
+import pyarrow.parquet as pq
+
 from johnny.base.etl import Record, Table
 
 
@@ -37,6 +40,8 @@ FIELDS = [
     "fees",
     # Descriptive info
     "description",
+    # Extra info.
+    "init",
 ]
 
 
@@ -73,7 +78,7 @@ def ValidateTransactionRecord(r: Record):
     assert r.account and isinstance(r.account, str)
 
     assert r.transaction_id and isinstance(r.transaction_id, str), r
-    assert r.order_id and isinstance(r.order_id, str), r
+    assert r.order_id and isinstance(r.order_id, str) or r.order_id in {"", None}, r
 
     # We could tighten the constraints further and require unique transactions
     # vs. order ids mutually, but it's probably not necessary.
@@ -107,3 +112,70 @@ def ValidateTransactionRecord(r: Record):
         assert not r.quantity
         assert not r.price
         assert not r.cost
+
+
+def ToParquet(transactions: Table, filename: str):
+    """Write a transactions table to Parquet.
+
+    This is used because we have to convert all the data types.
+    """
+
+    # Note: We use pyarrow directly instead of polars/duckdb/pandas in order to
+    # avoid conversions of the type systems.
+    def number(name, *args):
+        # return pa.field(name, pa.decimal128(*args), nullable=True)
+        return pa.field(name, pa.float64(), nullable=True)
+        # binary?
+
+    def string(name):
+        return pa.field(name, pa.string(), nullable=False)
+
+    def opt_string(name):
+        return pa.field(name, pa.string(), nullable=True)
+
+    def datetime(name):
+        return pa.field(name, pa.timestamp("s"), nullable=False)
+
+    def bool_(name):
+        return pa.field(name, pa.bool_(), nullable=False)
+
+    def enum(name):
+        return pa.field(name, pa.dictionary(pa.int8(), pa.string()), nullable=False)
+
+    fields = [
+        string("account"),
+        string("transaction_id"),
+        datetime("datetime"),
+        enum("rowtype"),
+        opt_string("order_id"),
+        string("symbol"),
+        enum("effect"),
+        enum("instruction"),
+        number("quantity", 16, 2),
+        number("price", 16, 8),
+        number("cost", 16, 8),
+        number("cash", 16, 2),
+        number("commissions", 16, 8),
+        number("fees", 16, 6),
+        string("description"),
+        string("match_id"),
+        string("chain_id"),
+        bool_("init"),
+    ]
+    schema = pa.schema(fields)
+    num_fields = [c.name for c in fields if pa.types.is_floating(c.type)]
+
+    # Note: Problems:
+    # - Empty values for order_id if you don't make the column nullable doesn't
+    #   fail to store but creates an invalid file.
+    # - Storing as Decimal doesn't keep the variable precision information.
+    if num_fields:
+        transactions = transactions.convert(num_fields, float)
+    data = transactions.cut(*schema.names).dicts()
+
+    table = pa.Table.from_pylist(data, schema=schema)
+    with pq.ParquetWriter(filename, schema) as writer:
+        writer.write_table(table)
+
+    # df = transactions.todataframe()
+    # df.to_parquet("/tmp/transactions2.parquet", index=False)

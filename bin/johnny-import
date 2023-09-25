@@ -111,7 +111,7 @@ def import_(config: Optional[str], force: bool, light: bool):
     # Read the past transactions.
     with log("read_log"):
         if light:
-            transactions = petl.frompickle(config.output.transactions).cutout(
+            transactions = petl.frompickle(config.output.transactions_pickle).cutout(
                 "chain_id"
             )
         else:
@@ -141,14 +141,18 @@ def import_(config: Optional[str], force: bool, light: bool):
 
     # Write out the imported databases.
     with log("output_tables"):
-        if config.output.transactions:
-            ctransactions.topickle(config.output.transactions)
+        if config.output.transactions_pickle:
+            ctransactions.topickle(config.output.transactions_pickle)
         if config.output.transactions_csv:
             ctransactions.tocsv(config.output.transactions_csv)
-        if config.output.chains:
-            chains.topickle(config.output.chains)
+        if config.output.transactions_parquet:
+            txnlib.ToParquet(ctransactions, config.output.transactions_parquet)
+        if config.output.chains_pickle:
+            chains.topickle(config.output.chains_pickle)
         if config.output.chains_csv:
             chains.tocsv(config.output.chains_csv)
+        if config.output.chains_parquet:
+            chainslib.ToParquet(chains, config.output.chains_parquet)
 
     with log("output_config"):
         with open(config.output.chains_db, "w") as outfile:

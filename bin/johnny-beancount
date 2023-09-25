@@ -45,7 +45,7 @@ def chains(ctx: click.Context):
     "Print out marked chains."
     filename = ctx.obj["filename"]
     config = ctx.obj["config"]
-    chains = petl.frompickle(config.output.chains)
+    chains = petl.frompickle(config.output.chains_pickle)
     chains = chains.convert("days", Decimal)
     for chain in chains.records():
         # TODO(blais): Remove

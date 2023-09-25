@@ -51,13 +51,14 @@ A normalized transactions table contains the following columns and data types.
   Also note that for 'Assign' and 'Exercise', the corresponding stock actions
   are categorized as 'Trade'.
 
-- `order_id: str`: The order id used for the transaction, if there was an order.
-  May include alphabetical characters. This is used to join together multiple
-  transactions that were issued jointly, e.g. a spread, an iron condor, a pairs
-  trade, etc. Note that orders issued as "blast all" will usually have distinct
-  order ids (and our solution typically involves adding another type/id column
-  to join together pairs trades). Expirations don't have orders, so will remain
-  normally unset. This will be set to None if not available.
+- `order_id: Optional[str]`: The order id used for the transaction, if there was
+  an order. This may be null, e.g., on a `Mark` transaction. May include
+  alphabetical characters. This is used to join together multiple transactions
+  that were issued jointly, e.g. a spread, an iron condor, a pairs trade, etc.
+  Note that orders issued as "blast all" will usually have distinct order ids
+  (and our solution typically involves adding another type/id column to join
+  together pairs trades). Expirations don't have orders, so will remain normally
+  unset. This will be set to None if not available.
 
 
 ### Information about the Financial Instrument
@@ -147,3 +148,10 @@ A normalized transactions table contains the following columns and data types.
 
   Similar to the match id, this is left empty by the converters and filled in
   later on by analysis code.
+
+
+### Extra Information
+
+- `init: bool`: A flag which indicates whether the transaction was an initiating
+  transaction in the chain, and not an adjustment. This is not intended to be
+  returned by the importers but the matching code infers it automatically.

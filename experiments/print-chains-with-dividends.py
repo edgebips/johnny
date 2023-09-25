@@ -21,7 +21,7 @@ from johnny.base.etl import petl, Table, WrapRecords
 def main():
     filename = configlib.GetConfigFilenameWithDefaults(None)
     config = configlib.ParseFile(filename)
-    transactions = petl.frompickle(config.output.transactions)
+    transactions = petl.frompickle(config.output.transactions_pickle)
     # print(transactions.lookallstr())
 
     for rec in transactions.aggregate("chain_id", WrapRecords).records():

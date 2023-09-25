@@ -56,7 +56,7 @@ def main(config: Optional[str], output: Optional[str]):
 
     # Read and filter the chains.
     # print(transactions.head(40).lookallstr())
-    chains = petl.frompickle(config.output.chains)
+    chains = petl.frompickle(config.output.chains_pickle)
     earnings_chains = (
         chains
         # Select the earnings trades only.
@@ -73,7 +73,7 @@ def main(config: Optional[str], output: Optional[str]):
 
     # Read the past transactions and narrow them to those in the chains..
     earnings_transactions = (
-        petl.frompickle(config.output.transactions)
+        petl.frompickle(config.output.transactions_pickle)
         # Remove non-earnings trades.
         .selectin("chain_id", chains_map)
         # Order by chain.

@@ -50,10 +50,16 @@ def PerformReplacements(config: Config) -> Config:
     config.input.chains_db = path.expandvars(config.input.chains_db)
 
     config.output.chains_db = path.expandvars(config.output.chains_db)
-    config.output.transactions = path.expandvars(config.output.transactions)
+    config.output.transactions_pickle = path.expandvars(
+        config.output.transactions_pickle
+    )
     config.output.transactions_csv = path.expandvars(config.output.transactions_csv)
-    config.output.chains = path.expandvars(config.output.chains)
+    config.output.transactions_parquet = path.expandvars(
+        config.output.transactions_parquet
+    )
+    config.output.chains_pickle = path.expandvars(config.output.chains_pickle)
     config.output.chains_csv = path.expandvars(config.output.chains_csv)
+    config.output.chains_parquet = path.expandvars(config.output.chains_parquet)
 
     return config
 

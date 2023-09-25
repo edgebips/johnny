@@ -72,7 +72,7 @@ def main(comments_filename: str, config: Optional[str], force: bool = False):
 
     # Read prior transactions.
     last_chain = (
-        petl.frompickle(config.output.transactions)
+        petl.frompickle(config.output.transactions_pickle)
         .applyfn(instrument.Expand, "symbol")
         .sort(["datetime", "chain_id"])
         .cut("underlying", "chain_id")

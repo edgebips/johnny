@@ -330,6 +330,7 @@ def GetTransactions(filename: str) -> Table:
             "description",
         )
         .sort(("account", "datetime", "description", "quantity"))
+        .addfield("init", None)
     )
 
     return table

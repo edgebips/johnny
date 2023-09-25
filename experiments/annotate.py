@@ -53,8 +53,8 @@ def main(
     # Load the database.
     filename = configlib.GetConfigFilenameWithDefaults(config)
     config = configlib.ParseFile(filename)
-    transactions = petl.frompickle(config.output.transactions)
-    chains_table = petl.frompickle(config.output.chains)
+    transactions = petl.frompickle(config.output.transactions_pickle)
+    chains_table = petl.frompickle(config.output.chains_pickle)
     chains_db = configlib.ReadChains(config.output.chains_db)
     chains_map = {c.chain_id: c for c in chains_db.chains}
 

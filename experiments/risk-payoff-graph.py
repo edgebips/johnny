@@ -95,7 +95,7 @@ def main(config: Optional[str], username: Optional[str], password: Optional[str]
     # Load the database.
     filename = configlib.GetConfigFilenameWithDefaults(config)
     config = configlib.ParseFile(filename)
-    transactions = petl.frompickle(config.output.transactions)
+    transactions = petl.frompickle(config.output.transactions_pickle)
 
     positions = (
         transactions.selecteq("account", "x18")

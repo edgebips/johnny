@@ -35,6 +35,8 @@ import logging
 
 from more_itertools import first
 import networkx as nx
+import pyarrow as pa
+import pyarrow.parquet as pq
 
 from johnny.base import config as configlib
 from johnny.base import strategy as strategylib
@@ -888,6 +890,18 @@ def AcceptChain(
     # Set group.
     if group:
         chain.group = group
+
+
+
+def ToParquet(chains: Table, filename: str):
+    """Write a transactions table to Parquet.
+
+    This is used because we have to convert all the data types.
+    """
+    # We don't have a proper schema for chains. TODO: Define one nicely.
+    # For now, use automated conversion from Pandas.
+    df = chains.todataframe()
+    df.to_parquet(filename, index=False)
 
 
 

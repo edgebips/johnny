@@ -45,7 +45,7 @@ def main(config: Optional[str], output: Optional[str], filenames: List[str]):
     chain_map = {c.chain_id: c for c in chains_db.chains}
 
     # Read the transactions map.
-    transactions = petl.frompickle(config.output.transactions).applyfn(
+    transactions = petl.frompickle(config.output.transactions_pickle).applyfn(
         instrument.Expand, "symbol"
     )
     price_map = mark.GetPriceMap(transactions, config)

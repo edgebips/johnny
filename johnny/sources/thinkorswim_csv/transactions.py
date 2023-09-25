@@ -1043,6 +1043,7 @@ def GetTransactions(filename: str) -> Tuple[Table, Table]:
         .convert("order_id", lambda oid: "T{}".format(oid) if oid else oid)
         # Add a cost row.
         .addfield("cost", CalculateCost)
+        .addfield("init", None)
     )
 
     # Make the final ordering correct and finalize the columns.

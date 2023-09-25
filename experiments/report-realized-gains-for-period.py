@@ -62,8 +62,8 @@ def main(
     filename = configlib.GetConfigFilenameWithDefaults(config)
     config = configlib.ParseFile(filename)
     output_rec = []
-    transactions = petl.frompickle(config.output.transactions)
-    chains = petl.frompickle(config.output.chains)
+    transactions = petl.frompickle(config.output.transactions_pickle)
+    chains = petl.frompickle(config.output.chains_pickle)
     for chain, txns in chainslib.GetChainsAndTransactions(chains, transactions):
         if (
             txns.selecteq("effect", "CLOSING")

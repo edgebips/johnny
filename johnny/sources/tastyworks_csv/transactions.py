@@ -354,6 +354,7 @@ def NormalizeTrades(table: petl.Table, account: str) -> petl.Table:
         .addfield("effect_key", lambda r: 0 if r.effect == "OPENING" else 1)
         .sort(["datetime", "order_id", "effect_key"])
         .cutout("effect_key")
+        .addfield("init", None)
     )
 
 

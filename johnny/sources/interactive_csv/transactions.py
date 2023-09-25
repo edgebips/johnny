@@ -395,14 +395,9 @@ def GetTransactions(filename: str) -> Tuple[Table, Table]:
                 "ActivityDescription": "description",
             }
         )
-        # Fill in for missing order ids (from dividends).
-        .convert(
-            "order_id",
-            (lambda v, r: v if v else "o{}".format(r.transaction_id)),
-            pass_row=True,
-        )
         # Absolute value for quantity.
         .convert("quantity", abs)
+        .addfield("init", None)
     )
 
     # Reorder the final fields.

@@ -124,7 +124,7 @@ def Initialize():
                 for chain in chains_db.chains
                 if (chain.group in ignore_groups or set(chain.tags) & ignore_tags)
             )
-            chains_table = petl.frompickle(config.output.chains).selectnotin(
+            chains_table = petl.frompickle(config.output.chains_pickle).selectnotin(
                 "chain_id", ignore_chains
             )
 
@@ -137,7 +137,7 @@ def Initialize():
             chain_ids = set(chains_table.values("chain_id"))
 
             # Filter the transactions table removing ignored chains (from above).
-            transactions = petl.frompickle(config.output.transactions).selectin(
+            transactions = petl.frompickle(config.output.transactions_pickle).selectin(
                 "chain_id", chain_ids
             )
 

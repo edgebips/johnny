@@ -303,7 +303,7 @@ def main(config: Optional[str], retry: Optional[bool], database: str):
         filename = configlib.GetConfigFilenameWithDefaults(config)
         config = configlib.ParseFile(filename)
         transactions = (
-            petl.frompickle(config.output.transactions)
+            petl.frompickle(config.output.transactions_pickle)
             .applyfn(instrument.Expand, "symbol")
             # Fetch the database.
             .addfield(
@@ -411,7 +411,7 @@ def main(config: Optional[str], retry: Optional[bool], database: str):
             filename = configlib.GetConfigFilenameWithDefaults(config)
             config = configlib.ParseFile(filename)
             transactions = (
-                petl.frompickle(config.output.transactions)
+                petl.frompickle(config.output.transactions_pickle)
                 .applyfn(instrument.Expand, "symbol")
                 # Move these filters in the chain aggregator.
                 .selectin("instype", {"Equity", "EquityOption"})

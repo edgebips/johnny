@@ -28,7 +28,7 @@ def main(config: Optional[str]):
 
     filename = configlib.GetConfigFilenameWithDefaults(config)
     config = configlib.ParseFile(filename)
-    transactions = petl.frompickle(config.output.transactions)
+    transactions = petl.frompickle(config.output.transactions_pickle)
     chains_db = configlib.ReadChains(config.input.chains_db)
 
     for chain in chains_db.chains:

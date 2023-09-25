@@ -52,13 +52,15 @@ message Outputs {
 
   // A tabular file to contain the processed and normalized transactions.
   // Default file format is a pickle db. The CSV is redundant, used for backups.
-  optional string transactions = 2;
+  optional string transactions_pickle = 2;
   optional string transactions_csv = 3;
+  optional string transactions_parquet = 4;
 
   // A tabular file to contain the precomputed chain data.
   // Default file format is a pickle db. The CSV is redundant, used for backups.
-  optional string chains = 4;
-  optional string chains_csv = 5;
+  optional string chains_pickle = 5;
+  optional string chains_csv = 6;
+  optional string chains_parquet = 7;
 }
 
 // This is a mapping of (option-product-code, month-code) to
