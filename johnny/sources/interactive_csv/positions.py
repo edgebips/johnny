@@ -62,7 +62,7 @@ def GetSortedValue(
         )
         return float("nan")
     else:
-        index = bisect.bisect(date_values, (date,))
+        index = min(len(date_values)-1, bisect.bisect(date_values, (date,)))
         return Decimal(date_values[index][1]).quantize(Q4)
 
 
