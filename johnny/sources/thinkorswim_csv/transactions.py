@@ -779,6 +779,7 @@ def _ParseTradeDescription(description: str) -> Dict[str, Any]:
 
     regexp = "".join(
         [
+            "(?P<web>TOSWeb )?",
             "(?P<type>MSO )?",
             "(?P<side>BOT|SOLD) ",
             "(?P<quantity>[+-]?[0-9.,]+) ",
