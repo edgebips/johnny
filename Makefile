@@ -52,7 +52,7 @@ accept-specific-chains:
 	cat | ./experiments/accept-chains.py -g Premium -s FINAL
 
 # Proto generation rules.
-protos: johnny/base/config_pb2.py johnny/base/chains_pb2.py johnny/base/transactions_pb2.py johnny/base/instrument_pb2.py johnny/base/positions_pb2.py johnny/base/nontrades_pb2.py
+protos: johnny/base/config_pb2.py johnny/base/chains_pb2.py johnny/base/transactions_pb2.py johnny/base/instrument_pb2.py johnny/base/positions_pb2.py johnny/base/nontrades_pb2.py johnny/base/taxes_pb2.py
 
 johnny/base/config_pb2.py: johnny/base/config.proto
 	protoc -I . --python_out . --proto_path . $<
@@ -70,4 +70,7 @@ johnny/base/positions_pb2.py: johnny/base/positions.proto
 	protoc -I . --python_out . --proto_path . $<
 
 johnny/base/nontrades_pb2.py: johnny/base/nontrades.proto
+	protoc -I . --python_out . --proto_path . $<
+
+johnny/base/taxes_pb2.py: johnny/base/taxes.proto
 	protoc -I . --python_out . --proto_path . $<
