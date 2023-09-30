@@ -26,6 +26,7 @@ __license__ = "GNU GPLv2"
 
 import logging
 import os
+import copy
 from typing import List, Optional
 
 import click
@@ -83,8 +84,20 @@ def rawpos(ctx: click.Context):
 @click.pass_context
 def rawother(ctx: click.Context):
     "Find, process and print non-trades."
-    table = GetLogTables(ctx.obj["config"], configlib.Account.LogType.OTHER)
-    print_table(table, False)
+
+    config = ctx.obj["config"]
+    for account in config.input.accounts:
+        c = copy.deepcopy(config)
+        del c.input.accounts[:]
+        c.input.accounts.append(account)
+
+        # TODO: Refactor to "get log types separately"
+        print(account)
+        logtype = configlib.Account.LogType.OTHER
+        logtables = discovery.ImportConfiguredInputs(c, {logtype})
+        table = logtables.get(logtype)
+        if table is not None:
+            print_table(table, False)
 
 
 def print_table(table: Table, expand: bool):
