@@ -1,0 +1,92 @@
+// -*- mode: protobuf -*-
+// Non-Trades Table for Johnny.
+//
+//   Copyright (C) 2023  Martin Blais
+//   License: GNU GPLv2
+
+syntax = "proto2";
+
+package johnny;
+
+message DateTime {}
+message Decimal {}
+
+// This is a table intended to support a normalized format for all the non-trade
+// rows to be converted into some other accounting system, like Beancount.
+message NonTrade {
+
+  //-------------------------------------------------------------------------------
+  // Row Types
+
+  // `rowtype: str`: An enum string for the row type.
+  enum RowType {
+    CashBalance = 1;     // A balance of the cash account
+    FuturesBalance = 2;  // A balance of the futures account.
+    Adjustment = 3;      // A balance adjustment (of many types)
+    FuturesMTM = 4;      // A mark-to-mark futures transfer.
+    BalanceInterest = 5; // Interest on balance.
+    MarginInterest = 6;  // Interest on margin.
+    Dividend = 7;        // A dividend received.
+    Distribution = 8;    // A capital gains distribution, typically from an ETF.
+    TransferIn = 9;      // An incoming transfer.
+    TransferOut = 10;    // An outgoing transfer.
+    TransferInternal = 11; // An internal transfer.
+    MonthlyFee = 12;       // A monthly fee.
+    TransferFee = 13;      // A wire transfer fee.
+    HTBFee = 14;           // A hard-to-borrow fee.
+    Sweep = 15;            // A cash sweep (typically to be ignored).
+  }
+  required RowType rowtype = 1;
+
+  //-------------------------------------------------------------------------------
+  // Information about the Event
+  //
+  // `account: str`: A unique identifier for the account number. This implicitly
+  // defines the brokerage. This can be used if a file contains information
+  // about multiple accounts. The configuration can map this to a public
+  // nickname that may or may not reflect the source.
+  required string account = 2;
+
+  // `transaction_id: str`: A unique transaction id by which we can identify
+  // this transaction. This is essential in order to deduplicate previously
+  // imported transactions. This can be given from the system or synthesized
+  // from a stable hash from the rows of an input file.
+  required string transaction_id = 3;
+
+  // `datetime: datetime.datetime`: A date/time converted to local time and
+  // naive (no timezone, not "timezone aware"). This is the date and time at
+  // which the row was logged, in local time. Where only a date is included, the
+  // time is set to midnight that day.
+  required DateTime datetime = 4;
+
+  //-------------------------------------------------------------------------------
+  // Descriptive information
+
+  // `description: str`: An optional free-form description string describing the
+  // transaction, if one is available. This is used for rendering debugging
+  // outputs and for rendering transactions in accounting systems. If not set,
+  // leave an empty string (not `None`).
+  required string description = 5;
+
+  // `type: Optional[str]`: The original type fields of the imported data.
+  optional string type = 6;
+
+  // `symbol: Optional[str]`: If applicable, the symbol normalized in
+  // unambiguous, cross-platform, readable symbology. The individual fields of
+  // the instrument's symbol may be expanded into their individual components.
+  // See the file "instrument.md" for details.
+  optional string symbol = 7;
+
+  // `ref: Optional[str]`: An optional reference number.
+  optional string ref = 8;
+
+  //-------------------------------------------------------------------------------
+  // Balance-Affecting Fields
+
+  // `amount: Decimal`: The signed amount being applied to the account balance.
+  required DateTime amount = 9;
+
+  // `balance: Optional[Decimal]`: An optional resulting balance field of the
+  // corresponding account after the amount is applied.
+  optional DateTime balance = 10;
+}
