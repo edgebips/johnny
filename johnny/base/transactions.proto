@@ -1,0 +1,202 @@
+// -*- mode: protobuf -*-
+// Transactions Log Schema for Johnny.
+//
+//   Copyright (C) 2023  Martin Blais
+//   License: GNU GPLv2
+
+syntax = "proto2";
+
+package johnny;
+
+message DateTime {}
+message Decimal {}
+
+// Opening and Closing
+//
+// The transactions log is not assumed to include opening transactions, nor
+// closing (mark-to-market) transactions. These are synthesized in coordination
+// with a positions table.
+message Transaction {
+
+  //-------------------------------------------------------------------------------
+  // Information about the Event
+
+  // `account: str`: A unique identifier for the account number. This implicitly
+  // defines the brokerage. This can be used if a file contains information
+  // about multiple accounts. The configuration can map this to a public
+  // nickname that may or may not reflect the source.
+  required string account = 1;
+
+  // `transaction_id: str`: A unique transaction id by which we can identify
+  // this transaction. This is essential in order to deduplicate previously
+  // imported transactions. This can be given from the system or synthesized
+  // from a stable hash from the rows of an input file.
+  required string transaction_id = 2;
+
+  // `datetime: datetime.datetime`:  A date/time converted to local time and
+  // naive (no timezone, not "timezone aware"). This is the date and time at
+  // which the transaction occurred, in local time. This is distinct from the
+  // settlement date (which is not provided by this data structure).
+  required DateTime datetime = 3;
+
+  // `rowtype: str`: An enum string for the row, whether this is a trade, an
+  // expiration, or a mark-to-market synthetic close (used to value currency
+  // positions). Notes:
+  //
+  // - `Mark` is never inserted by the normalization code, that's something that
+  // is
+  //   inserted by further processing code.
+  //
+  // - `Dividend` needs to have a `price`, `quantity` and `cost` values of zero
+  // or
+  //   empty and a `cash` colum equal to the dollar amount of the dividend.
+  //   Furthermore, note that the date of the dividend may follow the closing
+  //   date by a number of days (currently 5).
+  //
+  // - Also note that for 'Assign' and 'Exercise', the corresponding stock
+  // actions
+  //   are categorized as 'Trade'.
+  //
+  enum RowType {
+    Trade = 1;    // (a purchase or sale),
+    Expire = 2;   // (an expiration, a removal type of event),
+    Assign = 3;   // (an assignment, a removal type of event),
+    Exercise = 4; // (an exercise, a removal type of event),
+    Mark = 5;     // (a virtual sale).
+    Open = 6;     // (a virtual transaction to create an opening balance)
+    Dividend = 7; // (a dividend payment associated with this trade)
+  }
+  required RowType rowtype = 4;
+
+  // `order_id: Optional[str]`: The order id used for the transaction, if there
+  // was an order. This may be null, e.g., on a `Mark` transaction. May include
+  // alphabetical characters. This is used to join together multiple
+  // transactions that were issued jointly, e.g. a spread, an iron condor, a
+  // pairs trade, etc. Note that orders issued as "blast all" will usually have
+  // distinct order ids (and our solution typically involves adding another
+  // type/id column to join together pairs trades). Expirations don't have
+  // orders, so will remain normally unset. This will be set to None if not
+  // available.
+  optional string order_id = 5;
+
+  //-------------------------------------------------------------------------------
+  // Information about the Financial Instrument
+
+  // `symbol: str`: The symbol normalized in unambiguous, cross-platform,
+  // readable symbology. The symbol for the underlying instrument. This may be
+  // an equity, equity option, futures, futures option or spot currency pair.
+  //
+  // The individual fields of the instrument's symbol may be expanded into their
+  // individual components. See the file "instrument.md" for details.
+  required string symbol = 6;
+
+  //-------------------------------------------------------------------------------
+  // Information Affecting the Balance
+
+  // `effect: str`: The effect on the position, either `OPENING` or `CLOSING`,
+  // or
+  // `?`. This is important to return for `Equity` and options positions,
+  // because we use it to reconstruct the initial position of the account before
+  // the transactions log window. Ideally include the state if you have it
+  // available. If not, set the value to `?`.
+  //
+  // For futures contracts, the value is usually not known, and it will be
+  // inferred automatically later, from processing the entire file from the
+  // initial positions. (The Thinkorswim log provides a value, but when it
+  // crosses the null position line it is incorrectly set to `TO_CLOSE`;
+  // Tastyworks does not provide a value for effect.) Rows may be split if
+  // necessary (when crossing the null position line), in order to provide
+  // accurate cost basis values.
+  enum PositionEffect {
+    OPENING = 1;
+    CLOSING = 2;
+  }
+  optional PositionEffect effect = 7;
+
+  // `instruction: Optional[str]`: An enum, `BUY`, `SELL`. If this is an
+  // expiration, this can be left unset and inferred automatically by the
+  // matching code.
+  enum Instruction {
+    BUY = 1;
+    SELL = 2;
+  }
+  optional Instruction instruction = 8;
+
+  // `quantity: Optional[Decimal]`: The quantity bought or sold. This number
+  // should always be positive; the 'instruction' field will provide the sign.
+  // Note that for expirations we will ignore the value of this field, as some
+  // sources do not provide a quantity of options expiring. Sources thus need to
+  // dedup their expiration messages.
+  optional Decimal quantity = 9;
+
+  // `price: Decimal`: The per-contract price for the instrument. Multiply this
+  // by the `quantity` and the `multiplier` to get the `cost`.
+  optional Decimal price = 10;
+
+  // `cost: Decimal`: The dollar amount of the position change minus commissions
+  // and fees. This is a signed number.
+  optional Decimal cost = 11;
+
+  // `cash: Decimal`: A dollar amount of cash deposited (removed) associated
+  // with the position. This should be left unset except for rows of type
+  // `Dividend`.
+  optional Decimal cash = 12;
+
+  // `commissions: Decimal`: The dollar amount of commissions charged. This is a
+  // signed number, usually negative. These are the fees paid to the broker for
+  // service.
+  optional Decimal commissions = 13;
+
+  // `fees: Decimal`: The total dollar amount paid for exchange and other
+  // regulatory institution fees. This is a signed number, usually negative.
+  // Note that this could be broken down into multiple components, but we do not
+  // bother with this here, as this is not something we have control over, will
+  // not affect our trading, and is often just not available from CSV downloads.
+  optional Decimal fees = 14;
+
+  //-------------------------------------------------------------------------------
+  // Descriptive information
+
+  // `description: str`: An optional free-form description string describing the
+  // transaction, if one is available. This is used for rendering debugging
+  // outputs and for rendering transactions in accounting systems. If not set,
+  // leave an empty string (not `None`).
+  optional string description = 15;
+
+  //-------------------------------------------------------------------------------
+  // Chaining Information
+
+  // `match_id: str`: A unique random id which links together transactions
+  // reducing each other. A buy of a particular option, followed by a partial
+  // sell, and a final sell, would all share the same match id. This maps
+  // closing transactions to their corresponding opening ones.
+  //
+  // This is normally not provided by the importers, and is filled in later by
+  // analysis code. The field is always set, even if there's only an opening
+  // transaction.
+  //
+  // (Note the inherent conflict in the 1:1 relationship here: a single
+  // transaction may close multiple opening ones and vice-versa. In order to
+  // make this a 1:1 match. In theory we would have to split one or both of the
+  // opening/closing sides.)
+  optional string match_id = 16;
+
+  // `chain_id: str`: A unique random id which links together transactions
+  // grouped together in a sequence of events. A "trade", or "chain" of related
+  // transactions over time. For instance, selling a strangle, then closing one
+  // side, and rolling the other side, and then closing, could be considered a
+  // single chain of events.
+  //
+  // Similar to the match id, this is left empty by the converters and filled in
+  // later on by analysis code.
+  optional string chain_id = 17;
+
+  //-------------------------------------------------------------------------------
+  // Extra Information
+
+  // `init: Optional[bool]`: A flag which indicates whether the transaction was
+  // an initiating transaction in the chain, and not an adjustment. This is not
+  // intended to be returned by the importers but the matching code infers it
+  // automatically.
+  optional bool init = 18;
+}
