@@ -542,12 +542,9 @@ class OpenCloseFifoInventory:
         self.lots[:] = []
         self.clear_match_id()
 
-    def receive(
-            self, rec: Record, accumfn: TxnAccumFn, rowtype: str
-    ):
-        """Receive a dividend or some other type of adjustment.
-        """
+    def receive(self, rec: Record, accumfn: TxnAccumFn, rowtype: str):
+        """Receive a dividend or some other type of adjustment."""
         if rowtype not in {"Dividend"}:
             raise MatchError(f"Invalid row type: {rec}")
 
-        accumfn(rec, "DIVIDEND")
+        accumfn(rec._replace(match_id=self.get_match_id(rec)), "DIVIDEND")

@@ -140,7 +140,7 @@ A normalized transactions table contains the following columns and data types.
   match. In theory we would have to split one or both of the opening/closing
   sides.)
 
-- `chain_id`: A unique random id which links together transactions grouped
+- `chain_id: str`: A unique random id which links together transactions grouped
   together in a sequence of events. A "trade", or "chain" of related transactions
   over time. For instance, selling a strangle, then closing one side, and
   rolling the other side, and then closing, could be considered a single chain
