@@ -86,7 +86,9 @@ def rawother(ctx: click.Context):
     "Find, process and print non-trades."
 
     config = ctx.obj["config"]
-    for account in config.input.accounts:
+    accounts = config.input.accounts
+    accounts = accounts[0:1]
+    for account in accounts:
         c = copy.deepcopy(config)
         del c.input.accounts[:]
         c.input.accounts.append(account)

@@ -7,6 +7,7 @@ from decimal import Decimal
 import datetime
 
 from johnny.base.etl import Record, Table
+from johnny.base.nontrades_pb2 import NonTrade
 
 
 # Transaction table field names.

@@ -37,70 +37,70 @@ def ConvertNonTrades(other: Table, account_id: str) -> Table:
     return other
 
 
-def GetRowType(rec: Record) -> str:
+def GetRowType(rec: Record) -> nontrades.NonTrade.RowType:
     rtype = rec.type
     if not rtype:
         raise ValueError(f"Invalid row without a 'type' field: {rec}")
 
     if rtype == "BAL":
         if rec.description.startswith("Cash balance at the start"):
-            return "CashBalance"
+            return nontrades.CashBalance
         elif rec.description.startswith("Futures cash balance at the start"):
-            return "FuturesBalance"
+            return nontrades.FuturesBalance
 
     elif rtype == "ADJ":
         if re.match(
             r"(courtesy|courteys) +(adjustment|credit)", rec.description, flags=re.I
         ):
-            return "Adjustment"
+            return nontrades.Adjustment
         elif re.search(
             r"mark to market at .* official settlement price", rec.description
         ):
-            return "FuturesMTM"
+            return nontrades.FuturesMTM
 
     elif rtype == "DOI":
         if rec.description.startswith("FREE BALANCE INTEREST ADJUSTMENT"):
-            return "BalanceInterestd"
+            return nontrades.BalanceInterestd
         elif rec.description.startswith("MARGIN INTEREST ADJUSTMENT"):
-            return "MarginInterest"
+            return nontrades.MarginInterest
         elif re.match(r".* TERM GAIN DISTRIBUTION~", rec.description):
-            return "Distribution"
+            return nontrades.Distribution
         elif rec.description.startswith("ORDINARY DIVIDEND"):
-            return "Dividend"
+            return nontrades.Dividend
 
     elif rtype == "EFN":
         if rec.description.startswith("CLIENT REQUESTED ELECTRONIC FUNDING RECEIPT"):
-            return "TransferIn"
+            return nontrades.TransferIn
         elif rec.description.startswith(
             "CLIENT REQUESTED ELECTRONIC FUNDING DISBURSEMENT"
         ):
-            return "TransferOut"
+            return nontrades.TransferOut
 
     elif rtype == "FSWP":
-        return "Sweep"
+        return nontrades.Sweep
 
     elif rtype == "JRN":
         if rec.description.startswith("MISCELLANEOUS JOURNAL ENTRY"):
-            return "Adjustment"
+            return nontrades.Adjustment
         elif rec.description.startswith("MARK TO THE MARKET"):
-            return "FuturesMTM"
+            return nontrades.FuturesMTM
         elif rec.description.startswith("INTRA-ACCOUNT TRANSFER"):
-            return "TransferInternal"
+            return nontrades.TransferInternal
         elif rec.description.startswith("HARD TO BORROW FEE"):
-            return "HTBFee"
+            return nontrades.HTBFee
 
     elif rtype == "RAD":
         if rec.description.startswith("CASH ALTERNATIVES INTEREST"):
-            return "BalanceInterest"
+            return nontrades.BalanceInterest
         elif rec.description.startswith("INTERNAL TRANSFER BETWEEN ACCOUNTS"):
-            return "TransferInternal"
+            return nontrades.TransferInternal
 
     elif rtype == "WIN":
         if rec.description.startswith("THIRD PARTY"):
-            return "TransferIn"
+            return nontrades.TransferIn
 
     elif rtype == "WOU":
         if rec.description.startswith("WIRE OUTGOING"):
-            return "TransferOut"
+            return nontrades.TransferOut
 
     raise ValueError(f"Unknown {rtype} row: {rec}")
