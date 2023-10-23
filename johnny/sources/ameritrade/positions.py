@@ -61,8 +61,8 @@ from johnny.base import instrument
 from johnny.base import positions as poslib
 from johnny.base.etl import petl, WrapRecords
 from johnny.base.number import ToDecimal
-from johnny.sources.thinkorswim_csv import utils
-from johnny.sources.thinkorswim_csv import config_pb2
+from johnny.sources.ameritrade import utils
+from johnny.sources.ameritrade import config_pb2
 
 
 Table = petl.Table

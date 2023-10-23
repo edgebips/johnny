@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Set JOHNNY_CONFIG in order for this to work.
-DOWNLOADS = $(HOME)/q/johnny-data/downloads/tastyworks_api
+DOWNLOADS = $(HOME)/q/johnny-data/downloads/tastytrade
 CHAINS = $(shell grep chains_db $(JOHNNY_CONFIG) | head -n1 | sed  -e 's/.*chains_db: *"//;s/"//')
 CHAINS_NEW = $(shell grep chains_db $(JOHNNY_CONFIG) | tail -n1 | sed  -e 's/.*chains_db: *"//;s/"//')
 
@@ -60,22 +60,22 @@ johnny/base/instrument_pb2.py                   \
 johnny/base/positions_pb2.py                    \
 johnny/base/nontrades_pb2.py                    \
 johnny/base/taxes_pb2.py                        \
-johnny/sources/thinkorswim_csv/config_pb2.py    \
-johnny/sources/tastyworks_api/config_pb2.py     \
-johnny/sources/interactive_csv/config_pb2.py
+johnny/sources/ameritrade/config_pb2.py    \
+johnny/sources/tastytrade/config_pb2.py     \
+johnny/sources/interactive/config_pb2.py
 
 protos: $(PROTOS_PB2)
 
 johnny/base/config_pb2.py: johnny/base/config.proto
 	protoc -I . --python_out . --proto_path . $<
 
-johnny/sources/thinkorswim_csv/config_pb2.py: johnny/sources/thinkorswim_csv/config.proto
+johnny/sources/ameritrade/config_pb2.py: johnny/sources/ameritrade/config.proto
 	protoc -I . --python_out . --proto_path . $<
 
-johnny/sources/tastyworks_api/config_pb2.py: johnny/sources/tastyworks_api/config.proto
+johnny/sources/tastytrade/config_pb2.py: johnny/sources/tastytrade/config.proto
 	protoc -I . --python_out . --proto_path . $<
 
-johnny/sources/interactive_csv/config_pb2.py: johnny/sources/interactive_csv/config.proto
+johnny/sources/interactive/config_pb2.py: johnny/sources/interactive/config.proto
 	protoc -I . --python_out . --proto_path . $<
 
 johnny/base/chains_pb2.py: johnny/base/chains.proto

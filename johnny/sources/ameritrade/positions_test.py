@@ -5,7 +5,7 @@ import unittest
 
 from mulmat import multipliers
 from johnny.base import config_pb2
-from johnny.sources.thinkorswim_csv import positions
+from johnny.sources.ameritrade import positions
 
 
 _EXAMPLE_INSTRUMENTS = [

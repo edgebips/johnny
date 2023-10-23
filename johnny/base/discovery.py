@@ -108,9 +108,9 @@ def ReadInitialPositions(filename: str) -> Table:
 
 def _GetRegistry(source_name: str) -> Source:
     modules = {
-        "ameritrade": "johnny.sources.thinkorswim_csv.source",
-        "tastytrade": "johnny.sources.tastyworks_api.source",
-        "interactive": "johnny.sources.interactive_csv.source",
+        "ameritrade": "johnny.sources.ameritrade.source",
+        "tastytrade": "johnny.sources.tastytrade.source",
+        "interactive": "johnny.sources.interactive.source",
     }
     module_name = modules[source_name]
     return importlib.import_module(module_name)

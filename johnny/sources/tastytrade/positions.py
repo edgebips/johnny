@@ -25,8 +25,8 @@ from johnny.base import discovery
 from johnny.base import positions as poslib
 from johnny.base.etl import petl, Table, Record, WrapRecords
 from johnny.base.number import ToDecimal
-from johnny.sources.tastyworks_csv import symbols
-from johnny.sources.tastyworks_api import config_pb2
+from johnny.sources.tastytrade import symbols
+from johnny.sources.tastytrade import config_pb2
 
 
 ZERO = Decimal(0)

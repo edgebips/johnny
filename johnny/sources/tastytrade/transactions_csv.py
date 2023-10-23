@@ -31,7 +31,7 @@ from johnny.base import discovery
 from johnny.base import transactions as txnlib
 from johnny.base.etl import petl, Table, Record, WrapRecords
 from johnny.base.number import ToDecimal
-from johnny.sources.tastyworks_csv import symbols
+from johnny.sources.tastytrade import symbols
 
 
 ZERO = Decimal(0)

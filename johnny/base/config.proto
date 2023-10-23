@@ -50,9 +50,9 @@
 
 syntax = "proto2";
 
-import "johnny/sources/thinkorswim_csv/config.proto";
-import "johnny/sources/tastyworks_api/config.proto";
-import "johnny/sources/interactive_csv/config.proto";
+import "johnny/sources/ameritrade/config.proto";
+import "johnny/sources/tastytrade/config.proto";
+import "johnny/sources/interactive/config.proto";
 
 package johnny;
 

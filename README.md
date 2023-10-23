@@ -113,19 +113,19 @@ Here's an example of an input setup for a Tastyworks account:
       accounts {
         nickname: "x18"
         logtype: TRANSACTIONS
-        module: "johnny.sources.tastyworks_api.transactions"
+        module: "johnny.sources.tastytrade.transactions"
         source: "/home/user/trading/tastyworks-individual.db"
       }
       accounts {
         nickname: "x20"
         logtype: TRANSACTIONS
-        module: "johnny.sources.tastyworks_api.transactions"
+        module: "johnny.sources.tastytrade.transactions"
         source: "/home/user/trading/tastyworks-roth.db"
       }
       accounts {
         nickname: "twpos"
         logtype: POSITIONS
-        module: "johnny.sources.tastyworks_csv.positions"
+        module: "johnny.sources.tastytrade.positions"
         source: "/home/user/trading/tastyworks_positions_*_*.csv"
       }
       ...
@@ -139,14 +139,14 @@ Here's an example of an input setup for a thinkorswim (TD) account:
       accounts {
         nickname: "x96"
         logtype: TRANSACTIONS
-        module: "johnny.sources.thinkorswim_csv.transactions"
+        module: "johnny.sources.ameritrade.transactions"
         source: "/home/user/Downloads/*-AccountStatement.csv"
         initial: "/home/user/trading/initial_positions.csv"
       }
       accounts {
         nickname: "tdpos"
         logtype: POSITIONS
-        module: "johnny.sources.thinkorswim_csv.positions"
+        module: "johnny.sources.ameritrade.positions"
         source: "/home/user/Downloads/*-PositionStatement.csv"
       }
     }
@@ -187,32 +187,32 @@ Here's what a full input configuration might look like:
       accounts {
         nickname: "x18"
         logtype: TRANSACTIONS
-        module: "johnny.sources.tastyworks_api.transactions"
+        module: "johnny.sources.tastytrade.transactions"
         source: "/home/user/trading/tastyworks-individual.db"
       }
       accounts {
         nickname: "x20"
         logtype: TRANSACTIONS
-        module: "johnny.sources.tastyworks_api.transactions"
+        module: "johnny.sources.tastytrade.transactions"
         source: "/home/user/trading/tastyworks-roth.db"
       }
       accounts {
         nickname: "twpos"
         logtype: POSITIONS
-        module: "johnny.sources.tastyworks_csv.positions"
+        module: "johnny.sources.tastytrade.positions"
         source: "/home/user/trading/tastyworks_positions_*_*.csv"
       }
       accounts {
         nickname: "x96"
         logtype: TRANSACTIONS
-        module: "johnny.sources.thinkorswim_csv.transactions"
+        module: "johnny.sources.ameritrade.transactions"
         source: "/home/user/Downloads/*-AccountStatement.csv"
         initial: "/home/user/trading/initial_positions.csv"
       }
       accounts {
         nickname: "tdpos"
         logtype: POSITIONS
-        module: "johnny.sources.thinkorswim_csv.positions"
+        module: "johnny.sources.ameritrade.positions"
         source: "/home/user/Downloads/*-PositionStatement.csv"
       }
 

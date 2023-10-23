@@ -22,8 +22,8 @@ from johnny.base import discovery
 from johnny.base import positions as poslib
 from johnny.base.etl import petl, Record, Table
 from johnny.base.number import ToDecimal
-from johnny.sources.interactive_csv import transactions
-from johnny.sources.interactive_csv import config_pb2
+from johnny.sources.interactive import transactions
+from johnny.sources.interactive import config_pb2
 
 
 ZERO = Decimal(0)
