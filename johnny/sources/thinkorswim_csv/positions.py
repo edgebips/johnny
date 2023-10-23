@@ -62,6 +62,7 @@ from johnny.base import positions as poslib
 from johnny.base.etl import petl, WrapRecords
 from johnny.base.number import ToDecimal
 from johnny.sources.thinkorswim_csv import utils
+from johnny.sources.thinkorswim_csv import config_pb2
 
 
 Table = petl.Table
@@ -355,6 +356,13 @@ def GetPositions(filename: str) -> Table:
     table = petl.cat(*tables).addfield("account", account, index=0).cut(poslib.FIELDS)
 
     return table
+
+
+def ImportPositions(config: config_pb2.Config) -> Table:
+    """Process the filename, normalize, and output as a table."""
+    pattern = path.expandvars(config.thinkorswim_positions_statement_csv_file_pattern)
+    filename = discovery.GetLatestFile(pattern)
+    return GetPositions(filename)
 
 
 def Import(source: str, config: configlib.Config, logtype: "LogType") -> Table:

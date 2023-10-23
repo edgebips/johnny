@@ -5,6 +5,7 @@ __copyright__ = "Copyright (C) 2021  Martin Blais"
 __license__ = "GNU GPLv2"
 
 from decimal import Decimal
+from os import path
 from typing import Dict, List, Optional
 import bisect
 import collections
@@ -19,9 +20,10 @@ from johnny.base.config import Account
 from johnny.base import config as configlib
 from johnny.base import discovery
 from johnny.base import positions as poslib
-from johnny.base.etl import Record, Table
+from johnny.base.etl import petl, Record, Table
 from johnny.base.number import ToDecimal
 from johnny.sources.interactive_csv import transactions
+from johnny.sources.interactive_csv import config_pb2
 
 
 ZERO = Decimal(0)
@@ -40,8 +42,8 @@ def GetOptionDelta(r: Record) -> Decimal:
 
 
 def GetSortedValues(
-    values: configlib.DatedValue,
-) -> Dict[str, List[configlib.DatedValue]]:
+    values: config_pb2.DatedValue,
+) -> Dict[str, List[config_pb2.DatedValue]]:
     m = collections.defaultdict(list)
     for v in values:
         m[v.symbol].append((parser.parse(v.date).date(), v.value))
@@ -51,7 +53,7 @@ def GetSortedValues(
 
 
 def GetSortedValue(
-    svalues: Dict[str, List[configlib.DatedValue]], date: dt.date, underlying: str
+    svalues: Dict[str, List[config_pb2.DatedValue]], date: dt.date, underlying: str
 ):
     try:
         date_values = svalues[underlying]
@@ -73,15 +75,15 @@ def GetLatestDate(filename: str) -> dt.date:
         return parser.parse(line[5]).date()
 
 
-def GetPositions(filename: str, config: configlib.Config) -> Table:
+def GetPositions(filename: str, fallback_database) -> Table:
     """Process the filename, normalize, and produce tables."""
 
     tablemap = transactions.SplitTables(filename)
     assert set(tablemap) == {"POST"}
 
     # Prepare lookup tables.
-    betas = GetSortedValues(config.fallback_database.betas)
-    index_prices = GetSortedValues(config.fallback_database.index_prices)
+    betas = GetSortedValues(fallback_database.betas)
+    index_prices = GetSortedValues(fallback_database.index_prices)
 
     date = GetLatestDate(filename)
 
@@ -135,8 +137,15 @@ def GetPositions(filename: str, config: configlib.Config) -> Table:
 def Import(source: str, config: configlib.Config, logtype: "LogType") -> Table:
     """Process the filename, normalize, and output as a table."""
     filename = discovery.GetLatestFile(source)
-    positions = GetPositions(filename, config)
+    positions = GetPositions(filename, config.fallback_database)
     return {Account.POSITIONS: positions}[logtype]
+
+
+def ImportPositions(config: config_pb2.Config) -> petl.Table:
+    pattern = path.expandvars(config.positions_flex_report_csv_file_pattern)
+    filename = discovery.GetLatestFile(pattern)
+    return GetPositions(filename, config.fallback_database)
+
 
 
 @click.command()

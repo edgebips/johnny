@@ -26,6 +26,7 @@ from johnny.base import positions as poslib
 from johnny.base.etl import petl, Table, Record, WrapRecords
 from johnny.base.number import ToDecimal
 from johnny.sources.tastyworks_csv import symbols
+from johnny.sources.tastyworks_api import config_pb2
 
 
 ZERO = Decimal(0)
@@ -72,6 +73,9 @@ def GetIndexPrice(r: Record) -> Decimal:
 
 def GetPositions(filename: str) -> Table:
     """Process the filename, normalize, and produce tables."""
+    if not filename:
+        raise ValueError(f"Invalid filename: '{filename}'")
+
     table = petl.fromcsv(filename)
     table = (
         table
@@ -140,6 +144,12 @@ def Import(source: str, config: configlib.Config, logtype: "LogType") -> Table:
     filename = discovery.GetLatestFile(source)
     positions = GetPositions(filename)
     return {Account.POSITIONS: positions}[logtype]
+
+
+def ImportPositions(config: config_pb2.Config) -> petl.Table:
+    pattern = path.expandvars(config.positions_csv_file_pattern)
+    filename = discovery.GetLatestFile(pattern)
+    return GetPositions(filename)
 
 
 def ReadPricesFromPositionsFile(filename: str) -> Mapping[str, Decimal]:

@@ -60,3 +60,13 @@ def ValidatePositionRecord(r: Record):
     assert isinstance(r.unit_delta, Decimal)
     assert isinstance(r.beta, Decimal)
     assert isinstance(r.index_price, Decimal)
+
+
+def ToParquet(positions: Table, filename: str):
+    """Write a transactions table to Parquet.
+
+    This is used because we have to convert all the data types.
+    """
+    # We don't have a proper schema for positoins. TODO: Define one nicely.
+    # For now, use automated conversion from Pandas.
+    positions.todataframe().to_parquet(filename, index=False)

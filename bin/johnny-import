@@ -28,57 +28,11 @@ from johnny.base import config as configlib
 from johnny.base import discovery
 from johnny.base import instrument
 from johnny.base import mark
-from johnny.base import match
 from johnny.base import split
 from johnny.base import transactions as txnlib
-from johnny.base.etl import Table
+from johnny.base import positions as poslib
+from johnny.base.etl import Table, petl
 from johnny.utils import timing
-
-
-def ImportTransactions(
-    config: configlib.Config, force: bool
-) -> Tuple[Table, configlib.Config]:
-    """Read transactions, and do all necessary processing."""
-
-    log = functools.partial(timing.log_time, log_timings=logging.info, indent=1)
-
-    # Read the inputs.
-    with log("ImportTransactions.read"):
-        logtables = discovery.ImportConfiguredInputs(
-            config, {configlib.Account.LogType.TRANSACTIONS}
-        )
-        transactions = logtables[configlib.Account.LogType.TRANSACTIONS]
-    # TODO(blais): Move this to another function.
-
-    # Check that the imports are sound before we process them and ensure that
-    # the transaction ids are unique.
-    with log("ImportTransactions.validate"):
-        unique_ids = collections.defaultdict(int)
-        num_txns = 0
-        try:
-            for rec in transactions.records():
-                unique_ids[rec.transaction_id] += 1
-                num_txns += 1
-                txnlib.ValidateTransactionRecord(rec)
-        except Exception as exc:
-            if force:
-                traceback.print_last()
-            else:
-                raise
-        if num_txns != len(unique_ids):
-            for key, value in unique_ids.items():
-                if value > 1:
-                    print("Duplicate id '{}', {} times".format(key, value))
-            raise AssertionError(
-                "Transaction ids aren't unique: {} txns != {} txns".format(
-                    num_txns, len(unique_ids)
-                )
-            )
-
-    # Match transactions to each other, synthesize opening balances, and mark
-    # ending positions.
-    with log("ImportTransactions.match"):
-        return match.Process(transactions)
 
 
 @click.command()
@@ -89,19 +43,17 @@ def ImportTransactions(
     help="Configuration filename. Default to $JOHNNY_CONFIG",
 )
 @click.option(
-    "--force", "-f", is_flag=True, help="For import even if validation fails."
-)
-@click.option(
     "--light",
     "-q",
     is_flag=True,
     help="Lightweight import; reuse transactions nad just recompute the chains.",
 )
-def import_(config: Optional[str], force: bool, light: bool):
+def import_(config: Optional[str], light: bool):
     """Parse the configuration, the sources, transform, and save."""
 
     logging.basicConfig(level=logging.INFO, format="%(levelname)-8s: %(message)s")
-    log = functools.partial(timing.log_time, log_timings=logging.info)
+    logger = logging.getLogger()
+    log = functools.partial(timing.log_time, log_timings=logger.info)
 
     # Read the input configuration.
     with log("read_config"):
@@ -111,15 +63,16 @@ def import_(config: Optional[str], force: bool, light: bool):
     # Read the past transactions.
     with log("read_log"):
         if light:
-            transactions = petl.frompickle(config.output.transactions_pickle).cutout(
-                "chain_id"
-            )
+            transactions = petl.frompickle(config.output.transactions_pickle)
+            transactions = transactions.cutout("chain_id")
         else:
-            transactions = ImportTransactions(config, force)
+            transactions = discovery.ImportAllTransactions(config, logger)
+
+        positions = discovery.ImportAllPositions(config, logger)
 
     # Mark the transactions at the price at the time of import.
     with log("mark"):
-        price_map = mark.GetPriceMap(transactions, config)
+        price_map = mark.GetPriceMap(transactions, positions)
         ptransactions = mark.Mark(transactions, price_map)
 
     # Calculate the chains and partial sums.
@@ -141,18 +94,29 @@ def import_(config: Optional[str], force: bool, light: bool):
 
     # Write out the imported databases.
     with log("output_tables"):
-        if config.output.transactions_pickle:
-            ctransactions.topickle(config.output.transactions_pickle)
-        if config.output.transactions_csv:
-            ctransactions.tocsv(config.output.transactions_csv)
-        if config.output.transactions_parquet:
-            txnlib.ToParquet(ctransactions, config.output.transactions_parquet)
-        if config.output.chains_pickle:
-            chains.topickle(config.output.chains_pickle)
-        if config.output.chains_csv:
-            chains.tocsv(config.output.chains_csv)
-        if config.output.chains_parquet:
-            chainslib.ToParquet(chains, config.output.chains_parquet)
+        with log("output_tables transactions"):
+            if config.output.transactions_pickle:
+                ctransactions.topickle(config.output.transactions_pickle)
+            if config.output.transactions_csv:
+                ctransactions.tocsv(config.output.transactions_csv)
+            if config.output.transactions_parquet:
+                txnlib.ToParquet(ctransactions, config.output.transactions_parquet)
+
+        with log("output_tables positions"):
+            if config.output.positions_pickle:
+                positions.topickle(config.output.positions_pickle)
+            if config.output.positions_csv:
+                positions.tocsv(config.output.positions_csv)
+            if config.output.positions_parquet:
+                poslib.ToParquet(positions, config.output.positions_parquet)
+
+        with log("output_tables chains"):
+            if config.output.chains_pickle:
+                chains.topickle(config.output.chains_pickle)
+            if config.output.chains_csv:
+                chains.tocsv(config.output.chains_csv)
+            if config.output.chains_parquet:
+                chainslib.ToParquet(chains, config.output.chains_parquet)
 
     with log("output_config"):
         with open(config.output.chains_db, "w") as outfile:

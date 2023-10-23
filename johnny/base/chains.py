@@ -900,8 +900,7 @@ def ToParquet(chains: Table, filename: str):
     """
     # We don't have a proper schema for chains. TODO: Define one nicely.
     # For now, use automated conversion from Pandas.
-    df = chains.todataframe()
-    df.to_parquet(filename, index=False)
+    chains.todataframe().to_parquet(filename, index=False)
 
 
 

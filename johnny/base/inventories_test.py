@@ -272,7 +272,6 @@ class TestOpenCloseFifoInventory(unittest.TestCase):
 
     @parameterized.expand([(+1,), (-1,), (+4,), (-4,)])
     def test_opening_and_closing_equal_amounts(self, q):
-        # print('XXX', q)
         oi, uq = SplitSignedQuantity(q)
         ci = "BUY" if oi == "SELL" else "SELL"
         rows = [
@@ -280,7 +279,6 @@ class TestOpenCloseFifoInventory(unittest.TestCase):
             ("b", "Trade", "CLOSING", ci, uq, uq * Decimal(110), "m-a"),
         ]
         inv, table = MatchTable(TestTable(rows))
-        # print(table.lookallstr())
         AssertTableEqual(TestTable(rows), table)
         self.assertEqual(0, len(inv.lots))
 

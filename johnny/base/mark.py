@@ -4,7 +4,7 @@ __copyright__ = "Copyright (C) 2021  Martin Blais"
 __license__ = "GNU GPLv2"
 
 from decimal import Decimal
-from typing import Mapping, Tuple
+from typing import Mapping, Tuple, Optional
 
 from more_itertools import last
 
@@ -68,18 +68,14 @@ def FetchPricesFromTransactionsLog(transactions: Table) -> Mapping[str, Decimal]
 
 
 def GetPriceMap(
-    transactions: Table, config: configlib.Config
+    transactions: Table, positions: Optional[Table]
 ) -> Mapping[str, Tuple[Decimal, str]]:
     """Produce a mapping of (symbol, mark-price)."""
     # Read prices from the transactions log itself. This is the baseline.
     price_map = FetchPricesFromTransactionsLog(transactions)
 
-    # Read the positions files as a source of prices and override the price map
-    # with those prices where present.
-    logtables = discovery.ImportConfiguredInputs(
-        config, {configlib.Account.LogType.POSITIONS}
-    )
-    positions = logtables.get(configlib.Account.LogType.POSITIONS, None)
+    # Use the positions as a source of prices and override the price map with
+    # those prices where present.
     if positions:
         pos_price_map = positions.convert("mark", abs).lookupone("symbol", "mark")
         pos_price_map = {

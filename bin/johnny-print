@@ -26,6 +26,7 @@ __license__ = "GNU GPLv2"
 
 import logging
 import os
+import re
 import copy
 from typing import List, Optional
 
@@ -37,6 +38,28 @@ from johnny.base import chains as chainslib
 from johnny.base import config as configlib
 from johnny.base import instrument
 from johnny.base.etl import petl, Table
+
+
+def SelectAccount(config: configlib.Config, account_regex: str):
+    """Account selection by nickname."""
+    accounts = [
+        account
+        for account in config.input.accounts
+        if re.search(account_regex, account.nickname)
+    ]
+    if len(accounts) != 1:
+        valid_names = [account.nickname for account in config.input.accounts]
+        raise ValueError(
+            f"Invalid or duplicate account name: {account_regex}; valid: {valid_names}"
+        )
+    return next(iter(accounts))
+
+
+def PrintTable(table: Table, ctx: click.Context):
+    """Print the table, given the options."""
+    if ctx.obj["expand"]:
+        table = instrument.Expand(table, "symbol")
+    print(table.lookallstr())
 
 
 @click.group()
@@ -55,67 +78,41 @@ def cli(ctx: click.Context, config: Optional[str], expand: bool):
     ctx.obj["config"] = configlib.ParseFile(filename)
 
 
-def GetLogTables(config: configlib.Config, logtype: int) -> Table:
-    """Process the log tables."""
-    logtables = discovery.ImportConfiguredInputs(config, {logtype})
-    opt_table = logtables.get(logtype)
-    return opt_table if opt_table is not None else petl.empty()
+@cli.command()
+@click.pass_context
+def config(ctx: click.Context):
+    "Parse, validate and print the configuration."
+    print(ctx.obj["config"])
 
 
 @cli.command()
+@click.argument("account_regex")
 @click.pass_context
-def rawtxns(ctx: click.Context):
-    "Find, process and print transactions."
-    table = GetLogTables(
-        ctx.obj["config"], configlib.Account.LogType.TRANSACTIONS
-    ).sort(["datetime", "account", "transaction_id"])
-    print_table(table, ctx.obj["expand"])
+def transactions(ctx: click.Context, account_regex: str):
+    "Import and normalize transactions."
+    account = SelectAccount(ctx.obj["config"], account_regex)
+    table = discovery.ImportTransactions(account)
+    PrintTable(table, ctx)
 
 
 @cli.command()
+@click.argument("account_regex")
 @click.pass_context
-def rawpos(ctx: click.Context):
-    "Find, process and print positions."
-    table = GetLogTables(ctx.obj["config"], configlib.Account.LogType.POSITIONS)
-    print_table(table, ctx.obj["expand"])
+def nontrades(ctx: click.Context, account_regex: str):
+    "Import and normalize non-trades."
+    account = SelectAccount(ctx.obj["config"], account_regex)
+    table = discovery.ImportNonTrades(account)
+    PrintTable(table, ctx)
 
 
 @cli.command()
+@click.argument("account_regex")
 @click.pass_context
-def rawother(ctx: click.Context):
-    "Find, process and print non-trades."
-
-    config = ctx.obj["config"]
-    accounts = config.input.accounts
-    accounts = accounts[0:1]
-    for account in accounts:
-        c = copy.deepcopy(config)
-        del c.input.accounts[:]
-        c.input.accounts.append(account)
-
-        # TODO: Refactor to "get log types separately"
-        print(account)
-        logtype = configlib.Account.LogType.OTHER
-        logtables = discovery.ImportConfiguredInputs(c, {logtype})
-        table = logtables.get(logtype)
-        if table is not None:
-            print_table(table, False)
-
-
-def print_table(table: Table, expand: bool):
-    """Print the table, given the options."""
-    if expand:
-        table = instrument.Expand(table, "symbol")
-    print(table.lookallstr())
-
-
-@cli.command()
-@click.pass_context
-def imported(ctx: click.Context):
-    "Find, process and print positions."
-    config = ctx.obj["config"]
-    imported = petl.frompickle(config.output.transactions_pickle)
-    print(imported.lookallstr())
+def positions(ctx: click.Context, account_regex: str):
+    "Import and normalize positions."
+    account = SelectAccount(ctx.obj["config"], account_regex)
+    table = discovery.ImportPositions(account)
+    PrintTable(table, ctx)
 
 
 @cli.command()
@@ -124,8 +121,9 @@ def marks(ctx: click.Context):
     "Print out marks."
     config = ctx.obj["config"]
     transactions = petl.frompickle(config.output.transactions_pickle)
+    positions = petl.frompickle(config.output.positions_pickle)
     # Mark the transactions.
-    price_map = mark.GetPriceMap(transactions, config)
+    price_map = mark.GetPriceMap(transactions, positions)
     transactions = mark.Mark(transactions, price_map)
     # Print out the marks.
     marks = transactions.selecteq("rowtype", "Mark")
@@ -134,7 +132,26 @@ def marks(ctx: click.Context):
 
 @cli.command()
 @click.pass_context
-def chains(ctx: click.Context):
+def db(ctx: click.Context):
+    "Start a DuckDB client with the database tables all imported."
+    config = ctx.obj["config"]
+    transactions = petl.frompickle(config.output.transactions_pickle)
+    positions = petl.frompickle(config.output.positions_pickle)
+    chains = petl.frompickle(config.output.chains_pickle)
+
+
+@cli.command()
+@click.pass_context
+def db_imported(ctx: click.Context):
+    "Find, process and print positions."
+    config = ctx.obj["config"]
+    imported = petl.frompickle(config.output.transactions_pickle)
+    print(imported.lookallstr())
+
+
+@cli.command()
+@click.pass_context
+def db_chains(ctx: click.Context):
     "Print out marked chains."
     config = ctx.obj["config"]
     chains = petl.frompickle(config.output.chains_pickle)
@@ -143,7 +160,7 @@ def chains(ctx: click.Context):
 
 @cli.command()
 @click.pass_context
-def multi(ctx: click.Context):
+def db_multichains(ctx: click.Context):
     "Print out chains with multiple underlyings."
     config = ctx.obj["config"]
     chains = petl.frompickle(config.output.chains_pickle).select(

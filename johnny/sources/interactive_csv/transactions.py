@@ -62,6 +62,7 @@ from johnny.sources.thinkorswim_csv import symbols
 from johnny.sources.thinkorswim_csv import utils
 from johnny.utils import csv_utils
 from johnny.sources.interactive_csv import nontrades
+from johnny.sources.interactive_csv import config_pb2
 
 Table = petl.Table
 Record = petl.Record
@@ -427,6 +428,30 @@ def ImportAll(source: str, config: configlib.Config) -> Dict["LogType", Table]:
 def Import(source: str, config: configlib.Config, logtype: "LogType") -> Table:
     """Process the filename, normalize, and output as a table."""
     return ImportAll(source, config)[logtype]
+
+
+def ImportTransactions(config: config_pb2.Config) -> petl.Table:
+    pattern = path.expandvars(config.transactions_flex_report_csv_file_pattern)
+    fnmap = discovery.GetLatestFilePerYear(pattern)
+    transactions_list = []
+    other_list = []
+    for year, filename in sorted(fnmap.items()):
+        transactions, _ = GetTransactions(filename)
+        transactions_list.append(
+            transactions.select(lambda r, y=year: r.datetime.year == y)
+        )
+    return petl.cat(*transactions_list)
+
+
+def ImportNonTrades(config: config_pb2.Config) -> petl.Table:
+    pattern = path.expandvars(config.transactions_flex_report_csv_file_pattern)
+    fnmap = discovery.GetLatestFilePerYear(pattern)
+    transactions_list = []
+    other_list = []
+    for year, filename in sorted(fnmap.items()):
+        _, other = GetTransactions(filename)
+        other_list.append(other.select(lambda r, y=year: r.Date.year == y))
+    return petl.cat(*other_list)
 
 
 @click.command()

@@ -1,0 +1,44 @@
+#!/usr/bin/env python3
+"""Command-line database client (execs into a duckdb).
+
+This script runs duckdb with the database tables imported.
+"""
+
+__copyright__ = "Copyright (C) 2023  Martin Blais"
+__license__ = "GNU GPLv2"
+
+from typing import Optional
+import functools
+import os
+import tempfile
+
+import click
+import duckdb
+
+from johnny.base import config as configlib
+
+
+@click.command()
+@click.option(
+    "--config", "-c", help="Configuration filename. Default to $JOHNNY_CONFIG"
+)
+def main(config: Optional[str]):
+    "General purpose command-line printer tool."
+
+    filename = configlib.GetConfigFilenameWithDefaults(config)
+    config = configlib.ParseFile(filename)
+    output = config.output
+
+    with tempfile.NamedTemporaryFile(mode="w", delete=False) as f:
+        pr = functools.partial(print, file=f)
+        pr(f"CREATE TABLE transactions AS SELECT * FROM read_parquet('{output.transactions_parquet}');")
+        pr(f"CREATE TABLE positions AS SELECT * FROM read_parquet('{output.positions_parquet}');")
+        pr(f"CREATE TABLE chains AS SELECT * FROM read_parquet('{output.chains_parquet}');")
+        pr(".mode column")
+        f.flush()
+
+        os.execvp("duckdb", ["duckdb", "-init", f.name])
+
+
+if __name__ == "__main__":
+    main(obj={})

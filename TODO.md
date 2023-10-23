@@ -1,5 +1,9 @@
 # General
 
+- Add positions output file and non-trades output file as well.
+- Rename libs as libs, config.py -> configlib.py
+- Rename discovery.py -> driver.py or core.py or importing.py
+
 - In order to report, a mixed trade between regular equity and a section 1256
   instrument will be problematic. It needs to be split up for tax reporting (due
   to differential tax treatment). However, it would be nice to be able to

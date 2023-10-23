@@ -39,24 +39,25 @@ from dateutil import parser
 
 import mulmat
 from mulmat import multipliers
+
 from johnny.base import config as configlib
-from johnny.base.config import Account
 from johnny.base import discovery
 from johnny.base import instrument
 from johnny.base import inventories
 from johnny.base import number
 from johnny.base import transactions as txnlib
+from johnny.base.config import Account
 from johnny.base.etl import petl, Table, Record, Replace, WrapRecords, Assert
+from johnny.sources.thinkorswim_csv import nontrades
 from johnny.sources.thinkorswim_csv import symbols
 from johnny.sources.thinkorswim_csv import utils
-from johnny.sources.thinkorswim_csv import nontrades
+from johnny.sources.thinkorswim_csv import config_pb2
 from johnny.utils import csv_utils
 
 
 Table = petl.Table
 Record = petl.Record
 debug = False
-Config = Any
 ONE = Decimal(1)
 ZERO = Decimal(0)
 Q3 = Decimal("0.001")
@@ -1139,6 +1140,31 @@ def ImportAll(source: str, config: configlib.Config) -> Dict["LogType", Table]:
 def Import(source: str, config: configlib.Config, logtype: "LogType") -> Table:
     """Process the filename, normalize, and output as a table."""
     return ImportAll(source, config)[logtype]
+
+
+def ImportTransactions(config: config_pb2.Config) -> petl.Table:
+    pattern = path.expandvars(config.thinkorswim_account_statement_csv_file_pattern)
+    fnmap = discovery.GetLatestFilePerYear(pattern)
+    transactions_list = []
+    for year, filename in sorted(fnmap.items()):
+        transactions, _ = GetTransactions(filename)
+        transactions_list.append(
+            transactions.select(lambda r, y=year: r.datetime.year == y)
+        )
+
+    return petl.cat(*transactions_list)
+
+
+def ImportNonTrades(config: config_pb2.Config) -> petl.Table:
+    pattern = path.expandvars(config.thinkorswim_account_statement_csv_file_pattern)
+    fnmap = discovery.GetLatestFilePerYear(pattern)
+    transactions_list = []
+    other_list = []
+    for year, filename in sorted(fnmap.items()):
+        _, other = GetTransactions(filename)
+        other = other.select(lambda r, y=year: r.datetime.year == y)
+        other_list.append(other)
+    return petl.cat(*other_list)
 
 
 @click.command()

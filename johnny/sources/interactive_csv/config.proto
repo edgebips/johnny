@@ -1,0 +1,32 @@
+syntax = "proto2";
+
+package johnny.interactive;
+
+message Config {
+  optional string transactions_flex_report_csv_file_pattern = 1;
+  optional string positions_flex_report_csv_file_pattern = 2;
+
+  // Betas and index prices databases.
+  optional FallbackDB fallback_database = 3;
+}
+
+// A static database of (date, underlying, beta, SPY-price) tuples used to fill
+// in where brokers do not provide information. This is used to fill in
+// information about SPY-weighted dollar deltas for Interactive Brokers. Fill
+// this in to avoid having to support pulling historical data, if you have just
+// a few datapoints.
+message FallbackDB {
+  repeated DatedValue betas = 1;
+  repeated DatedValue index_prices = 2;
+}
+
+message DatedValue {
+  // Symbol of the underlying name.
+  optional string symbol = 1;
+
+  // YYYY-MM-DD date of the beta.
+  optional string date = 2;
+
+  // Beta value.
+  optional float value = 3;
+}

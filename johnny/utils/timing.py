@@ -4,8 +4,19 @@
 __copyright__ = "Copyright (C) 2021  Martin Blais"
 __license__ = "GNU GPLv2"
 
+from typing import Optional
 import contextlib
 import time
+import logging
+import functools
+
+
+def create_logger(logger: Optional[logging.Logger]):
+    """Create a logger context manager, if the given value is not null."""
+    if logger:
+        return functools.partial(log_time, log_timings=logger.info, indent=1)
+    else:
+        return lambda operation_name: contextlib.nullcontext()
 
 
 @contextlib.contextmanager

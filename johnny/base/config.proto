@@ -8,8 +8,51 @@
 //
 //   Copyright (C) 2021  Martin Blais
 //   License: GNU GPLv2
+//
+// A quick overview of the structure of our configuration. First, an overview of
+// the process of importing the data, which is mostly what Johnny is about:
+//
+// - Each account is defined at an institution. An account is distinct from the
+//   platform through which information is obtained. For example, "Ameritrade"
+//   has a website that provides downloadable transaction data but we get more
+//   complete information by using its "thinkorswim" platform (which is also
+//   part of Ameritrade). Tastytrade (formerly Tastyworks) has CSV downloads but
+//   we've been able to reverse engineer some of its API enough to get
+//   transaction data more reliably sync'ed to a key/value store. Therefore, the
+//   account configuration includes optional support for multiple sources of
+//   data depending on what types of imports are supported. See each source's
+//   `config.proto` file for details.
+//
+// - Each of the accounts have three possible types of outputs:
+//
+//   1. A list of transaction rows, including dividends (see `transactions.proto`).
+//   2. A list of prices for positions to mark unrealized gains (see `positions.proto`).
+//   3. A list of "non-trade" rows, which is basically everything else, fees,
+//     adjustments, transfers, sweeps, etc (see `nontrades.proto`).
+//
+//   The inputs required to produce these three normalized tables of data vary
+//   depending on the source.
+//
+// - After producing these three normalized tables of data, data from all the
+//   sources are merged together to form "chains", which are logical groupings
+//   of transactions rows used to identity a set of related trading activity.
+//   This is where trades are matched and clustered, partially automatically.
+//   Each "chain" thus produced can be reduced to a single transaction with its
+//   own associated P/L. A table and database of those chains is produced as the
+//   primary output of Johnny. Conversion to Beancount may be done at the row
+//   level, but also a more succint form by flattening all the transactions of a
+//   particular chain into a single transaction reflecting the P/L of the
+//   associated "trade."
+//
+//   Non-trades are going to get used to produce individual Beancount
+//   transactions as they are not reducible to chains of related trading
+//   activity.
 
 syntax = "proto2";
+
+import "johnny/sources/thinkorswim_csv/config.proto";
+import "johnny/sources/tastyworks_api/config.proto";
+import "johnny/sources/interactive_csv/config.proto";
 
 package johnny;
 
@@ -29,9 +72,6 @@ message Config {
 
   // Options for the presentation of results.
   optional Presentation presentation = 4;
-
-  // Betas and index prices databases.
-  optional FallbackDB fallback_database = 5;
 }
 
 // Configuration for inputs to be imported.
@@ -46,8 +86,9 @@ message Inputs {
 
 // Configuration for outputs and databases.
 message Outputs {
-  // A tabular file to contain the precomputed chain data.
-  // This is a cleaned up and updated version in `Inputs.chains_db`.
+  // A tabular file to contain the precomputed chain data. This is basically an
+  // updated version in `Inputs.chains_db`, modified to incorporate newly
+  // imported data.
   optional string chains_db = 1;
 
   // A tabular file to contain the processed and normalized transactions.
@@ -56,11 +97,17 @@ message Outputs {
   optional string transactions_csv = 3;
   optional string transactions_parquet = 4;
 
+  // A tabular file to contain the processed and normalized positions.
+  // Default file format is a pickle db. The CSV is redundant, used for backups.
+  optional string positions_pickle = 5;
+  optional string positions_csv = 6;
+  optional string positions_parquet = 7;
+
   // A tabular file to contain the precomputed chain data.
   // Default file format is a pickle db. The CSV is redundant, used for backups.
-  optional string chains_pickle = 5;
-  optional string chains_csv = 6;
-  optional string chains_parquet = 7;
+  optional string chains_pickle = 8;
+  optional string chains_csv = 9;
+  optional string chains_parquet = 10;
 }
 
 // This is a mapping of (option-product-code, month-code) to
@@ -103,15 +150,7 @@ message Presentation {
   optional string ignore_mindate = 3;
 }
 
-// The declaration of an account source. Only declared accounts are ingested.
-// A declaration might look like this:
-//   accounts {
-//     nickname: "tasty"
-//     logtype: TRANSACTIONS
-//     module: "johnny.sources.tastyworks_csv.transactions"
-//     source: "/home/joesmith/Downloads/*-AccountStatement.csv"
-//   }
-//
+// The declaration of an account. Only declared accounts are ingested.
 message Account {
   // A short and unique nickname or alias for the account. This should be
   // something you don't mind sharing publicly. The account name will me
@@ -120,32 +159,10 @@ message Account {
   optional string nickname = 1;
 
   // Short name alternative, e.g. for tabs in a spreadsheet.
-  optional string sheetname = 7;
+  optional string sheetname = 2;
 
   // Beancount account names.
-  optional BeancountAccounts beancount = 8;
-
-  // Importer type: transactions or positions.
-  enum LogType {
-    TRANSACTIONS = 1; // Trades of instruments.
-    POSITIONS = 2;    // Positions snapshot in time.
-    OTHER = 3;        // Non-trades and other balance-affecting entries.
-  }
-  repeated LogType logtype = 2;
-
-  // Source module to use. This is a Python module-level path. This can be of
-  // the form 'johnny.source.tastyworks_csv.transactions' for example.
-  optional string module = 3;
-
-  // A globbing pattern, URL, or other data telling the importer where to find
-  // the files to import. If more than a single file matches, only the latest
-  // file (by timestamp) will be imported. This is in essence, the configuration
-  // across all possible sources, which are expected to be local files. In order
-  // to contain dependencies, updating these local caches of remote transactions
-  // logs should be done in separate programs using whichever APIs are
-  // necessary; this library merely imports them into a single normalized
-  // database.
-  optional string source = 4;
+  optional BeancountAccounts beancount = 3;
 
   // A filename telling the importer where to find a CSV file with the initial
   // positions at the beginning of the transactions log. This file must contain
@@ -161,26 +178,36 @@ message Account {
   // Other columns, if present, will be ignored. If this is provided, the import
   // will create these positions at the front of the transactions log history
   // import.
-  optional string initial = 5;
+  optional string initial_positions = 4;
+
+  // Source-specific configuration.
+  oneof source {
+    johnny.ameritrade.Config ameritrade = 5;
+    johnny.tastytrade.Config tastytrade = 6;
+    johnny.interactive.Config interactive = 7;
+  }
 
   // Asset types to exclude from the given source. This can be used to
   // selectively remove some types of assets, like, crypto.
-  repeated InstrumentType exclude_instrument_types = 6;
+  repeated InstrumentType exclude_instrument_types = 8;
+
+  // Configuration for move-files: filename-pattern to destination directory.
+  map<string, string> move_files = 9;
 }
 
 // Instrument types. These values correspond to the strings in the `instype`
 // columns. See the `instype` column definition for details.
 enum InstrumentType {
-  Unknown         = 0;
-  Equity          = 1;
-  EquityOption    = 2;
-  NonEquityOption = 3;
-  Collectibles    = 4;
-  Future          = 5;
-  FutureOption    = 6;
-  Index           = 7;
-  IndexOption     = 8;
-  Crypto          = 9;
+  Unknown         = 1;
+  Equity          = 2;
+  EquityOption    = 3;
+  NonEquityOption = 4;
+  Collectibles    = 5;
+  Future          = 6;
+  FutureOption    = 7;
+  Index           = 8;
+  IndexOption     = 9;
+  Crypto          = 10;
 }
 
 // A set of accounts for conversion to Beancount.
@@ -190,25 +217,4 @@ message BeancountAccounts {
   optional string account_pnl = 3;
   optional string account_commissions = 4;
   optional string account_fees = 5;
-}
-
-// A static database of (date, underlying, beta, SPY-price) tuples used to fill
-// in where brokers do not provide information. This is used to fill in
-// information about SPY-weighted dollar deltas for Interactive Brokers. Fill
-// this in to avoid having to support pulling historical data, if you have just
-// a few datapoints.
-message FallbackDB {
-  repeated DatedValue betas = 1;
-  repeated DatedValue index_prices = 2;
-}
-
-message DatedValue {
-  // Symbol of the underlying name.
-  optional string symbol = 1;
-
-  // YYYY-MM-DD date of the beta.
-  optional string date = 2;
-
-  // Beta value.
-  optional float value = 3;
 }

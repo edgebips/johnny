@@ -45,30 +45,25 @@ def main(config: Optional[str], extra_downloads: Optional[str]):
     filename = configlib.GetConfigFilenameWithDefaults(config)
     config = configlib.ParseFile(filename)
 
-    regexps = {
-        "johnny.sources.tastyworks_csv.positions": r"tasty(works|trade)_positions.*\.csv$",
-        "johnny.sources.thinkorswim_csv.transactions": r".*AccountStatement\.csv$",
-        "johnny.sources.thinkorswim_csv.positions": r".*PositionStatement\.csv$",
-        "johnny.sources.interactive_csv.transactions": r"funds_and_trades_for_johnny\.csv$",
-        "johnny.sources.interactive_csv.positions": r"positions_for_johnny\.csv$",
-    }
+    # Get the list of regular expressions of files to move.
+    regex_map = {}
+    for account in config.input.accounts:
+        regex_map.update(
+            {
+                regex: path.expandvars(destination)
+                for regex, destination in account.move_files.items()
+            }
+        )
 
     download_dirs = DOWNLOAD_DIRS
     if extra_downloads:
         download_dirs.append(extra_downloads)
 
-    for account in config.input.accounts:
-        # Get a regexp of filenames to move.
-        regexp = regexps.get(account.module)
-        if regexp is None:
-            continue
-        assert not path.isdir(account.source)
-        destination = path.dirname(account.source)
-
-        # Look for them in all downloads directories.
-        for directory in download_dirs:
+    # Look for them in all downloads directories.
+    for directory in download_dirs:
+        for regex, destination in regex_map.items():
             for filename in os.listdir(directory):
-                if re.match(regexp, filename):
+                if re.match(regex, filename):
                     src = path.join(directory, filename)
 
                     # If there's no date in the filename, add one as prefix.
@@ -79,11 +74,10 @@ def main(config: Optional[str], extra_downloads: Optional[str]):
                             path.getmtime(src)
                         ).date()
                         filename = "{:%Y-%m-%d}.{}".format(date, filename)
-                    dst = path.join(destination, filename)
 
-                    logging.info(f"Moving {src} to {dst}")
-                    os.makedirs(path.dirname(dst), exist_ok=True)
-                    shutil.move(src, dst)
+                    logging.info(f"Moving {src} to {destination}")
+                    os.makedirs(destination, exist_ok=True)
+                    shutil.move(src, destination)
 
 
 if __name__ == "__main__":

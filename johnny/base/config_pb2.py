@@ -13,22 +13,25 @@ from google.protobuf import symbol_database as _symbol_database
 _sym_db = _symbol_database.Default()
 
 
+from johnny.sources.thinkorswim_csv import config_pb2 as johnny_dot_sources_dot_thinkorswim__csv_dot_config__pb2
+from johnny.sources.tastyworks_api import config_pb2 as johnny_dot_sources_dot_tastyworks__api_dot_config__pb2
+from johnny.sources.interactive_csv import config_pb2 as johnny_dot_sources_dot_interactive__csv_dot_config__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x18johnny/base/config.proto\x12\x06johnny\"\xe9\x01\n\x06\x43onfig\x12\x1d\n\x05input\x18\x01 \x01(\x0b\x32\x0e.johnny.Inputs\x12\x1f\n\x06output\x18\x02 \x01(\x0b\x32\x0f.johnny.Outputs\x12\x44\n\x1c\x66utures_option_month_mapping\x18\x03 \x01(\x0b\x32\x1a.johnny.FutOptMonthMappingB\x02\x18\x01\x12*\n\x0cpresentation\x18\x04 \x01(\x0b\x32\x14.johnny.Presentation\x12-\n\x11\x66\x61llback_database\x18\x05 \x01(\x0b\x32\x12.johnny.FallbackDB\">\n\x06Inputs\x12!\n\x08\x61\x63\x63ounts\x18\x01 \x03(\x0b\x32\x0f.johnny.Account\x12\x11\n\tchains_db\x18\x02 \x01(\t\"\xb4\x01\n\x07Outputs\x12\x11\n\tchains_db\x18\x01 \x01(\t\x12\x1b\n\x13transactions_pickle\x18\x02 \x01(\t\x12\x18\n\x10transactions_csv\x18\x03 \x01(\t\x12\x1c\n\x14transactions_parquet\x18\x04 \x01(\t\x12\x15\n\rchains_pickle\x18\x05 \x01(\t\x12\x12\n\nchains_csv\x18\x06 \x01(\t\x12\x16\n\x0e\x63hains_parquet\x18\x07 \x01(\t\"\xa9\x01\n\x12\x46utOptMonthMapping\x12/\n\x06months\x18\x01 \x03(\x0b\x32\x1f.johnny.FutOptMonthMapping.Item\x1a\x62\n\x04Item\x12\x16\n\x0eoption_product\x18\x01 \x01(\t\x12\x14\n\x0coption_month\x18\x02 \x01(\t\x12\x16\n\x0e\x66uture_product\x18\x03 \x01(\t\x12\x14\n\x0c\x66uture_month\x18\x04 \x01(\t\"R\n\x0cPresentation\x12\x15\n\rignore_groups\x18\x01 \x03(\t\x12\x13\n\x0bignore_tags\x18\x02 \x03(\t\x12\x16\n\x0eignore_mindate\x18\x03 \x01(\t\"\xa8\x02\n\x07\x41\x63\x63ount\x12\x10\n\x08nickname\x18\x01 \x01(\t\x12\x11\n\tsheetname\x18\x07 \x01(\t\x12,\n\tbeancount\x18\x08 \x01(\x0b\x32\x19.johnny.BeancountAccounts\x12(\n\x07logtype\x18\x02 \x03(\x0e\x32\x17.johnny.Account.LogType\x12\x0e\n\x06module\x18\x03 \x01(\t\x12\x0e\n\x06source\x18\x04 \x01(\t\x12\x0f\n\x07initial\x18\x05 \x01(\t\x12\x38\n\x18\x65xclude_instrument_types\x18\x06 \x03(\x0e\x32\x16.johnny.InstrumentType\"5\n\x07LogType\x12\x10\n\x0cTRANSACTIONS\x10\x01\x12\r\n\tPOSITIONS\x10\x02\x12\t\n\x05OTHER\x10\x03\"\x89\x01\n\x11\x42\x65\x61ncountAccounts\x12\x16\n\x0e\x61\x63\x63ount_assets\x18\x01 \x01(\t\x12\x14\n\x0c\x61\x63\x63ount_cash\x18\x02 \x01(\t\x12\x13\n\x0b\x61\x63\x63ount_pnl\x18\x03 \x01(\t\x12\x1b\n\x13\x61\x63\x63ount_commissions\x18\x04 \x01(\t\x12\x14\n\x0c\x61\x63\x63ount_fees\x18\x05 \x01(\t\"Y\n\nFallbackDB\x12!\n\x05\x62\x65tas\x18\x01 \x03(\x0b\x32\x12.johnny.DatedValue\x12(\n\x0cindex_prices\x18\x02 \x03(\x0b\x32\x12.johnny.DatedValue\"9\n\nDatedValue\x12\x0e\n\x06symbol\x18\x01 \x01(\t\x12\x0c\n\x04\x64\x61te\x18\x02 \x01(\t\x12\r\n\x05value\x18\x03 \x01(\x02*\xa8\x01\n\x0eInstrumentType\x12\x0b\n\x07Unknown\x10\x00\x12\n\n\x06\x45quity\x10\x01\x12\x10\n\x0c\x45quityOption\x10\x02\x12\x13\n\x0fNonEquityOption\x10\x03\x12\x10\n\x0c\x43ollectibles\x10\x04\x12\n\n\x06\x46uture\x10\x05\x12\x10\n\x0c\x46utureOption\x10\x06\x12\t\n\x05Index\x10\x07\x12\x0f\n\x0bIndexOption\x10\x08\x12\n\n\x06\x43rypto\x10\t')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x18johnny/base/config.proto\x12\x06johnny\x1a+johnny/sources/thinkorswim_csv/config.proto\x1a*johnny/sources/tastyworks_api/config.proto\x1a+johnny/sources/interactive_csv/config.proto\"\xba\x01\n\x06\x43onfig\x12\x1d\n\x05input\x18\x01 \x01(\x0b\x32\x0e.johnny.Inputs\x12\x1f\n\x06output\x18\x02 \x01(\x0b\x32\x0f.johnny.Outputs\x12\x44\n\x1c\x66utures_option_month_mapping\x18\x03 \x01(\x0b\x32\x1a.johnny.FutOptMonthMappingB\x02\x18\x01\x12*\n\x0cpresentation\x18\x04 \x01(\x0b\x32\x14.johnny.Presentation\">\n\x06Inputs\x12!\n\x08\x61\x63\x63ounts\x18\x01 \x03(\x0b\x32\x0f.johnny.Account\x12\x11\n\tchains_db\x18\x02 \x01(\t\"\x80\x02\n\x07Outputs\x12\x11\n\tchains_db\x18\x01 \x01(\t\x12\x1b\n\x13transactions_pickle\x18\x02 \x01(\t\x12\x18\n\x10transactions_csv\x18\x03 \x01(\t\x12\x1c\n\x14transactions_parquet\x18\x04 \x01(\t\x12\x18\n\x10positions_pickle\x18\x05 \x01(\t\x12\x15\n\rpositions_csv\x18\x06 \x01(\t\x12\x19\n\x11positions_parquet\x18\x07 \x01(\t\x12\x15\n\rchains_pickle\x18\x08 \x01(\t\x12\x12\n\nchains_csv\x18\t \x01(\t\x12\x16\n\x0e\x63hains_parquet\x18\n \x01(\t\"\xa9\x01\n\x12\x46utOptMonthMapping\x12/\n\x06months\x18\x01 \x03(\x0b\x32\x1f.johnny.FutOptMonthMapping.Item\x1a\x62\n\x04Item\x12\x16\n\x0eoption_product\x18\x01 \x01(\t\x12\x14\n\x0coption_month\x18\x02 \x01(\t\x12\x16\n\x0e\x66uture_product\x18\x03 \x01(\t\x12\x14\n\x0c\x66uture_month\x18\x04 \x01(\t\"R\n\x0cPresentation\x12\x15\n\rignore_groups\x18\x01 \x03(\t\x12\x13\n\x0bignore_tags\x18\x02 \x03(\t\x12\x16\n\x0eignore_mindate\x18\x03 \x01(\t\"\xb6\x03\n\x07\x41\x63\x63ount\x12\x10\n\x08nickname\x18\x01 \x01(\t\x12\x11\n\tsheetname\x18\x02 \x01(\t\x12,\n\tbeancount\x18\x03 \x01(\x0b\x32\x19.johnny.BeancountAccounts\x12\x19\n\x11initial_positions\x18\x04 \x01(\t\x12/\n\nameritrade\x18\x05 \x01(\x0b\x32\x19.johnny.ameritrade.ConfigH\x00\x12/\n\ntastytrade\x18\x06 \x01(\x0b\x32\x19.johnny.tastytrade.ConfigH\x00\x12\x31\n\x0binteractive\x18\x07 \x01(\x0b\x32\x1a.johnny.interactive.ConfigH\x00\x12\x38\n\x18\x65xclude_instrument_types\x18\x08 \x03(\x0e\x32\x16.johnny.InstrumentType\x12\x32\n\nmove_files\x18\t \x03(\x0b\x32\x1e.johnny.Account.MoveFilesEntry\x1a\x30\n\x0eMoveFilesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\x42\x08\n\x06source\"\x89\x01\n\x11\x42\x65\x61ncountAccounts\x12\x16\n\x0e\x61\x63\x63ount_assets\x18\x01 \x01(\t\x12\x14\n\x0c\x61\x63\x63ount_cash\x18\x02 \x01(\t\x12\x13\n\x0b\x61\x63\x63ount_pnl\x18\x03 \x01(\t\x12\x1b\n\x13\x61\x63\x63ount_commissions\x18\x04 \x01(\t\x12\x14\n\x0c\x61\x63\x63ount_fees\x18\x05 \x01(\t*\xa8\x01\n\x0eInstrumentType\x12\x0b\n\x07Unknown\x10\x01\x12\n\n\x06\x45quity\x10\x02\x12\x10\n\x0c\x45quityOption\x10\x03\x12\x13\n\x0fNonEquityOption\x10\x04\x12\x10\n\x0c\x43ollectibles\x10\x05\x12\n\n\x06\x46uture\x10\x06\x12\x10\n\x0c\x46utureOption\x10\x07\x12\t\n\x05Index\x10\x08\x12\x0f\n\x0bIndexOption\x10\t\x12\n\n\x06\x43rypto\x10\n')
 
 _INSTRUMENTTYPE = DESCRIPTOR.enum_types_by_name['InstrumentType']
 InstrumentType = enum_type_wrapper.EnumTypeWrapper(_INSTRUMENTTYPE)
-Unknown = 0
-Equity = 1
-EquityOption = 2
-NonEquityOption = 3
-Collectibles = 4
-Future = 5
-FutureOption = 6
-Index = 7
-IndexOption = 8
-Crypto = 9
+Unknown = 1
+Equity = 2
+EquityOption = 3
+NonEquityOption = 4
+Collectibles = 5
+Future = 6
+FutureOption = 7
+Index = 8
+IndexOption = 9
+Crypto = 10
 
 
 _CONFIG = DESCRIPTOR.message_types_by_name['Config']
@@ -38,10 +41,8 @@ _FUTOPTMONTHMAPPING = DESCRIPTOR.message_types_by_name['FutOptMonthMapping']
 _FUTOPTMONTHMAPPING_ITEM = _FUTOPTMONTHMAPPING.nested_types_by_name['Item']
 _PRESENTATION = DESCRIPTOR.message_types_by_name['Presentation']
 _ACCOUNT = DESCRIPTOR.message_types_by_name['Account']
+_ACCOUNT_MOVEFILESENTRY = _ACCOUNT.nested_types_by_name['MoveFilesEntry']
 _BEANCOUNTACCOUNTS = DESCRIPTOR.message_types_by_name['BeancountAccounts']
-_FALLBACKDB = DESCRIPTOR.message_types_by_name['FallbackDB']
-_DATEDVALUE = DESCRIPTOR.message_types_by_name['DatedValue']
-_ACCOUNT_LOGTYPE = _ACCOUNT.enum_types_by_name['LogType']
 Config = _reflection.GeneratedProtocolMessageType('Config', (_message.Message,), {
   'DESCRIPTOR' : _CONFIG,
   '__module__' : 'johnny.base.config_pb2'
@@ -86,11 +87,19 @@ Presentation = _reflection.GeneratedProtocolMessageType('Presentation', (_messag
 _sym_db.RegisterMessage(Presentation)
 
 Account = _reflection.GeneratedProtocolMessageType('Account', (_message.Message,), {
+
+  'MoveFilesEntry' : _reflection.GeneratedProtocolMessageType('MoveFilesEntry', (_message.Message,), {
+    'DESCRIPTOR' : _ACCOUNT_MOVEFILESENTRY,
+    '__module__' : 'johnny.base.config_pb2'
+    # @@protoc_insertion_point(class_scope:johnny.Account.MoveFilesEntry)
+    })
+  ,
   'DESCRIPTOR' : _ACCOUNT,
   '__module__' : 'johnny.base.config_pb2'
   # @@protoc_insertion_point(class_scope:johnny.Account)
   })
 _sym_db.RegisterMessage(Account)
+_sym_db.RegisterMessage(Account.MoveFilesEntry)
 
 BeancountAccounts = _reflection.GeneratedProtocolMessageType('BeancountAccounts', (_message.Message,), {
   'DESCRIPTOR' : _BEANCOUNTACCOUNTS,
@@ -99,47 +108,31 @@ BeancountAccounts = _reflection.GeneratedProtocolMessageType('BeancountAccounts'
   })
 _sym_db.RegisterMessage(BeancountAccounts)
 
-FallbackDB = _reflection.GeneratedProtocolMessageType('FallbackDB', (_message.Message,), {
-  'DESCRIPTOR' : _FALLBACKDB,
-  '__module__' : 'johnny.base.config_pb2'
-  # @@protoc_insertion_point(class_scope:johnny.FallbackDB)
-  })
-_sym_db.RegisterMessage(FallbackDB)
-
-DatedValue = _reflection.GeneratedProtocolMessageType('DatedValue', (_message.Message,), {
-  'DESCRIPTOR' : _DATEDVALUE,
-  '__module__' : 'johnny.base.config_pb2'
-  # @@protoc_insertion_point(class_scope:johnny.DatedValue)
-  })
-_sym_db.RegisterMessage(DatedValue)
-
 if _descriptor._USE_C_DESCRIPTORS == False:
 
   DESCRIPTOR._options = None
   _CONFIG.fields_by_name['futures_option_month_mapping']._options = None
   _CONFIG.fields_by_name['futures_option_month_mapping']._serialized_options = b'\030\001'
-  _INSTRUMENTTYPE._serialized_start=1365
-  _INSTRUMENTTYPE._serialized_end=1533
-  _CONFIG._serialized_start=37
-  _CONFIG._serialized_end=270
-  _INPUTS._serialized_start=272
-  _INPUTS._serialized_end=334
-  _OUTPUTS._serialized_start=337
-  _OUTPUTS._serialized_end=517
-  _FUTOPTMONTHMAPPING._serialized_start=520
-  _FUTOPTMONTHMAPPING._serialized_end=689
-  _FUTOPTMONTHMAPPING_ITEM._serialized_start=591
-  _FUTOPTMONTHMAPPING_ITEM._serialized_end=689
-  _PRESENTATION._serialized_start=691
-  _PRESENTATION._serialized_end=773
-  _ACCOUNT._serialized_start=776
-  _ACCOUNT._serialized_end=1072
-  _ACCOUNT_LOGTYPE._serialized_start=1019
-  _ACCOUNT_LOGTYPE._serialized_end=1072
-  _BEANCOUNTACCOUNTS._serialized_start=1075
-  _BEANCOUNTACCOUNTS._serialized_end=1212
-  _FALLBACKDB._serialized_start=1214
-  _FALLBACKDB._serialized_end=1303
-  _DATEDVALUE._serialized_start=1305
-  _DATEDVALUE._serialized_end=1362
+  _ACCOUNT_MOVEFILESENTRY._options = None
+  _ACCOUNT_MOVEFILESENTRY._serialized_options = b'8\001'
+  _INSTRUMENTTYPE._serialized_start=1520
+  _INSTRUMENTTYPE._serialized_end=1688
+  _CONFIG._serialized_start=171
+  _CONFIG._serialized_end=357
+  _INPUTS._serialized_start=359
+  _INPUTS._serialized_end=421
+  _OUTPUTS._serialized_start=424
+  _OUTPUTS._serialized_end=680
+  _FUTOPTMONTHMAPPING._serialized_start=683
+  _FUTOPTMONTHMAPPING._serialized_end=852
+  _FUTOPTMONTHMAPPING_ITEM._serialized_start=754
+  _FUTOPTMONTHMAPPING_ITEM._serialized_end=852
+  _PRESENTATION._serialized_start=854
+  _PRESENTATION._serialized_end=936
+  _ACCOUNT._serialized_start=939
+  _ACCOUNT._serialized_end=1377
+  _ACCOUNT_MOVEFILESENTRY._serialized_start=1319
+  _ACCOUNT_MOVEFILESENTRY._serialized_end=1367
+  _BEANCOUNTACCOUNTS._serialized_start=1380
+  _BEANCOUNTACCOUNTS._serialized_end=1517
 # @@protoc_insertion_point(module_scope)

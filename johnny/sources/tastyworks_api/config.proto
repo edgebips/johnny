@@ -1,0 +1,8 @@
+syntax = "proto2";
+
+package johnny.tastytrade;
+
+message Config {
+  optional string dbm_filename = 1;
+  optional string positions_csv_file_pattern = 2;
+}

@@ -16,13 +16,9 @@ from johnny.base.chains_pb2 import Chains, Chain, ChainStatus
 from johnny.base.config_pb2 import FutOptMonthMapping
 from johnny.base.config_pb2 import InstrumentType
 from johnny.base.config_pb2 import BeancountAccounts
-from johnny.base.config_pb2 import DatedValue
 from johnny.base.etl import petl, Table
 
 from google.protobuf import text_format
-
-
-LogType = Account.LogType
 
 
 def ToText(message) -> str:
@@ -40,26 +36,28 @@ def GetConfigFilenameWithDefaults(filename: Optional[str]) -> str:
     return filename
 
 
-def PerformReplacements(config: Config) -> Config:
+def _PerformReplacements(config: Config) -> Config:
     """Replace environment variables in the config filenames."""
     config = copy.deepcopy(config)
 
     for account in config.input.accounts:
-        account.source = path.expandvars(account.source)
-        account.initial = path.expandvars(account.initial)
+        account.initial_positions = path.expandvars(account.initial_positions)
     config.input.chains_db = path.expandvars(config.input.chains_db)
 
-    config.output.chains_db = path.expandvars(config.output.chains_db)
-    config.output.transactions_pickle = path.expandvars(
-        config.output.transactions_pickle
-    )
-    config.output.transactions_csv = path.expandvars(config.output.transactions_csv)
-    config.output.transactions_parquet = path.expandvars(
-        config.output.transactions_parquet
-    )
-    config.output.chains_pickle = path.expandvars(config.output.chains_pickle)
-    config.output.chains_csv = path.expandvars(config.output.chains_csv)
-    config.output.chains_parquet = path.expandvars(config.output.chains_parquet)
+    output = config.output
+    output.chains_db = path.expandvars(output.chains_db)
+
+    output.transactions_pickle = path.expandvars(output.transactions_pickle)
+    output.transactions_csv = path.expandvars(output.transactions_csv)
+    output.transactions_parquet = path.expandvars(output.transactions_parquet)
+
+    output.positions_pickle = path.expandvars(output.positions_pickle)
+    output.positions_csv = path.expandvars(output.positions_csv)
+    output.positions_parquet = path.expandvars(output.positions_parquet)
+
+    output.chains_pickle = path.expandvars(output.chains_pickle)
+    output.chains_csv = path.expandvars(output.chains_csv)
+    output.chains_parquet = path.expandvars(output.chains_parquet)
 
     return config
 
@@ -68,7 +66,7 @@ def ParseFile(filename: str) -> Config:
     """Parse a text-formatted proto configuration file."""
     with open(filename) as infile:
         config = text_format.Parse(infile.read(), Config())
-    config = PerformReplacements(config)
+    config = _PerformReplacements(config)
     Validate(config)
     return config
 
@@ -78,7 +76,7 @@ class ConfigError(ValueError):
 
 
 def Validate(config: Config):
-    """Validate the configuration."""
+    """Validate the overall configuration."""
 
     # Check the account nicknames are unique.
     nicknames = [a.nickname for a in config.input.accounts]
@@ -87,10 +85,10 @@ def Validate(config: Config):
 
     # Ensure required fields are set.
     for a in config.input.accounts:
-        if not a.logtype:
-            raise ConfigError("Log type is not set")
+        assert a.WhichOneof("source") is not None
 
 
+# TODO(blais): Move to chains.py
 def ReadChains(filename: str) -> Chains:
     """Parse a text-formatted chains poor man's db file."""
     chains = Chains()

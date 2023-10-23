@@ -13,16 +13,22 @@ from typing import Any, Dict, Optional, Set
 import collections
 import glob
 import importlib
+import logging
 import re
+import typing
+import functools
 
 from more_itertools import last
 from dateutil import parser
 
-from johnny.base.etl import petl, Table
-from johnny.base import instrument
-from johnny.base import transactions as txnlib
 from johnny.base import config as configlib
-from johnny.base.config import Account
+from johnny.base import instrument
+from johnny.base import match
+from johnny.base import transactions as txnlib
+from johnny.base.config import Account, Config
+from johnny.base.etl import petl, Table
+from johnny.sources import Source
+from johnny.utils import timing
 
 
 ZERO = Decimal(0)
@@ -57,6 +63,7 @@ def GetLatestFilePerYear(source: str) -> Dict[int, str]:
 
 def ReadInitialPositions(filename: str) -> Table:
     """Read a table of initial positions."""
+
     table = (
         petl.fromcsv(filename)
         .cut(
@@ -99,8 +106,9 @@ def ReadInitialPositions(filename: str) -> Table:
     return table
 
 
+# TODO(blais): Delete.
 def ImportConfiguredInputs(
-    config: configlib.Config, filter_logtypes: Optional[Set["LogType"]] = None
+    config: Config, filter_logtypes: Optional[Set["LogType"]] = None
 ) -> Dict[int, Table]:
     """Read the explicitly configured inputs in the config file.
     Returns tables for the transactions and positions."""
@@ -114,8 +122,8 @@ def ImportConfiguredInputs(
             output_tables = tablemap[logtype]
 
             # Incorporate initial positions.
-            if logtype == Account.TRANSACTIONS and account.initial:
-                table = ReadInitialPositions(account.initial)
+            if logtype == Account.TRANSACTIONS and account.initial_positions:
+                table = ReadInitialPositions(account.initial_positions)
                 if table is not None:
                     output_tables.append(table.update("account", account.nickname))
 
@@ -153,3 +161,145 @@ def ImportConfiguredInputs(
             bytype[t_logtype] = table
 
     return bytype
+
+
+def _GetRegistry(source_name: str) -> Source:
+    modules = {
+        "ameritrade": "johnny.sources.thinkorswim_csv.source",
+        "tastytrade": "johnny.sources.tastyworks_api.source",
+        "interactive": "johnny.sources.interactive_csv.source",
+    }
+    module_name = modules[source_name]
+    return importlib.import_module(module_name)
+
+
+def _ImportAny(
+    account: Account, method_name: str, read_initial_positions: bool
+) -> Optional[Table]:
+    # Incorporate initial positions.
+    tables = []
+    if read_initial_positions and account.initial_positions:
+        table = ReadInitialPositions(account.initial_positions)
+        if table is not None:
+            tables.append(table.update("account", account.nickname))
+
+    # Import module transactions.
+    source_name = account.WhichOneof("source")
+    config = getattr(account, source_name)
+    module = _GetRegistry(source_name)
+    func = getattr(module, method_name)
+    table = func(config)
+    if table is None:
+        return None
+
+    # Filter out instrument types.
+    if account.exclude_instrument_types:
+        exclude_instrument_types = set(
+            configlib.InstrumentType.Name(instype)
+            for instype in account.exclude_instrument_types
+        )
+        table = (
+            table.applyfn(instrument.Expand, "symbol")
+            .selectnotin("instype", exclude_instrument_types)
+            .applyfn(instrument.Shrink)
+        )
+
+    if "account" in table.fieldnames():
+        table = table.update("account", account.nickname)
+    tables.append(table)
+
+    return petl.cat(*tables)
+
+
+def ImportTransactions(account: Account) -> Optional[Table]:
+    """Import the transactions from an account definition."""
+    table = _ImportAny(account, "ImportTransactions", True)
+    return table.sort(["datetime", "account", "transaction_id"])
+
+
+def ImportNonTrades(account: Account) -> Table:
+    """Import the positions from an account definition."""
+    return _ImportAny(account, "ImportNonTrades", False)
+
+
+def ImportPositions(account: Account) -> Table:
+    """Import the positions from an account definition."""
+    table = _ImportAny(account, "ImportPositions", False)
+    return table.sort(["account", "symbol"])
+
+
+def _ValidateTransactions(transactions: Table):
+    """Check that the imports are sound before we process them and ensure that
+    the transaction ids are unique.
+    """
+    unique_ids = collections.defaultdict(int)
+    num_txns = 0
+    try:
+        for rec in transactions.records():
+            unique_ids[rec.transaction_id] += 1
+            num_txns += 1
+            txnlib.ValidateTransactionRecord(rec)
+    except Exception as exc:
+        if force:
+            traceback.print_last()
+        else:
+            raise
+    if num_txns != len(unique_ids):
+        for key, value in unique_ids.items():
+            if value > 1:
+                print("Duplicate id '{}', {} times".format(key, value))
+        raise AssertionError(
+            "Transaction ids aren't unique: {} txns != {} txns".format(
+                num_txns, len(unique_ids)
+            )
+        )
+
+
+def ImportAllTransactions(config: Config, logger: Optional[logging.Logger]) -> Table:
+    """Read all transactions, and do all necessary processing."""
+
+    # Read the inputs.
+    log = timing.create_logger(logger)
+    tables = []
+    for account in config.input.accounts:
+        with log(f"ImportTransactions.read for {account.nickname}"):
+            table = ImportTransactions(account)
+            if table:
+                tables.append(table)
+    transactions = petl.cat(*tables)
+
+    with log("ImportTransactions.validate"):
+        _ValidateTransactions(transactions)
+
+    # Match transactions to each other, synthesize opening balances, and mark
+    # ending positions.
+    with log("ImportTransactions.match"):
+        return match.Process(transactions)
+
+
+def ImportAllPositions(config: Config, logger: Optional[logging.Logger]) -> Table:
+    """Read all positions, and do all necessary processing."""
+
+    # Read the inputs.
+    log = timing.create_logger(logger)
+    tables = []
+    for account in config.input.accounts:
+        with log(f"ImportPositions.read for {account.nickname}"):
+            table = ImportPositions(account)
+            if table:
+                tables.append(table)
+    return petl.cat(*tables)
+
+
+def ImportAllNonTrades(config: Config, logger: Optional[logging.Logger]) -> Table:
+    """Read all non-trades, and do all necessary processing."""
+
+    # Read the inputs.
+    log = timing.create_logger(logger)
+    tables = []
+    for account in config.input.accounts:
+        with log(f"ImportNonTrades.read for {account.nickname}"):
+            table = ImportNonTrades(account)
+            if table:
+                tables.append(table)
+    return petl.cat(*tables)

@@ -32,6 +32,7 @@ from johnny.base import transactions as txnlib
 from johnny.base.etl import petl, Table, Record, WrapRecords
 from johnny.base.number import ToDecimal
 from johnny.sources.tastyworks_csv import symbols
+from johnny.sources.tastyworks_api import config_pb2
 
 
 ZERO = Decimal(0)
@@ -363,6 +364,15 @@ def Import(source: str, config: configlib.Config, logtype: "LogType") -> Table:
         return GetOther(source)
     else:
         raise KeyError(f"Invalid logtype {logtype}")
+
+
+def ImportTransactions(config: config_pb2.Config) -> petl.Table:
+    return GetTransactions(path.expandvars(config.dbm_filename))
+
+
+def ImportNonTrades(config: config_pb2.Config) -> petl.Table:
+    return GetOther(path.expandvars(config.dbm_filename))
+
 
 
 @click.command()
