@@ -420,17 +420,6 @@ def ImportTransactions(config: config_pb2.Config) -> petl.Table:
     return petl.cat(*transactions_list)
 
 
-def ImportNonTrades(config: config_pb2.Config) -> petl.Table:
-    pattern = path.expandvars(config.transactions_flex_report_csv_file_pattern)
-    fnmap = discovery.GetLatestFilePerYear(pattern)
-    transactions_list = []
-    other_list = []
-    for year, filename in sorted(fnmap.items()):
-        _, other = GetTransactions(filename)
-        other_list.append(other.select(lambda r, y=year: r.Date.year == y))
-    return petl.cat(*other_list)
-
-
 @click.command()
 @click.argument("source", type=click.Path())
 @click.option("--cash", is_flag=True, help="Print out cash transactions.")

@@ -1,6 +1,6 @@
 # General
 
-- Add positions output file and non-trades output file as well.
+- Add non-trades output files.
 - Rename libs as libs, config.py -> configlib.py
 - Rename discovery.py -> driver.py or core.py or importing.py
 
