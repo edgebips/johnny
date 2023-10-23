@@ -388,13 +388,6 @@ def GetTransactions(filename: str) -> Tuple[Table, Table]:
     return norm_trades_table, other_table
 
 
-def Import(source: str, config: configlib.Config, logtype: "LogType") -> Table:
-    """Process the filename, normalize, and output as a table."""
-    filename = discovery.GetLatestFile(source)
-    transactions, other = GetTransactions(filename)
-    return {Account.TRANSACTIONS: transactions, Account.OTHER: other}[logtype]
-
-
 @click.command()
 @click.argument("filename", type=click.Path(resolve_path=True, exists=True))
 def main(filename: str):

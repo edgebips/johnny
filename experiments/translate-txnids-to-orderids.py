@@ -25,8 +25,7 @@ from johnny.base.etl import Table, WrapRecords
 def main(config_filename: str):
     config = configlib.ParseFile(config_filename)
     chains_db = configlib.ReadChains(config.input.chains_db)
-    logtables = discovery.ImportConfiguredInputs(config)
-    transactions = logtables[configlib.Account.LogType.TRANSACTIONS]
+    transactions = discovery.ImportAllTransactions(config)
 
     # Write out original transactions.
     transactions.tocsv("/tmp/transactions.csv")

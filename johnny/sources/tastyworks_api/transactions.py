@@ -356,16 +356,6 @@ def GetOther(filename: str) -> Table:
     return table
 
 
-def Import(source: str, config: configlib.Config, logtype: "LogType") -> Table:
-    """Process the filename, normalize, and output as a table."""
-    if logtype == Account.TRANSACTIONS:
-        return GetTransactions(source)
-    elif logtype == Account.OTHER:
-        return GetOther(source)
-    else:
-        raise KeyError(f"Invalid logtype {logtype}")
-
-
 def ImportTransactions(config: config_pb2.Config) -> petl.Table:
     return GetTransactions(path.expandvars(config.dbm_filename))
 

@@ -106,63 +106,6 @@ def ReadInitialPositions(filename: str) -> Table:
     return table
 
 
-# TODO(blais): Delete.
-def ImportConfiguredInputs(
-    config: Config, filter_logtypes: Optional[Set["LogType"]] = None
-) -> Dict[int, Table]:
-    """Read the explicitly configured inputs in the config file.
-    Returns tables for the transactions and positions."""
-
-    # Parse and accumulate by log type.
-    tablemap = collections.defaultdict(list)
-    for account in config.input.accounts:
-        for logtype in account.logtype:
-            if filter_logtypes and logtype not in filter_logtypes:
-                continue
-            output_tables = tablemap[logtype]
-
-            # Incorporate initial positions.
-            if logtype == Account.TRANSACTIONS and account.initial_positions:
-                table = ReadInitialPositions(account.initial_positions)
-                if table is not None:
-                    output_tables.append(table.update("account", account.nickname))
-
-            # Import module transactions.
-            module = importlib.import_module(account.module)
-            table = module.Import(account.source, config, logtype)
-            if table is None:
-                continue
-
-            # Filter out instrument types.
-            if account.exclude_instrument_types:
-                exclude_instrument_types = set(
-                    configlib.InstrumentType.Name(instype)
-                    for instype in account.exclude_instrument_types
-                )
-                table = (
-                    table.applyfn(instrument.Expand, "symbol")
-                    .selectnotin("instype", exclude_instrument_types)
-                    .applyfn(instrument.Shrink)
-                )
-
-            if "account" in table.fieldnames():
-                table = table.update("account", account.nickname)
-            output_tables.append(table)
-
-    # Concatenate tables for each logtype.
-    bytype = {}
-    for t_logtype, tables in tablemap.items():
-        table = petl.cat(*tables)
-        if t_logtype == Account.TRANSACTIONS:
-            bytype[t_logtype] = table.sort(("account", "datetime"))
-        elif t_logtype == Account.POSITIONS:
-            bytype[t_logtype] = table.sort(("account", "symbol"))
-        elif t_logtype == Account.OTHER:
-            bytype[t_logtype] = table
-
-    return bytype
-
-
 def _GetRegistry(source_name: str) -> Source:
     modules = {
         "ameritrade": "johnny.sources.thinkorswim_csv.source",

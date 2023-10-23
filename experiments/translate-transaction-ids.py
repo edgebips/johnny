@@ -31,10 +31,8 @@ def main(config: Optional[str]):
     filename = configlib.GetConfigFilenameWithDefaults(config)
     config = configlib.ParseFile(filename)
     chains_db = configlib.ReadChains(config.input.chains_db)
-    logtables = discovery.ImportConfiguredInputs(config)
-    table = logtables[configlib.Account.LogType.TRANSACTIONS].selectne(
-        "transaction_new_id", None
-    )
+    table = discovery.ImportAllTransactions(config)
+    table = table.selectne("transaction_new_id", None)
 
     new_ids = list((table.values("transaction_new_id")))
     assert len(list(new_ids)) == len(set(new_ids)), (

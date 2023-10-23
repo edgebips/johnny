@@ -407,29 +407,6 @@ def GetTransactions(filename: str) -> Tuple[Table, Table]:
     return trade, nontrade
 
 
-def ImportAll(source: str, config: configlib.Config) -> Dict["LogType", Table]:
-    fnmap = discovery.GetLatestFilePerYear(source)
-
-    transactions_list = []
-    other_list = []
-    for year, filename in sorted(fnmap.items()):
-        transactions, other = GetTransactions(filename)
-        transactions_list.append(
-            transactions.select(lambda r, y=year: r.datetime.year == y)
-        )
-        other_list.append(other.select(lambda r, y=year: r.Date.year == y))
-
-    transactions = petl.cat(*transactions_list)
-    other = petl.cat(*other_list)
-
-    return {Account.TRANSACTIONS: transactions, Account.OTHER: other}
-
-
-def Import(source: str, config: configlib.Config, logtype: "LogType") -> Table:
-    """Process the filename, normalize, and output as a table."""
-    return ImportAll(source, config)[logtype]
-
-
 def ImportTransactions(config: config_pb2.Config) -> petl.Table:
     pattern = path.expandvars(config.transactions_flex_report_csv_file_pattern)
     fnmap = discovery.GetLatestFilePerYear(pattern)

@@ -139,13 +139,6 @@ def GetPositions(filename: str) -> Table:
     return table
 
 
-def Import(source: str, config: configlib.Config, logtype: "LogType") -> Table:
-    """Process the filename, normalize, and output as a table."""
-    filename = discovery.GetLatestFile(source)
-    positions = GetPositions(filename)
-    return {Account.POSITIONS: positions}[logtype]
-
-
 def ImportPositions(config: config_pb2.Config) -> petl.Table:
     pattern = path.expandvars(config.positions_csv_file_pattern)
     filename = discovery.GetLatestFile(pattern)
