@@ -453,9 +453,9 @@ def _CalculateNetLiq(pairs: Iterator[Tuple[str, Decimal]]):
 
 
 def _CalculateCash(pairs: Iterator[Tuple[str, Decimal]]):
-    return Decimal(sum(cost for rowtype, cost in pairs if rowtype == "Dividend")).quantize(
-        Q2
-    )
+    return Decimal(
+        sum(cost for rowtype, cost in pairs if rowtype == "Dividend")
+    ).quantize(Q2)
 
 
 def _GetUnderlyings(symbols: Iterator[str]) -> List[str]:
@@ -892,7 +892,6 @@ def AcceptChain(
         chain.group = group
 
 
-
 def ToParquet(chains: Table, filename: str):
     """Write a transactions table to Parquet.
 
@@ -901,7 +900,6 @@ def ToParquet(chains: Table, filename: str):
     # We don't have a proper schema for chains. TODO: Define one nicely.
     # For now, use automated conversion from Pandas.
     chains.todataframe().to_parquet(filename, index=False)
-
 
 
 # TODO: First import all historical without dividends and commit.

@@ -15,8 +15,7 @@ def ConvertNonTrades(other: Table, account_id: str) -> Table:
     """Convert input non-trades to normalized non-trades."""
 
     other = (
-        other.addfield("rowtype", GetRowType)
-        .addfield("account", account_id)
+        other.addfield("rowtype", GetRowType).addfield("account", account_id)
         # .rename("ClientAccountID", "account")
         # .rename("TransactionID", "transaction_id")
         # .addfield("datetime", lambda r: dt.datetime.combine(r.Date, dt.time()))

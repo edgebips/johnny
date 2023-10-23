@@ -372,8 +372,7 @@ def chain(chain_id: str):
         **GetNavigation(),
     )
     if beanjohn:
-        args.update(
-            bchain=flask.url_for("bchain", chain_id=chain_id))
+        args.update(bchain=flask.url_for("bchain", chain_id=chain_id))
     return flask.render_template("chain.html", **args)
 
 

@@ -364,7 +364,6 @@ def ImportNonTrades(config: config_pb2.Config) -> petl.Table:
     return GetOther(path.expandvars(config.dbm_filename))
 
 
-
 @click.command()
 @click.argument("database", type=click.Path(resolve_path=True, exists=True))
 def main(database: str):
@@ -373,12 +372,12 @@ def main(database: str):
     if 1:
         transactions = Import(database, None, Account.TRANSACTIONS)
         transactions = GetTransactions(database)
-        #print(transactions.head(10).lookallstr())
+        # print(transactions.head(10).lookallstr())
         transactions.selecteq("rowtype", "Dividend").tocsv()
 
     if 0:
         nontrades = Import(database, None, Account.OTHER)
-        #print(nontrades.lookallstr())
+        # print(nontrades.lookallstr())
         for rec in nontrades.aggregate(
             ["transaction-type", "transaction-sub-type"], WrapRecords
         ).records():

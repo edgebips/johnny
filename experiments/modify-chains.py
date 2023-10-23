@@ -36,7 +36,6 @@ ChainStatus = chains_pb2.ChainStatus
     help="Configuration filename. Default to $JOHNNY_CONFIG",
 )
 def main(config: Optional[str], csv_filename: str):
-
     # Read the existing configuration.
     filename = configlib.GetConfigFilenameWithDefaults(config)
     config = configlib.ParseFile(filename)

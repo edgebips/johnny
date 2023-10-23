@@ -49,8 +49,11 @@ def main(config: Optional[str]):
     for chain in chains_db.chains:
         if not chain.auto_ids:
             continue
-        print(TEMPLATE_URL.format(chain=chain.chain_id,
-                                  url=f"{BASE_URL}/{chain.chain_id}"))
+        print(
+            TEMPLATE_URL.format(
+                chain=chain.chain_id, url=f"{BASE_URL}/{chain.chain_id}"
+            )
+        )
     print(TEMPLATE_POST)
 
 

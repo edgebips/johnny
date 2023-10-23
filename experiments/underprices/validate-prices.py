@@ -287,7 +287,6 @@ def main(config: Optional[str], retry: Optional[bool], database: str):
     logging.basicConfig(level=logging.INFO, format="%(levelname)-8s: %(message)s")
 
     with shelve.open(database, "r") as pricedb:
-
         fields = (
             "chain_id",
             "rowtype",
@@ -339,7 +338,6 @@ def main(config: Optional[str], retry: Optional[bool], database: str):
         _ = list(chains.records())
 
         if 0:
-
             # def process_chain(giter):
             #     table = petl.wrap([fields] + list(giter))
 

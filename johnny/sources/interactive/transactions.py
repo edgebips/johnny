@@ -397,8 +397,7 @@ def GetTransactions(filename: str) -> Tuple[Table, Table]:
             }
         )
         # Absolute value for quantity.
-        .convert("quantity", abs)
-        .addfield("init", None)
+        .convert("quantity", abs).addfield("init", None)
     )
 
     # Reorder the final fields.

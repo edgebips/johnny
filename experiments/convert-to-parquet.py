@@ -19,6 +19,5 @@ def main():
     txnlib.to_parquet(transactions, "/tmp/transactions.parquet")
 
 
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

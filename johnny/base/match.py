@@ -285,8 +285,7 @@ def GetChainMatchesFromTransactions(
         )
     chain_id = next(iter(chain_ids))
     ctxns = (
-        txns
-        .selectin("effect", {"OPENING", "CLOSING"})  # Remove Dividends.
+        txns.selectin("effect", {"OPENING", "CLOSING"})  # Remove Dividends.
         .movefield("chain_id", 0)
         .movefield("account", 1)
         .convert("chain_id", lambda _: "")
