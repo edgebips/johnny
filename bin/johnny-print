@@ -132,18 +132,8 @@ def marks(ctx: click.Context):
 
 @cli.command()
 @click.pass_context
-def db(ctx: click.Context):
-    "Start a DuckDB client with the database tables all imported."
-    config = ctx.obj["config"]
-    transactions = petl.frompickle(config.output.transactions_pickle)
-    positions = petl.frompickle(config.output.positions_pickle)
-    chains = petl.frompickle(config.output.chains_pickle)
-
-
-@cli.command()
-@click.pass_context
-def db_imported(ctx: click.Context):
-    "Find, process and print positions."
+def imported_transations(ctx: click.Context):
+    "Print imported transactions (from database)."
     config = ctx.obj["config"]
     imported = petl.frompickle(config.output.transactions_pickle)
     print(imported.lookallstr())
@@ -151,21 +141,28 @@ def db_imported(ctx: click.Context):
 
 @cli.command()
 @click.pass_context
-def db_chains(ctx: click.Context):
-    "Print out marked chains."
+def imported_nontrades(ctx: click.Context):
+    "Print imported non-trades (from database)."
     config = ctx.obj["config"]
-    chains = petl.frompickle(config.output.chains_pickle)
-    print(chains.lookallstr())
+    imported = petl.frompickle(config.output.nontrades_pickle)
+    print(imported.lookallstr())
 
 
 @cli.command()
 @click.pass_context
-def db_multichains(ctx: click.Context):
-    "Print out chains with multiple underlyings."
+def imported_positions(ctx: click.Context):
+    "Print imported positions (from database)."
     config = ctx.obj["config"]
-    chains = petl.frompickle(config.output.chains_pickle).select(
-        lambda r: "," in r.underlyings
-    )
+    imported = petl.frompickle(config.output.positions_pickle)
+    print(imported.lookallstr())
+
+
+@cli.command()
+@click.pass_context
+def imported_chains(ctx: click.Context):
+    "Print imported chains (from database)."
+    config = ctx.obj["config"]
+    chains = petl.frompickle(config.output.chains_pickle)
     print(chains.lookallstr())
 
 

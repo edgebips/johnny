@@ -36,7 +36,6 @@ ROW_TYPES = {
     "Dividend",
     "Distribution",
     "ExternalTransfer",
-    "ExternalTransfer",
     "InternalTransfer",
     "MonthlyFee",
     "TransferFee",

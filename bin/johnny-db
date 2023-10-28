@@ -34,6 +34,7 @@ def main(config: Optional[str]):
         pr(f"CREATE TABLE transactions AS SELECT * FROM read_parquet('{output.transactions_parquet}');")
         pr(f"CREATE TABLE positions AS SELECT * FROM read_parquet('{output.positions_parquet}');")
         pr(f"CREATE TABLE chains AS SELECT * FROM read_parquet('{output.chains_parquet}');")
+        pr(f"CREATE TABLE nontrades AS SELECT * FROM read_parquet('{output.nontrades_parquet}');")
         pr(".mode column")
         f.flush()
 

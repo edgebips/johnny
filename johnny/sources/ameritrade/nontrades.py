@@ -112,10 +112,7 @@ def ConvertNonTrades(other: Table, account_id: str) -> Table:
         .cut(nontrades.FIELDS)
     )
 
-    # TODO(blais): Remove symbol column by turning distributions over to the
-    # transactions table and incorporating them in P/L, like dividends.
-
-    return other# .sort(["rowtype", "datetime"])
+    return other
 
 
 def ImportNonTrades(config: config_pb2.Config) -> petl.Table:
@@ -129,13 +126,3 @@ def ImportNonTrades(config: config_pb2.Config) -> petl.Table:
     table = petl.cat(*other_list)
     nontrades = ConvertNonTrades(table, "<ameritrade>")
     return nontrades
-
-
-def _ImportNonTrades(config: config_pb2.Config) -> petl.Table:
-    return petl.empty()
-
-
-# TODO: Convert other nontrades to use enum, not string, for rowtype.
-# TODO: PARTNERSHIP DISTRIBUTION --> Like a Dividend!
-# TODO: LONG TERM GAIN DISTRIBUTION --> Like a Dividend!  New type Distribution
-# TODO: process Adjustments, remove symbol.
