@@ -13,13 +13,13 @@ from johnny.base.nontrades_pb2 import NonTrade
 # Transaction table field names.
 FIELDS = [
     "rowtype",
+    "orig_type",
+    "orig_subtype",
     "account",
     "transaction_id",
     "datetime",
     "description",
     "symbol",
-    "type",
-    "ref",
     "amount",
     "balance",
 ]
@@ -30,17 +30,17 @@ ROW_TYPES = {
     "CashBalance",
     "FuturesBalance",
     "Adjustment",
-    "FuturesMTM",
+    "FuturesMarkToMarket",
     "BalanceInterest",
     "MarginInterest",
     "Dividend",
     "Distribution",
-    "TransferIn",
-    "TransferOut",
-    "TransferInternal",
+    "ExternalTransfer",
+    "ExternalTransfer",
+    "InternalTransfer",
     "MonthlyFee",
     "TransferFee",
-    "HTBFee",
+    "HardToBorrowFee",
     "Sweep",
 }
 
@@ -72,3 +72,27 @@ def ValidateRecord(r: Record):
     assert r.ref is None or isinstance(r.ref, str)
     assert isinstance(r.amount, Decimal)
     assert r.balance is None or isinstance(r.balance, Decimal)
+
+
+def CheckUnique(table: Table, field: str):
+    mapping = collections.defaultdict(int)
+    for rec in table.records():
+        mapping[getattr(rec, field)] += 1
+    mapping = {key: value for key, value in mapping.items() if value != 1}
+    assert not mapping
+
+
+def Validate(nontrades: Table):
+    """Validate the table of non-tradeds."""
+    for rec in nontrades.records():
+        ValidateRecord(rec)
+
+    # Check that the transaction id is unique.
+    CheckUnique(nontrades, "transaction_id")
+
+
+def ToParquet(nontrades: Table, filename: str):
+    """Write a non-trades table to Parquet."""
+    # We don't have a proper schema for non-trades. TODO: Define one nicely.
+    # For now, use automated conversion from Pandas.
+    nontrades.todataframe().to_parquet(filename, index=False)

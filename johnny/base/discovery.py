@@ -171,33 +171,6 @@ def ImportPositions(account: Account) -> Table:
     return table.sort(["account", "symbol"])
 
 
-def _ValidateTransactions(transactions: Table):
-    """Check that the imports are sound before we process them and ensure that
-    the transaction ids are unique.
-    """
-    unique_ids = collections.defaultdict(int)
-    num_txns = 0
-    try:
-        for rec in transactions.records():
-            unique_ids[rec.transaction_id] += 1
-            num_txns += 1
-            txnlib.ValidateTransactionRecord(rec)
-    except Exception as exc:
-        if force:
-            traceback.print_last()
-        else:
-            raise
-    if num_txns != len(unique_ids):
-        for key, value in unique_ids.items():
-            if value > 1:
-                print("Duplicate id '{}', {} times".format(key, value))
-        raise AssertionError(
-            "Transaction ids aren't unique: {} txns != {} txns".format(
-                num_txns, len(unique_ids)
-            )
-        )
-
-
 def ImportAllTransactions(config: Config, logger: Optional[logging.Logger]) -> Table:
     """Read all transactions, and do all necessary processing."""
 
@@ -212,7 +185,7 @@ def ImportAllTransactions(config: Config, logger: Optional[logging.Logger]) -> T
     transactions = petl.cat(*tables)
 
     with log("ImportTransactions.validate"):
-        _ValidateTransactions(transactions)
+        txnlib.ValidateTransactions(transactions)
 
     # Match transactions to each other, synthesize opening balances, and mark
     # ending positions.

@@ -5,7 +5,7 @@ import datetime as dt
 from os import path
 
 from johnny.base import discovery
-from johnny.base import nontrades
+from johnny.base import nontrades as nontradeslib
 from johnny.base.etl import Record, Table, petl
 from johnny.sources.interactive import transactions
 from johnny.sources.interactive import config_pb2
@@ -19,7 +19,7 @@ def GetRowType(rec: Record) -> str:
     if not code:
         return "CashBalance"
     if code == "DEP":
-        return "TransferIn" if rec.Amount >= 0 else "TransferOut"
+        return "ExternalTransfer" if rec.Amount >= 0 else "ExternalTransfer"
     if code == "CINT":
         return "BalanceInterest"
     if code == "OFEE":
@@ -45,7 +45,9 @@ def ConvertNonTrades(other: Table) -> Table:
         .addfield("amount", lambda r: r.Amount.quantize(Q2))
         .addfield("balance", lambda r: r.Balance.quantize(Q2))
         .addfield("ref", None)
-        .cut(nontrades.FIELDS)
+        .rename("type", "orig_type")
+        .addfield("orig_subtype", None)
+        .cut(nontradeslib.FIELDS)
     )
 
     #  OrderID TradeID AssetClass Symbol UnderlyingSymbol

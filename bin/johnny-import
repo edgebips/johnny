@@ -31,6 +31,7 @@ from johnny.base import mark
 from johnny.base import split
 from johnny.base import transactions as txnlib
 from johnny.base import positions as poslib
+from johnny.base import nontrades as ntlib
 from johnny.base.etl import Table, petl
 from johnny.utils import timing
 
@@ -68,6 +69,11 @@ def import_(config: Optional[str], light: bool):
         else:
             transactions = discovery.ImportAllTransactions(config, logger)
 
+        if light:
+            nontrades = petl.frompickle(config.output.nontrades_pickle)
+        else:
+            nontrades = discovery.ImportAllNonTrades(config, logger)
+
         positions = discovery.ImportAllPositions(config, logger)
 
     # Mark the transactions at the price at the time of import.
@@ -101,6 +107,14 @@ def import_(config: Optional[str], light: bool):
                 ctransactions.tocsv(config.output.transactions_csv)
             if config.output.transactions_parquet:
                 txnlib.ToParquet(ctransactions, config.output.transactions_parquet)
+
+        with log("output_tables non-trades"):
+            if config.output.nontrades_pickle:
+                nontrades.topickle(config.output.nontrades_pickle)
+            if config.output.nontrades_csv:
+                nontrades.tocsv(config.output.nontrades_csv)
+            if config.output.nontrades_parquet:
+                ntlib.ToParquet(nontrades, config.output.nontrades_parquet)
 
         with log("output_tables positions"):
             if config.output.positions_pickle:

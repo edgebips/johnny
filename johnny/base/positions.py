@@ -63,10 +63,7 @@ def ValidatePositionRecord(r: Record):
 
 
 def ToParquet(positions: Table, filename: str):
-    """Write a transactions table to Parquet.
-
-    This is used because we have to convert all the data types.
-    """
-    # We don't have a proper schema for positoins. TODO: Define one nicely.
+    """Write a positions table to Parquet."""
+    # We don't have a proper schema for positions. TODO: Define one nicely.
     # For now, use automated conversion from Pandas.
     positions.todataframe().to_parquet(filename, index=False)

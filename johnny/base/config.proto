@@ -97,17 +97,23 @@ message Outputs {
   optional string transactions_csv = 3;
   optional string transactions_parquet = 4;
 
+  // A tabular file to contain the non-trades.
+  // Default file format is a pickle db. The CSV is redundant, used for backups.
+  optional string nontrades_pickle = 5;
+  optional string nontrades_csv = 6;
+  optional string nontrades_parquet = 7;
+
   // A tabular file to contain the processed and normalized positions.
   // Default file format is a pickle db. The CSV is redundant, used for backups.
-  optional string positions_pickle = 5;
-  optional string positions_csv = 6;
-  optional string positions_parquet = 7;
+  optional string positions_pickle = 8;
+  optional string positions_csv = 9;
+  optional string positions_parquet = 10;
 
   // A tabular file to contain the precomputed chain data.
   // Default file format is a pickle db. The CSV is redundant, used for backups.
-  optional string chains_pickle = 8;
-  optional string chains_csv = 9;
-  optional string chains_parquet = 10;
+  optional string chains_pickle = 11;
+  optional string chains_csv = 12;
+  optional string chains_parquet = 13;
 }
 
 // This is a mapping of (option-product-code, month-code) to

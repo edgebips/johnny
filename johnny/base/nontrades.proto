@@ -20,22 +20,23 @@ message NonTrade {
 
   // `rowtype: str`: An enum string for the row type.
   enum RowType {
-    CashBalance = 1;     // A balance of the cash account
-    FuturesBalance = 2;  // A balance of the futures account.
-    Adjustment = 3;      // A balance adjustment (of many types)
-    FuturesMTM = 4;      // A mark-to-mark futures transfer.
-    BalanceInterest = 5; // Interest on balance.
-    MarginInterest = 6;  // Interest on margin.
-    Dividend = 7;        // A dividend received.
-    Distribution = 8;    // A capital gains distribution, typically from an ETF.
-    TransferIn = 9;      // An incoming transfer.
-    TransferOut = 10;    // An outgoing transfer.
-    TransferInternal = 11; // An internal transfer.
-    MonthlyFee = 12;       // A monthly fee.
-    TransferFee = 13;      // A wire transfer fee.
-    HTBFee = 14;           // A hard-to-borrow fee.
-    Sweep = 15;            // A cash sweep (typically to be ignored).
+    CashBalance = 1;         // A balance of the cash account
+    FuturesBalance = 2;      // A balance of the futures account.
+    Adjustment = 3;          // A balance adjustment (of many types)
+    FuturesMarkToMarket = 4; // A mark-to-mark futures transfer.
+    BalanceInterest = 5;     // Interest on balance.
+    MarginInterest = 6;      // Interest on margin.
+    Dividend = 7;            // A dividend received.
+    Distribution = 8;        // A capital gains distribution, typically from an ETF.
+    InternalTransfer = 9;   // An internal transfer.
+    ExternalTransfer = 10;    // An outgoing transfer.
+    MonthlyFee = 11;         // A monthly fee.
+    TransferFee = 12;        // A wire transfer fee.
+    HardToBorrowFee = 13;    // A hard-to-borrow fee.
+    Sweep = 14;              // A cash sweep (typically to be ignored).
   }
+  //// TODO(blais): What do we do with InternalTransfer, ExternalTransfer, ExternalTransfer?
+  //// I think translate to Withdrawal and Deposit?  Don't care about internal?
   required RowType rowtype = 1;
 
   //-------------------------------------------------------------------------------
@@ -68,17 +69,15 @@ message NonTrade {
   // leave an empty string (not `None`).
   required string description = 5;
 
-  // `type: Optional[str]`: The original type fields of the imported data.
-  optional string type = 6;
-
   // `symbol: Optional[str]`: If applicable, the symbol normalized in
   // unambiguous, cross-platform, readable symbology. The individual fields of
   // the instrument's symbol may be expanded into their individual components.
   // See the file "instrument.md" for details.
-  optional string symbol = 7;
+  optional string symbol = 6;
 
-  // `ref: Optional[str]`: An optional reference number.
-  optional string ref = 8;
+  // Original fields. Just in case.
+  optional string orig_type = 7;
+  optional string orig_subtype = 8;
 
   //-------------------------------------------------------------------------------
   // Balance-Affecting Fields
@@ -87,6 +86,8 @@ message NonTrade {
   required DateTime amount = 9;
 
   // `balance: Optional[Decimal]`: An optional resulting balance field of the
-  // corresponding account after the amount is applied.
+  // corresponding account after the amount is applied. This is used to validate
+  // the balance amount after, and are not intended to be set to the total
+  // non-trades balance of amounts.
   optional DateTime balance = 10;
 }

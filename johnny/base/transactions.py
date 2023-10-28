@@ -5,6 +5,7 @@ __license__ = "GNU GPLv2"
 
 from decimal import Decimal
 from typing import Callable, Tuple
+import collections
 import datetime
 import functools
 
@@ -112,6 +113,33 @@ def ValidateTransactionRecord(r: Record):
         assert not r.quantity
         assert not r.price
         assert not r.cost
+
+
+def ValidateTransactions(transactions: Table):
+    """Check that the imports are sound before we process them and ensure that
+    the transaction ids are unique.
+    """
+    unique_ids = collections.defaultdict(int)
+    num_txns = 0
+    try:
+        for rec in transactions.records():
+            unique_ids[rec.transaction_id] += 1
+            num_txns += 1
+            ValidateTransactionRecord(rec)
+    except Exception as exc:
+        if force:
+            traceback.print_last()
+        else:
+            raise
+    if num_txns != len(unique_ids):
+        for key, value in unique_ids.items():
+            if value > 1:
+                print("Duplicate id '{}', {} times".format(key, value))
+        raise AssertionError(
+            "Transaction ids aren't unique: {} txns != {} txns".format(
+                num_txns, len(unique_ids)
+            )
+        )
 
 
 def ToParquet(transactions: Table, filename: str):

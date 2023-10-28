@@ -119,14 +119,14 @@ TRANSACTION_TYPES = {
 }
 
 OTHER_TYPES = {
-    ("Money Movement", "Balance Adjustment"): "Other",
-    ("Money Movement", "Credit Interest"): "Other",
+    ("Money Movement", "Balance Adjustment"): "Adjustment",
+    ("Money Movement", "Credit Interest"): "BalanceInterest",
     # Note: This contains amounts affecting balance for futures.
-    ("Money Movement", "Mark to Market"): "Other",
-    ("Money Movement", "Transfer"): "Other",
-    ("Money Movement", "Withdrawal"): "Other",
-    ("Money Movement", "Deposit"): "Other",
-    ("Money Movement", "Fee"): "Other",
+    ("Money Movement", "Mark to Market"): "FuturesMarkToMarket",
+    ("Money Movement", "Transfer"): "InternalTransfer",
+    ("Money Movement", "Withdrawal"): "ExternalTransfer",
+    ("Money Movement", "Deposit"): "ExternalTransfer",
+    ("Money Movement", "Fee"): "TransferFee",
 }
 
 ALL_TYPES = {}
@@ -350,18 +350,11 @@ def GetOther(filename: str) -> Table:
         # in.
         .addfield("rowtype", GetRowType).selectin("rowtype", set(OTHER_TYPES.values()))
     )
-
-    table = filt_items.addfield("datetime", ParseTime)
-
-    return table
+    return filt_items
 
 
 def ImportTransactions(config: config_pb2.Config) -> petl.Table:
     return GetTransactions(path.expandvars(config.dbm_filename))
-
-
-def ImportNonTrades(config: config_pb2.Config) -> petl.Table:
-    return GetOther(path.expandvars(config.dbm_filename))
 
 
 @click.command()

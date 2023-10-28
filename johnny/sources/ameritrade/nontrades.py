@@ -4,8 +4,10 @@ from decimal import Decimal
 import datetime as dt
 import re
 
-from johnny.base.etl import Record, Table
+from johnny.base.etl import Record, Table, petl
 from johnny.base import nontrades
+from johnny.base import discovery
+from johnny.sources.ameritrade import config_pb2
 
 
 Q2 = Decimal("0.01")
@@ -55,7 +57,7 @@ def GetRowType(rec: Record) -> nontrades.NonTrade.RowType:
         elif re.search(
             r"mark to market at .* official settlement price", rec.description
         ):
-            return nontrades.FuturesMTM
+            return nontrades.FuturesMarkToMarket
 
     elif rtype == "DOI":
         if rec.description.startswith("FREE BALANCE INTEREST ADJUSTMENT"):
@@ -69,11 +71,11 @@ def GetRowType(rec: Record) -> nontrades.NonTrade.RowType:
 
     elif rtype == "EFN":
         if rec.description.startswith("CLIENT REQUESTED ELECTRONIC FUNDING RECEIPT"):
-            return nontrades.TransferIn
+            return nontrades.ExternalTransfer
         elif rec.description.startswith(
             "CLIENT REQUESTED ELECTRONIC FUNDING DISBURSEMENT"
         ):
-            return nontrades.TransferOut
+            return nontrades.ExternalTransfer
 
     elif rtype == "FSWP":
         return nontrades.Sweep
@@ -82,24 +84,39 @@ def GetRowType(rec: Record) -> nontrades.NonTrade.RowType:
         if rec.description.startswith("MISCELLANEOUS JOURNAL ENTRY"):
             return nontrades.Adjustment
         elif rec.description.startswith("MARK TO THE MARKET"):
-            return nontrades.FuturesMTM
+            return nontrades.FuturesMarkToMarket
         elif rec.description.startswith("INTRA-ACCOUNT TRANSFER"):
-            return nontrades.TransferInternal
+            return nontrades.InternalTransfer
         elif rec.description.startswith("HARD TO BORROW FEE"):
-            return nontrades.HTBFee
+            return nontrades.HardToBorrowFee
 
     elif rtype == "RAD":
         if rec.description.startswith("CASH ALTERNATIVES INTEREST"):
             return nontrades.BalanceInterest
         elif rec.description.startswith("INTERNAL TRANSFER BETWEEN ACCOUNTS"):
-            return nontrades.TransferInternal
+            return nontrades.InternalTransfer
 
     elif rtype == "WIN":
         if rec.description.startswith("THIRD PARTY"):
-            return nontrades.TransferIn
+            return nontrades.ExternalTransfer
 
     elif rtype == "WOU":
         if rec.description.startswith("WIRE OUTGOING"):
-            return nontrades.TransferOut
+            return nontrades.ExternalTransfer
 
     raise ValueError(f"Unknown {rtype} row: {rec}")
+
+
+def ImportNonTrades(config: config_pb2.Config) -> petl.Table:
+    pattern = path.expandvars(config.thinkorswim_account_statement_csv_file_pattern)
+    fnmap = discovery.GetLatestFilePerYear(pattern)
+    other_list = []
+    for year, filename in sorted(fnmap.items()):
+        _, other = GetTransactions(filename)
+        other = other.select(lambda r, y=year: r.datetime.year == y)
+        other_list.append(other)
+    return petl.cat(*other_list)
+
+
+def ImportNonTrades(config: config_pb2.Config) -> petl.Table:
+    return petl.empty()

@@ -18,7 +18,7 @@ from johnny.sources.tastytrade import config_pb2 as johnny_dot_sources_dot_tasty
 from johnny.sources.interactive import config_pb2 as johnny_dot_sources_dot_interactive_dot_config__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x18johnny/base/config.proto\x12\x06johnny\x1a&johnny/sources/ameritrade/config.proto\x1a&johnny/sources/tastytrade/config.proto\x1a\'johnny/sources/interactive/config.proto\"\xba\x01\n\x06\x43onfig\x12\x1d\n\x05input\x18\x01 \x01(\x0b\x32\x0e.johnny.Inputs\x12\x1f\n\x06output\x18\x02 \x01(\x0b\x32\x0f.johnny.Outputs\x12\x44\n\x1c\x66utures_option_month_mapping\x18\x03 \x01(\x0b\x32\x1a.johnny.FutOptMonthMappingB\x02\x18\x01\x12*\n\x0cpresentation\x18\x04 \x01(\x0b\x32\x14.johnny.Presentation\">\n\x06Inputs\x12!\n\x08\x61\x63\x63ounts\x18\x01 \x03(\x0b\x32\x0f.johnny.Account\x12\x11\n\tchains_db\x18\x02 \x01(\t\"\x80\x02\n\x07Outputs\x12\x11\n\tchains_db\x18\x01 \x01(\t\x12\x1b\n\x13transactions_pickle\x18\x02 \x01(\t\x12\x18\n\x10transactions_csv\x18\x03 \x01(\t\x12\x1c\n\x14transactions_parquet\x18\x04 \x01(\t\x12\x18\n\x10positions_pickle\x18\x05 \x01(\t\x12\x15\n\rpositions_csv\x18\x06 \x01(\t\x12\x19\n\x11positions_parquet\x18\x07 \x01(\t\x12\x15\n\rchains_pickle\x18\x08 \x01(\t\x12\x12\n\nchains_csv\x18\t \x01(\t\x12\x16\n\x0e\x63hains_parquet\x18\n \x01(\t\"\xa9\x01\n\x12\x46utOptMonthMapping\x12/\n\x06months\x18\x01 \x03(\x0b\x32\x1f.johnny.FutOptMonthMapping.Item\x1a\x62\n\x04Item\x12\x16\n\x0eoption_product\x18\x01 \x01(\t\x12\x14\n\x0coption_month\x18\x02 \x01(\t\x12\x16\n\x0e\x66uture_product\x18\x03 \x01(\t\x12\x14\n\x0c\x66uture_month\x18\x04 \x01(\t\"R\n\x0cPresentation\x12\x15\n\rignore_groups\x18\x01 \x03(\t\x12\x13\n\x0bignore_tags\x18\x02 \x03(\t\x12\x16\n\x0eignore_mindate\x18\x03 \x01(\t\"\xb6\x03\n\x07\x41\x63\x63ount\x12\x10\n\x08nickname\x18\x01 \x01(\t\x12\x11\n\tsheetname\x18\x02 \x01(\t\x12,\n\tbeancount\x18\x03 \x01(\x0b\x32\x19.johnny.BeancountAccounts\x12\x19\n\x11initial_positions\x18\x04 \x01(\t\x12/\n\nameritrade\x18\x05 \x01(\x0b\x32\x19.johnny.ameritrade.ConfigH\x00\x12/\n\ntastytrade\x18\x06 \x01(\x0b\x32\x19.johnny.tastytrade.ConfigH\x00\x12\x31\n\x0binteractive\x18\x07 \x01(\x0b\x32\x1a.johnny.interactive.ConfigH\x00\x12\x38\n\x18\x65xclude_instrument_types\x18\x08 \x03(\x0e\x32\x16.johnny.InstrumentType\x12\x32\n\nmove_files\x18\t \x03(\x0b\x32\x1e.johnny.Account.MoveFilesEntry\x1a\x30\n\x0eMoveFilesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\x42\x08\n\x06source\"\x89\x01\n\x11\x42\x65\x61ncountAccounts\x12\x16\n\x0e\x61\x63\x63ount_assets\x18\x01 \x01(\t\x12\x14\n\x0c\x61\x63\x63ount_cash\x18\x02 \x01(\t\x12\x13\n\x0b\x61\x63\x63ount_pnl\x18\x03 \x01(\t\x12\x1b\n\x13\x61\x63\x63ount_commissions\x18\x04 \x01(\t\x12\x14\n\x0c\x61\x63\x63ount_fees\x18\x05 \x01(\t*\xa8\x01\n\x0eInstrumentType\x12\x0b\n\x07Unknown\x10\x01\x12\n\n\x06\x45quity\x10\x02\x12\x10\n\x0c\x45quityOption\x10\x03\x12\x13\n\x0fNonEquityOption\x10\x04\x12\x10\n\x0c\x43ollectibles\x10\x05\x12\n\n\x06\x46uture\x10\x06\x12\x10\n\x0c\x46utureOption\x10\x07\x12\t\n\x05Index\x10\x08\x12\x0f\n\x0bIndexOption\x10\t\x12\n\n\x06\x43rypto\x10\n')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x18johnny/base/config.proto\x12\x06johnny\x1a&johnny/sources/ameritrade/config.proto\x1a&johnny/sources/tastytrade/config.proto\x1a\'johnny/sources/interactive/config.proto\"\xba\x01\n\x06\x43onfig\x12\x1d\n\x05input\x18\x01 \x01(\x0b\x32\x0e.johnny.Inputs\x12\x1f\n\x06output\x18\x02 \x01(\x0b\x32\x0f.johnny.Outputs\x12\x44\n\x1c\x66utures_option_month_mapping\x18\x03 \x01(\x0b\x32\x1a.johnny.FutOptMonthMappingB\x02\x18\x01\x12*\n\x0cpresentation\x18\x04 \x01(\x0b\x32\x14.johnny.Presentation\">\n\x06Inputs\x12!\n\x08\x61\x63\x63ounts\x18\x01 \x03(\x0b\x32\x0f.johnny.Account\x12\x11\n\tchains_db\x18\x02 \x01(\t\"\xcc\x02\n\x07Outputs\x12\x11\n\tchains_db\x18\x01 \x01(\t\x12\x1b\n\x13transactions_pickle\x18\x02 \x01(\t\x12\x18\n\x10transactions_csv\x18\x03 \x01(\t\x12\x1c\n\x14transactions_parquet\x18\x04 \x01(\t\x12\x18\n\x10nontrades_pickle\x18\x05 \x01(\t\x12\x15\n\rnontrades_csv\x18\x06 \x01(\t\x12\x19\n\x11nontrades_parquet\x18\x07 \x01(\t\x12\x18\n\x10positions_pickle\x18\x08 \x01(\t\x12\x15\n\rpositions_csv\x18\t \x01(\t\x12\x19\n\x11positions_parquet\x18\n \x01(\t\x12\x15\n\rchains_pickle\x18\x0b \x01(\t\x12\x12\n\nchains_csv\x18\x0c \x01(\t\x12\x16\n\x0e\x63hains_parquet\x18\r \x01(\t\"\xa9\x01\n\x12\x46utOptMonthMapping\x12/\n\x06months\x18\x01 \x03(\x0b\x32\x1f.johnny.FutOptMonthMapping.Item\x1a\x62\n\x04Item\x12\x16\n\x0eoption_product\x18\x01 \x01(\t\x12\x14\n\x0coption_month\x18\x02 \x01(\t\x12\x16\n\x0e\x66uture_product\x18\x03 \x01(\t\x12\x14\n\x0c\x66uture_month\x18\x04 \x01(\t\"R\n\x0cPresentation\x12\x15\n\rignore_groups\x18\x01 \x03(\t\x12\x13\n\x0bignore_tags\x18\x02 \x03(\t\x12\x16\n\x0eignore_mindate\x18\x03 \x01(\t\"\xb6\x03\n\x07\x41\x63\x63ount\x12\x10\n\x08nickname\x18\x01 \x01(\t\x12\x11\n\tsheetname\x18\x02 \x01(\t\x12,\n\tbeancount\x18\x03 \x01(\x0b\x32\x19.johnny.BeancountAccounts\x12\x19\n\x11initial_positions\x18\x04 \x01(\t\x12/\n\nameritrade\x18\x05 \x01(\x0b\x32\x19.johnny.ameritrade.ConfigH\x00\x12/\n\ntastytrade\x18\x06 \x01(\x0b\x32\x19.johnny.tastytrade.ConfigH\x00\x12\x31\n\x0binteractive\x18\x07 \x01(\x0b\x32\x1a.johnny.interactive.ConfigH\x00\x12\x38\n\x18\x65xclude_instrument_types\x18\x08 \x03(\x0e\x32\x16.johnny.InstrumentType\x12\x32\n\nmove_files\x18\t \x03(\x0b\x32\x1e.johnny.Account.MoveFilesEntry\x1a\x30\n\x0eMoveFilesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\x42\x08\n\x06source\"\x89\x01\n\x11\x42\x65\x61ncountAccounts\x12\x16\n\x0e\x61\x63\x63ount_assets\x18\x01 \x01(\t\x12\x14\n\x0c\x61\x63\x63ount_cash\x18\x02 \x01(\t\x12\x13\n\x0b\x61\x63\x63ount_pnl\x18\x03 \x01(\t\x12\x1b\n\x13\x61\x63\x63ount_commissions\x18\x04 \x01(\t\x12\x14\n\x0c\x61\x63\x63ount_fees\x18\x05 \x01(\t*\xa8\x01\n\x0eInstrumentType\x12\x0b\n\x07Unknown\x10\x01\x12\n\n\x06\x45quity\x10\x02\x12\x10\n\x0c\x45quityOption\x10\x03\x12\x13\n\x0fNonEquityOption\x10\x04\x12\x10\n\x0c\x43ollectibles\x10\x05\x12\n\n\x06\x46uture\x10\x06\x12\x10\n\x0c\x46utureOption\x10\x07\x12\t\n\x05Index\x10\x08\x12\x0f\n\x0bIndexOption\x10\t\x12\n\n\x06\x43rypto\x10\n')
 
 _INSTRUMENTTYPE = DESCRIPTOR.enum_types_by_name['InstrumentType']
 InstrumentType = enum_type_wrapper.EnumTypeWrapper(_INSTRUMENTTYPE)
@@ -115,24 +115,24 @@ if _descriptor._USE_C_DESCRIPTORS == False:
   _CONFIG.fields_by_name['futures_option_month_mapping']._serialized_options = b'\030\001'
   _ACCOUNT_MOVEFILESENTRY._options = None
   _ACCOUNT_MOVEFILESENTRY._serialized_options = b'8\001'
-  _INSTRUMENTTYPE._serialized_start=1507
-  _INSTRUMENTTYPE._serialized_end=1675
+  _INSTRUMENTTYPE._serialized_start=1583
+  _INSTRUMENTTYPE._serialized_end=1751
   _CONFIG._serialized_start=158
   _CONFIG._serialized_end=344
   _INPUTS._serialized_start=346
   _INPUTS._serialized_end=408
   _OUTPUTS._serialized_start=411
-  _OUTPUTS._serialized_end=667
-  _FUTOPTMONTHMAPPING._serialized_start=670
-  _FUTOPTMONTHMAPPING._serialized_end=839
-  _FUTOPTMONTHMAPPING_ITEM._serialized_start=741
-  _FUTOPTMONTHMAPPING_ITEM._serialized_end=839
-  _PRESENTATION._serialized_start=841
-  _PRESENTATION._serialized_end=923
-  _ACCOUNT._serialized_start=926
-  _ACCOUNT._serialized_end=1364
-  _ACCOUNT_MOVEFILESENTRY._serialized_start=1306
-  _ACCOUNT_MOVEFILESENTRY._serialized_end=1354
-  _BEANCOUNTACCOUNTS._serialized_start=1367
-  _BEANCOUNTACCOUNTS._serialized_end=1504
+  _OUTPUTS._serialized_end=743
+  _FUTOPTMONTHMAPPING._serialized_start=746
+  _FUTOPTMONTHMAPPING._serialized_end=915
+  _FUTOPTMONTHMAPPING_ITEM._serialized_start=817
+  _FUTOPTMONTHMAPPING_ITEM._serialized_end=915
+  _PRESENTATION._serialized_start=917
+  _PRESENTATION._serialized_end=999
+  _ACCOUNT._serialized_start=1002
+  _ACCOUNT._serialized_end=1440
+  _ACCOUNT_MOVEFILESENTRY._serialized_start=1382
+  _ACCOUNT_MOVEFILESENTRY._serialized_end=1430
+  _BEANCOUNTACCOUNTS._serialized_start=1443
+  _BEANCOUNTACCOUNTS._serialized_end=1580
 # @@protoc_insertion_point(module_scope)

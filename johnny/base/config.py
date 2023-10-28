@@ -51,6 +51,10 @@ def _PerformReplacements(config: Config) -> Config:
     output.transactions_csv = path.expandvars(output.transactions_csv)
     output.transactions_parquet = path.expandvars(output.transactions_parquet)
 
+    output.nontrades_pickle = path.expandvars(output.nontrades_pickle)
+    output.nontrades_csv = path.expandvars(output.nontrades_csv)
+    output.nontrades_parquet = path.expandvars(output.nontrades_parquet)
+
     output.positions_pickle = path.expandvars(output.positions_pickle)
     output.positions_csv = path.expandvars(output.positions_csv)
     output.positions_parquet = path.expandvars(output.positions_parquet)
