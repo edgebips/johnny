@@ -13,10 +13,10 @@ from johnny.base.nontrades_pb2 import NonTrade
 # Transaction table field names.
 FIELDS = [
     "rowtype",
-    "orig_type",
-    "orig_subtype",
+    "nativetype",
     "account",
     "transaction_id",
+    "ref",
     "datetime",
     "description",
     "symbol",

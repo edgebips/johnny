@@ -39,6 +39,9 @@ message NonTrade {
   //// I think translate to Withdrawal and Deposit?  Don't care about internal?
   required RowType rowtype = 1;
 
+  // Original type field name. Just in case this might be useful.
+  optional string nativetype = 2;
+
   //-------------------------------------------------------------------------------
   // Information about the Event
   //
@@ -46,19 +49,19 @@ message NonTrade {
   // defines the brokerage. This can be used if a file contains information
   // about multiple accounts. The configuration can map this to a public
   // nickname that may or may not reflect the source.
-  required string account = 2;
+  required string account = 3;
 
   // `transaction_id: str`: A unique transaction id by which we can identify
   // this transaction. This is essential in order to deduplicate previously
   // imported transactions. This can be given from the system or synthesized
   // from a stable hash from the rows of an input file.
-  required string transaction_id = 3;
+  required string transaction_id = 4;
 
   // `datetime: datetime.datetime`: A date/time converted to local time and
   // naive (no timezone, not "timezone aware"). This is the date and time at
   // which the row was logged, in local time. Where only a date is included, the
   // time is set to midnight that day.
-  required DateTime datetime = 4;
+  required DateTime datetime = 5;
 
   //-------------------------------------------------------------------------------
   // Descriptive information
@@ -67,17 +70,19 @@ message NonTrade {
   // transaction, if one is available. This is used for rendering debugging
   // outputs and for rendering transactions in accounting systems. If not set,
   // leave an empty string (not `None`).
-  required string description = 5;
+  required string description = 6;
 
   // `symbol: Optional[str]`: If applicable, the symbol normalized in
   // unambiguous, cross-platform, readable symbology. The individual fields of
   // the instrument's symbol may be expanded into their individual components.
   // See the file "instrument.md" for details.
-  optional string symbol = 6;
+  optional string symbol = 7;
 
-  // Original fields. Just in case.
-  optional string orig_type = 7;
-  optional string orig_subtype = 8;
+  // `ref: Optional[str]`: If applicable, a field that could be used to link
+  // together related transactions. This is going to be application dependent
+  // and you shouldn't rely much on this. (I'm not actually sure how to use this
+  // data yet, but I'd rather not throw it away.)
+  optional string ref = 8;
 
   //-------------------------------------------------------------------------------
   // Balance-Affecting Fields

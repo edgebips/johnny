@@ -74,6 +74,7 @@ def SplitCashBalance(statement: Table, trade_hist: Table) -> Tuple[Table, Table]
     # Strategy has been inferred from the preparation and can be used to
     # distinguish trading and non-trading rows.
     #
+
     # TODO(blais): Use biselect() here.
     nontrade = statement.select(lambda r: not r.strategy)
     trade = statement.select(lambda r: bool(r.strategy))
@@ -579,7 +580,9 @@ def CashBalance_Prepare(table: Table) -> Table:
         )
         # Back out the "Misc Fees" field that is missing using consecutive
         # balances.
-        .addfieldusingcontext("misc_fees", _ComputeMiscFees)
+        .addfieldusingcontext("misc_fees_inferred", _ComputeMiscFees)
+        .cutout("misc_fees")
+        .rename("misc_fees_inferred", "misc_fees")
     )
     return ParseDescription(table)
 

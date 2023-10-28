@@ -39,14 +39,10 @@ def ImportNonTrades(config: config_pb2.Config) -> petl.Table:
     # Add datetime.
     table = (
         table.addfield("datetime", transactions.ParseTime)
-        .rename(
-            {
-                "transaction-type": "orig_type",
-                "transaction-sub-type": "orig_subtype",
-            }
-        )
+        .rename("transaction-sub-type", "nativetype")
         .addfield("account", None)
         .rename("id", "transaction_id")
+        .addfield("ref", None)
         .rename("value", "amount")
         .addfield("balance", None)
         .cut(nontradeslib.FIELDS)

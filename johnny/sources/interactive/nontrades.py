@@ -38,6 +38,7 @@ def ConvertNonTrades(other: Table) -> Table:
         other.addfield("rowtype", GetRowType)
         .rename("ClientAccountID", "account")
         .rename("TransactionID", "transaction_id")
+        .rename("TradeID", "ref")
         .addfield("datetime", lambda r: dt.datetime.combine(r.Date, dt.time()))
         .rename("ActivityDescription", "description")
         .rename("ActivityCode", "type")
@@ -45,8 +46,7 @@ def ConvertNonTrades(other: Table) -> Table:
         .addfield("amount", lambda r: r.Amount.quantize(Q2))
         .addfield("balance", lambda r: r.Balance.quantize(Q2))
         .addfield("ref", None)
-        .rename("type", "orig_type")
-        .addfield("orig_subtype", None)
+        .rename("type", "nativetype")
         .cut(nontradeslib.FIELDS)
     )
 

@@ -3,108 +3,119 @@
 from decimal import Decimal
 import datetime as dt
 import re
+from os import path
 
 from johnny.base.etl import Record, Table, petl
 from johnny.base import nontrades
 from johnny.base import discovery
 from johnny.sources.ameritrade import config_pb2
+from johnny.sources.ameritrade import transactions as txnlib
 
 
+NonTrade = nontrades.NonTrade
 Q2 = Decimal("0.01")
 
 
-def ConvertNonTrades(other: Table, account_id: str) -> Table:
-    """Convert input non-trades to normalized non-trades."""
-
-    other = (
-        other.addfield("rowtype", GetRowType).addfield("account", account_id)
-        # .rename("ClientAccountID", "account")
-        # .rename("TransactionID", "transaction_id")
-        # .addfield("datetime", lambda r: dt.datetime.combine(r.Date, dt.time()))
-        # .rename("ActivityDescription", "description")
-        # .rename("ActivityCode", "type")
-        # .rename("Symbol", "symbol")
-        # .addfield("amount", lambda r: r.Amount.quantize(Q2))
-        # .addfield("balance", lambda r: r.Balance.quantize(Q2))
-        # .addfield("ref", None)
-        # .cut(nontrades.FIELDS)
-    )
-
-    #  OrderID TradeID AssetClass Symbol UnderlyingSymbol
-    # Multiplier Strike Expiry Put/Call Date ActivityCode
-    # Buy/Sell TradeQuantity TradePrice TradeGross TradeCommission Amount
-    # Balance rowtype
-
-    return other
+def GetSymbol(rec: Record) -> NonTrade.RowType:
+    mobj = re.search(r"~([A-Z]+)\s*$", rec.description)
+    return mobj.group(1) if mobj else ""
 
 
-def GetRowType(rec: Record) -> nontrades.NonTrade.RowType:
+def GetRowType(rec: Record) -> NonTrade.RowType:
     rtype = rec.type
     if not rtype:
         raise ValueError(f"Invalid row without a 'type' field: {rec}")
 
     if rtype == "BAL":
         if rec.description.startswith("Cash balance at the start"):
-            return nontrades.CashBalance
+            return NonTrade.CashBalance
         elif rec.description.startswith("Futures cash balance at the start"):
-            return nontrades.FuturesBalance
+            return NonTrade.FuturesBalance
 
     elif rtype == "ADJ":
         if re.match(
             r"(courtesy|courteys) +(adjustment|credit)", rec.description, flags=re.I
         ):
-            return nontrades.Adjustment
+            return NonTrade.Adjustment
         elif re.search(
             r"mark to market at .* official settlement price", rec.description
         ):
-            return nontrades.FuturesMarkToMarket
+            return NonTrade.FuturesMarkToMarket
 
     elif rtype == "DOI":
         if rec.description.startswith("FREE BALANCE INTEREST ADJUSTMENT"):
-            return nontrades.BalanceInterestd
+            return NonTrade.BalanceInterest
         elif rec.description.startswith("MARGIN INTEREST ADJUSTMENT"):
-            return nontrades.MarginInterest
+            return NonTrade.MarginInterest
         elif re.match(r".* TERM GAIN DISTRIBUTION~", rec.description):
-            return nontrades.Distribution
+            return NonTrade.Distribution
+        elif re.match(r"PARTNERSHIP DISTRIBUTION~", rec.description):
+            return NonTrade.Distribution
         elif rec.description.startswith("ORDINARY DIVIDEND"):
-            return nontrades.Dividend
+            return NonTrade.Dividend
 
     elif rtype == "EFN":
         if rec.description.startswith("CLIENT REQUESTED ELECTRONIC FUNDING RECEIPT"):
-            return nontrades.ExternalTransfer
+            return NonTrade.ExternalTransfer
         elif rec.description.startswith(
             "CLIENT REQUESTED ELECTRONIC FUNDING DISBURSEMENT"
         ):
-            return nontrades.ExternalTransfer
+            return NonTrade.ExternalTransfer
 
     elif rtype == "FSWP":
-        return nontrades.Sweep
+        return NonTrade.Sweep
 
     elif rtype == "JRN":
         if rec.description.startswith("MISCELLANEOUS JOURNAL ENTRY"):
-            return nontrades.Adjustment
+            return NonTrade.Adjustment
         elif rec.description.startswith("MARK TO THE MARKET"):
-            return nontrades.FuturesMarkToMarket
+            return NonTrade.FuturesMarkToMarket
         elif rec.description.startswith("INTRA-ACCOUNT TRANSFER"):
-            return nontrades.InternalTransfer
+            return NonTrade.InternalTransfer
         elif rec.description.startswith("HARD TO BORROW FEE"):
-            return nontrades.HardToBorrowFee
+            return NonTrade.HardToBorrowFee
 
     elif rtype == "RAD":
         if rec.description.startswith("CASH ALTERNATIVES INTEREST"):
-            return nontrades.BalanceInterest
+            return NonTrade.BalanceInterest
         elif rec.description.startswith("INTERNAL TRANSFER BETWEEN ACCOUNTS"):
-            return nontrades.InternalTransfer
+            return NonTrade.InternalTransfer
 
     elif rtype == "WIN":
         if rec.description.startswith("THIRD PARTY"):
-            return nontrades.ExternalTransfer
+            return NonTrade.ExternalTransfer
 
     elif rtype == "WOU":
         if rec.description.startswith("WIRE OUTGOING"):
-            return nontrades.ExternalTransfer
+            return NonTrade.ExternalTransfer
 
     raise ValueError(f"Unknown {rtype} row: {rec}")
+
+
+def ConvertNonTrades(other: Table, account_id: str) -> Table:
+    """Convert input non-trades to normalized non-trades."""
+
+    assert len(other.fieldnames()) == len(set(other.fieldnames())), other.fieldnames()
+    remove_fields = ["commissions_fees", "misc_fees", "symbol", "strategy", "quantity"]
+    for field in remove_fields:
+        assert len(set(other.values(field))) == 1
+    other = other.cutout(*remove_fields)
+
+    other = (
+        other.addfield("rowtype", lambda rec: NonTrade.RowType.Name(GetRowType(rec)))
+        .addfield("account", account_id)
+        .rename("rowid", "transaction_id")
+        .addfield("symbol", GetSymbol)
+        .rename("type", "nativetype")
+        # Note: we drop a 'ref' field with an id that could be potentially
+        # useful to link together separate lines.
+        .cut(nontrades.FIELDS)
+    )
+
+    # TODO(blais): Remove symbol column by turning distributions over to the
+    # transactions table and incorporating them in P/L, like dividends.
+
+    return other# .sort(["rowtype", "datetime"])
 
 
 def ImportNonTrades(config: config_pb2.Config) -> petl.Table:
@@ -112,11 +123,19 @@ def ImportNonTrades(config: config_pb2.Config) -> petl.Table:
     fnmap = discovery.GetLatestFilePerYear(pattern)
     other_list = []
     for year, filename in sorted(fnmap.items()):
-        _, other = GetTransactions(filename)
+        _, other = txnlib.GetTransactions(filename)
         other = other.select(lambda r, y=year: r.datetime.year == y)
         other_list.append(other)
-    return petl.cat(*other_list)
+    table = petl.cat(*other_list)
+    nontrades = ConvertNonTrades(table, "<ameritrade>")
+    return nontrades
 
 
-def ImportNonTrades(config: config_pb2.Config) -> petl.Table:
+def _ImportNonTrades(config: config_pb2.Config) -> petl.Table:
     return petl.empty()
+
+
+# TODO: Convert other nontrades to use enum, not string, for rowtype.
+# TODO: PARTNERSHIP DISTRIBUTION --> Like a Dividend!
+# TODO: LONG TERM GAIN DISTRIBUTION --> Like a Dividend!  New type Distribution
+# TODO: process Adjustments, remove symbol.
