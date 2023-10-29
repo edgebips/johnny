@@ -192,7 +192,7 @@ def _ImportAllAccounts(
             table = process_func(account)
             if table:
                 tables.append(table)
-    table = petl.cat(*tables)
+    return petl.cat(*tables)
 
 
 def ImportAllTransactions(config: Config, logger: Optional[logging.Logger]) -> Table:
@@ -200,6 +200,7 @@ def ImportAllTransactions(config: Config, logger: Optional[logging.Logger]) -> T
     table = _ImportAllAccounts(ImportTransactions, config, logger)
     # Match transactions to each other, synthesize opening balances, and mark
     # ending positions.
+    log = timing.create_logger(logger)
     with log("match"):
         return match.Process(table)
 
