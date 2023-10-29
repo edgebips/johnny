@@ -403,6 +403,7 @@ def GetTransactions(filename: str) -> Tuple[Table, Table]:
             }
         )
         # Absolute value for quantity.
+        .convert("order_id", lambda v: v or None)
         .convert("quantity", abs).addfield("init", None)
     )
 

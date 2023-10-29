@@ -50,10 +50,9 @@ message NonTrade {
   // nickname that may or may not reflect the source.
   required string account = 3;
 
-  // `transaction_id: str`: A unique transaction id by which we can identify
-  // this transaction. This is essential in order to deduplicate previously
-  // imported transactions. This can be given from the system or synthesized
-  // from a stable hash from the rows of an input file.
+  // `transaction_id: Optional[str]`: A unique transaction id, if provided. This
+  // is not essential for non-trades. We can use it to link various entries
+  // together.
   required string transaction_id = 4;
 
   // `datetime: datetime.datetime`: A date/time converted to local time and

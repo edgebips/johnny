@@ -35,28 +35,22 @@ def GetRowType(rec: Record) -> str:
 def ConvertNonTrades(other: Table) -> Table:
     """Convert input non-trades to normalized non-trades."""
 
-    other = (
+    return (
         other.addfield("rowtype", GetRowType)
         .rename("ClientAccountID", "account")
         .rename("TransactionID", "transaction_id")
         .rename("TradeID", "ref")
+        .convert("ref", lambda v: v or None)
         .addfield("datetime", lambda r: dt.datetime.combine(r.Date, dt.time()))
         .rename("ActivityDescription", "description")
         .rename("ActivityCode", "type")
         .rename("Symbol", "symbol")
+        .convert("symbol", lambda v: v or None)
         .addfield("amount", lambda r: r.Amount.quantize(Q2))
         .addfield("balance", lambda r: r.Balance.quantize(Q2))
-        .addfield("ref", None)
         .rename("type", "nativetype")
         .cut(nontradeslib.FIELDS)
     )
-
-    #  OrderID TradeID AssetClass Symbol UnderlyingSymbol
-    # Multiplier Strike Expiry Put/Call Date ActivityCode
-    # Buy/Sell TradeQuantity TradePrice TradeGross TradeCommission Amount
-    # Balance rowtype
-
-    return other
 
 
 def ImportNonTrades(config: config_pb2.Config) -> petl.Table:

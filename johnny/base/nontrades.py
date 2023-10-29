@@ -6,9 +6,11 @@ __license__ = "GNU GPLv2"
 from decimal import Decimal
 import datetime
 import enum
+import collections
 
 from johnny.base.etl import Record, Table
 from johnny.base.nontrades_pb2 import NonTrade
+from johnny.base import checks
 
 
 Type = enum.StrEnum("Type", {k: k for k in NonTrade.RowType.keys()})
@@ -16,9 +18,9 @@ Type = enum.StrEnum("Type", {k: k for k in NonTrade.RowType.keys()})
 
 # Transaction table field names.
 FIELDS = [
+    "account",
     "rowtype",
     "nativetype",
-    "account",
     "transaction_id",
     "ref",
     "datetime",
@@ -33,11 +35,6 @@ class ValidationError(Exception):
     """Conformance for transactions table. Check your importer."""
 
 
-def IsZoneAware(d: datetime.datetime) -> bool:
-    """Return true if the time is timezone aware."""
-    return d.tzinfo is not None and d.tzinfo.utcoffset(d) is not None
-
-
 def ValidateFieldNames(table: Table):
     """Validate the field names and their order."""
     if list(table.header())[: len(FIELDS)] != FIELDS:
@@ -45,19 +42,21 @@ def ValidateFieldNames(table: Table):
 
 
 def ValidateRecord(r: Record):
-    assert r.rowtype in NonTrade.RowType.keys()
-    assert r.account and isinstance(r.account, str)
-    assert r.transaction_id and isinstance(r.transaction_id, str), r
-    assert isinstance(r.datetime, datetime.datetime)
-    assert not IsZoneAware(r.datetime)
-    assert r.description and isinstance(r.description, str)
-    assert r.type is None or isinstance(r.type, str)
-    assert r.symbol is None or isinstance(r.symbol, str)
-    assert r.ref is None or isinstance(r.ref, str)
-    assert isinstance(r.amount, Decimal)
-    assert r.balance is None or isinstance(r.balance, Decimal)
+    checks.AssertEnum(NonTrade.RowType, r.rowtype)
+    checks.AssertString(r.account)
+    assert (
+        (r.rowtype in {Type.CashBalance, Type.FuturesBalance})
+        or checks.CheckString(r.transaction_id)
+    ), r
+    checks.AssertDateTime(r.datetime)
+    checks.AssertString(r.description)
+    checks.AssertOptionalString(r.symbol)
+    checks.AssertOptionalString(r.ref)
+    checks.AssertDecimal(r.amount)
+    checks.AssertOptionalDecimal(r.balance)
 
 
+# TODO(blais): Not used anymore. Keep in case we want to reinstate.
 def CheckUnique(table: Table, field: str):
     mapping = collections.defaultdict(int)
     for rec in table.records():
@@ -70,9 +69,6 @@ def Validate(nontrades: Table):
     """Validate the table of non-tradeds."""
     for rec in nontrades.records():
         ValidateRecord(rec)
-
-    # Check that the transaction id is unique.
-    CheckUnique(nontrades, "transaction_id")
 
 
 def ToParquet(nontrades: Table, filename: str):

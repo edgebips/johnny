@@ -59,6 +59,8 @@ def PrintTable(table: Table, ctx: click.Context):
     """Print the table, given the options."""
     if ctx.obj["expand"]:
         table = instrument.Expand(table, "symbol")
+    # Convert null values just before printing. Display only.
+    table = table.replaceall(None, "")
     print(table.lookallstr())
 
 

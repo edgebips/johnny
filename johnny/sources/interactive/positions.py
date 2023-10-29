@@ -123,7 +123,7 @@ def GetPositions(filename: str, fallback_database) -> Table:
         .rename("PositionValue", "net_liq")
         .convert("net_liq", ToDecimal)
         # Add superfluous fields.
-        .addfield("group", "")
+        .addfield("group", None)
         # Add dollar-delta and beta related fields.
         .addfield("unit_delta", GetOptionDelta)
         .addfield("beta", lambda r: GetSortedValue(betas, date, r["symbol"]))

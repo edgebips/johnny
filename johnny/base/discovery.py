@@ -9,7 +9,7 @@ __license__ = "GNU GPLv2"
 
 from decimal import Decimal
 from os import path
-from typing import Any, Dict, Optional, Set
+from typing import Any, Callable, Dict, Optional, Set
 import collections
 import glob
 import importlib
@@ -25,6 +25,8 @@ from johnny.base import config as configlib
 from johnny.base import instrument
 from johnny.base import match
 from johnny.base import transactions as txnlib
+from johnny.base import nontrades as nontradeslib
+from johnny.base import positions as poslib
 from johnny.base.config import Account, Config
 from johnny.base.etl import petl, Table
 from johnny.sources import Source
@@ -157,65 +159,57 @@ def _ImportAny(
 def ImportTransactions(account: Account) -> Optional[Table]:
     """Import the transactions from an account definition."""
     table = _ImportAny(account, "ImportTransactions", True)
-    return table.sort(["datetime", "account", "transaction_id"])
+    table = table.sort(["datetime", "account", "transaction_id"])
+    txnlib.Validate(table)
+    return table
 
 
 def ImportNonTrades(account: Account) -> Table:
     """Import the positions from an account definition."""
-    return _ImportAny(account, "ImportNonTrades", False)
+    table = _ImportAny(account, "ImportNonTrades", False)
+    nontradeslib.Validate(table)
+    return table
 
 
 def ImportPositions(account: Account) -> Table:
     """Import the positions from an account definition."""
     table = _ImportAny(account, "ImportPositions", False)
+    poslib.Validate(table)
     return table.sort(["account", "symbol"])
+
+
+def _ImportAllAccounts(
+    process_func: Callable[[Table], Table],
+    config: Config,
+    logger: Optional[logging.Logger],
+) -> Table:
+    """Import all accounts, concatenate and process with a given function."""
+    # Read the inputs.
+    log = timing.create_logger(logger)
+    tables = []
+    for account in config.input.accounts:
+        with log(f"read for {account.nickname}"):
+            table = process_func(account)
+            if table:
+                tables.append(table)
+    table = petl.cat(*tables)
 
 
 def ImportAllTransactions(config: Config, logger: Optional[logging.Logger]) -> Table:
     """Read all transactions, and do all necessary processing."""
-
-    # Read the inputs.
-    log = timing.create_logger(logger)
-    tables = []
-    for account in config.input.accounts:
-        with log(f"ImportTransactions.read for {account.nickname}"):
-            table = ImportTransactions(account)
-            if table:
-                tables.append(table)
-    transactions = petl.cat(*tables)
-
-    with log("ImportTransactions.validate"):
-        txnlib.ValidateTransactions(transactions)
-
+    table = _ImportAllAccounts(ImportTransactions, config, logger)
     # Match transactions to each other, synthesize opening balances, and mark
     # ending positions.
-    with log("ImportTransactions.match"):
-        return match.Process(transactions)
+    with log("match"):
+        return match.Process(table)
 
 
 def ImportAllPositions(config: Config, logger: Optional[logging.Logger]) -> Table:
     """Read all positions, and do all necessary processing."""
+    return _ImportAllAccounts(ImportPositions, config, logger)
 
-    # Read the inputs.
-    log = timing.create_logger(logger)
-    tables = []
-    for account in config.input.accounts:
-        with log(f"ImportPositions.read for {account.nickname}"):
-            table = ImportPositions(account)
-            if table:
-                tables.append(table)
-    return petl.cat(*tables)
 
 
 def ImportAllNonTrades(config: Config, logger: Optional[logging.Logger]) -> Table:
     """Read all non-trades, and do all necessary processing."""
-
-    # Read the inputs.
-    log = timing.create_logger(logger)
-    tables = []
-    for account in config.input.accounts:
-        with log(f"ImportNonTrades.read for {account.nickname}"):
-            table = ImportNonTrades(account)
-            if table:
-                tables.append(table)
-    return petl.cat(*tables)
+    return _ImportAllAccounts(ImportNonTrades, config, logger)

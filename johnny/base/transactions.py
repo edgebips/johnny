@@ -9,10 +9,12 @@ import collections
 import datetime
 import functools
 import enum
+import traceback
 
 import pyarrow as pa
 import pyarrow.parquet as pq
 
+from johnny.base import checks
 from johnny.base.etl import Record, Table
 from johnny.base.transactions_pb2 import Transaction
 
@@ -56,11 +58,6 @@ class ValidationError(Exception):
     """Conformance for transactions table. Check your importer."""
 
 
-def IsZoneAware(d: datetime.datetime) -> bool:
-    """Return true if the time is timezone aware."""
-    return d.tzinfo is not None and d.tzinfo.utcoffset(d) is not None
-
-
 # Valid effect types. The empty string is used to indicate "unknown".
 EFFECT = {"OPENING", "CLOSING", ""}
 
@@ -74,51 +71,46 @@ def ValidateFieldNames(table: Table):
         raise ValidationError("Invalid field names on table:\n{}".format(table))
 
 
-def ValidateTransactionRecord(r: Record):
+def ValidateRecord(r: Record):
     """Validate the transactions log from a source for datatypes and conformance.
     See `transactions.md` file for details on the specification and expectations
     from the converters."""
 
-    assert r.account and isinstance(r.account, str)
+    checks.AssertEnum(Transaction.RowType, r.rowtype)
+    checks.AssertString(r.account)
+    checks.AssertDateTime(r.datetime)
+    checks.AssertString(r.description)
+    checks.AssertString(r.symbol)
+    checks.AssertValidSymbol(r.symbol)
+    checks.AssertOptionalString(r.transaction_id)
+    checks.AssertOptionalString(r.order_id)
 
-    assert r.transaction_id and isinstance(r.transaction_id, str), r
-    assert r.order_id and isinstance(r.order_id, str) or r.order_id in {"", None}, r
-
-    # We could tighten the constraints further and require unique transactions
-    # vs. order ids mutually, but it's probably not necessary.
-    # assert r.transaction_id != r.order_id, r
-
-    assert isinstance(r.datetime, datetime.datetime)
-    assert not IsZoneAware(r.datetime)
-    assert r.rowtype in Transaction.RowType.keys()
-    assert r.effect in EFFECT or r.effect == "", r
-    assert r.instruction in INSTRUCTION or r.instruction == "", r
-
-    # Check the normalized symbol.
-    assert r.symbol and isinstance(r.symbol, str)
-    # TODO(blais): Parse the symbol to ensure it's right.
-    ## assert instrument.Parse(r.symbol)
+    checks.AssertOptionalEnum(Transaction.PositionEffect, r.effect)
+    checks.AssertOptionalEnum(Transaction.Instruction, r.instruction)
 
     # A quantity of 'None' is allowed if the logs don't include the expiration
     # quantity, and is filled in automatically by matching code.
-    assert r.quantity is None or (
-        isinstance(r.quantity, Decimal) and r.quantity >= ZERO
-    ), r
-    assert isinstance(r.price, Decimal)
-    assert isinstance(r.cost, Decimal)
-    assert isinstance(r.cash, Decimal)
-    assert isinstance(r.commissions, Decimal)
-    assert isinstance(r.fees, Decimal)
+    checks.AssertOptionalPositiveDecimal(r.quantity)
+    checks.AssertDecimal(r.price)
+    checks.AssertDecimal(r.cost)
+    checks.AssertDecimal(r.cash)
+    checks.AssertDecimal(r.commissions)
+    checks.AssertDecimal(r.fees)
 
-    assert isinstance(r.description, str)
-
+    # Check that dividends don't have trade information.
     if r.rowtype == Type.Dividend:
-        assert not r.quantity
-        assert not r.price
-        assert not r.cost
+        assert r.quantity == ZERO
+        assert r.price == ZERO
+        assert r.cost == ZERO
+
+    # We could tighten the constraints further and require unique transactions
+    # vs. order ids mutually, but it's probably not necessary.
+    assert (
+        r.transaction_id != r.order_id
+    ), f"Transaction vs. Order ids not mutually excluive: {r.transaction_id} = {r.order_id}"
 
 
-def ValidateTransactions(transactions: Table):
+def Validate(transactions: Table):
     """Check that the imports are sound before we process them and ensure that
     the transaction ids are unique.
     """
@@ -128,12 +120,10 @@ def ValidateTransactions(transactions: Table):
         for rec in transactions.records():
             unique_ids[rec.transaction_id] += 1
             num_txns += 1
-            ValidateTransactionRecord(rec)
+            ValidateRecord(rec)
     except Exception as exc:
-        if force:
-            traceback.print_last()
-        else:
-            raise
+        traceback.print_exc()
+        raise
     if num_txns != len(unique_ids):
         for key, value in unique_ids.items():
             if value > 1:

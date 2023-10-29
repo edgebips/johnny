@@ -8,6 +8,7 @@ from typing import Callable, Tuple
 import functools
 
 from johnny.base.etl import Record, Table
+from johnny.base import checks
 
 
 GetFn = Callable[[str], Tuple[Table, Table]]
@@ -40,26 +41,30 @@ def ValidateFieldNames(table: Table):
         raise ValidationError("Invalid field names on table:\n{}".format(table))
 
 
-def ValidatePositionRecord(r: Record):
+def ValidateRecord(r: Record):
     """Validate the transactions log for datatypes and conformance.
     See `transactions.md` file for details on the specification and expectations
     from the converters."""
 
-    assert r.account and isinstance(r.account, str)
-    assert r.group is None or isinstance(r.group, str)
-    # Check the normalized symbol.
-    assert r.symbol and isinstance(r.symbol, str)
-    # TODO(blais): Parse the symbol to ensure it's right.
-    ## assert instrument.Parse(r.symbol)
+    checks.AssertString(r.account)
+    checks.AssertOptionalString(r.group)
+    checks.AssertString(r.symbol)
+    checks.AssertValidSymbol(r.symbol)
+    checks.AssertOptionalDecimal(r.quantity)  # TODO(blais): Why optional?
 
-    assert r.quantity is None or isinstance(r.quantity, Decimal)
-    assert isinstance(r.price, Decimal)
-    assert isinstance(r.mark, Decimal)
-    assert isinstance(r.cost, Decimal)
-    assert isinstance(r.net_liq, Decimal)
-    assert isinstance(r.unit_delta, Decimal)
-    assert isinstance(r.beta, Decimal)
-    assert isinstance(r.index_price, Decimal)
+    checks.AssertDecimal(r.price)
+    checks.AssertDecimal(r.mark)
+    checks.AssertDecimal(r.cost)
+    checks.AssertDecimal(r.net_liq)
+    checks.AssertDecimal(r.unit_delta)
+    checks.AssertDecimal(r.beta)
+    checks.AssertDecimal(r.index_price)
+
+
+def Validate(positions: Table):
+    """Validate the table of non-tradeds."""
+    for rec in positions.records():
+        ValidateRecord(rec)
 
 
 def ToParquet(positions: Table, filename: str):

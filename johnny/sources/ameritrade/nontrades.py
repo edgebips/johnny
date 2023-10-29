@@ -17,7 +17,7 @@ Q2 = Decimal("0.01")
 
 def GetSymbol(rec: Record) -> str:
     mobj = re.search(r"~([A-Z]+)\s*$", rec.description)
-    return mobj.group(1) if mobj else ""
+    return mobj.group(1) if mobj else None
 
 
 def GetRowType(rec: Record) -> nontrades.Type:
@@ -107,7 +107,7 @@ def ConvertNonTrades(other: Table, account_id: str) -> Table:
         .rename("rowid", "transaction_id")
         .addfield("symbol", GetSymbol)
         .rename("type", "nativetype")
-        .convert("ref", str)
+        .convert("ref", lambda v: str(v) if v else None)
         .cut(nontrades.FIELDS)
     )
 
