@@ -107,8 +107,7 @@ def ConvertNonTrades(other: Table, account_id: str) -> Table:
         .rename("rowid", "transaction_id")
         .addfield("symbol", GetSymbol)
         .rename("type", "nativetype")
-        # Note: we drop a 'ref' field with an id that could be potentially
-        # useful to link together separate lines.
+        .convert("ref", str)
         .cut(nontrades.FIELDS)
     )
 

@@ -53,6 +53,7 @@ accept-specific-chains:
 
 # Proto generation rules.
 PROTOS_PB2 =                                    \
+johnny/base/common_pb2.py                       \
 johnny/base/config_pb2.py                       \
 johnny/base/chains_pb2.py                       \
 johnny/base/transactions_pb2.py                 \
@@ -60,11 +61,14 @@ johnny/base/instrument_pb2.py                   \
 johnny/base/positions_pb2.py                    \
 johnny/base/nontrades_pb2.py                    \
 johnny/base/taxes_pb2.py                        \
-johnny/sources/ameritrade/config_pb2.py    \
-johnny/sources/tastytrade/config_pb2.py     \
+johnny/sources/ameritrade/config_pb2.py         \
+johnny/sources/tastytrade/config_pb2.py         \
 johnny/sources/interactive/config_pb2.py
 
 protos: $(PROTOS_PB2)
+
+johnny/base/common_pb2.py: johnny/base/common.proto
+	protoc -I . --python_out . --proto_path . $<
 
 johnny/base/config_pb2.py: johnny/base/config.proto
 	protoc -I . --python_out . --proto_path . $<

@@ -8,9 +8,9 @@ syntax = "proto2";
 
 package johnny;
 
-// Here is the definition of the fields we're expecting from the positions file.
+import "johnny/base/common.proto";
 
-message Decimal {}
+// Here is the definition of the fields we're expecting from the positions file.
 
 message Position {
 

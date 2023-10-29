@@ -25,25 +25,6 @@ FIELDS = [
 ]
 
 
-# Valid row types.
-ROW_TYPES = {
-    "CashBalance",
-    "FuturesBalance",
-    "Adjustment",
-    "FuturesMarkToMarket",
-    "BalanceInterest",
-    "MarginInterest",
-    "Dividend",
-    "Distribution",
-    "ExternalTransfer",
-    "InternalTransfer",
-    "MonthlyFee",
-    "TransferFee",
-    "HardToBorrowFee",
-    "Sweep",
-}
-
-
 class ValidationError(Exception):
     """Conformance for transactions table. Check your importer."""
 
@@ -60,7 +41,7 @@ def ValidateFieldNames(table: Table):
 
 
 def ValidateRecord(r: Record):
-    assert r.rowtype in ROW_TYPES
+    assert r.rowtype in NonTrade.RowType.keys()
     assert r.account and isinstance(r.account, str)
     assert r.transaction_id and isinstance(r.transaction_id, str), r
     assert isinstance(r.datetime, datetime.datetime)

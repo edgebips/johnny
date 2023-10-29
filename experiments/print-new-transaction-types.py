@@ -33,20 +33,20 @@ KNOWN = {
     ("Trade", "Sell to Close", "Sell to Close"),
     ("Trade", "Sell to Open", "Sell to Open"),
     # From hg@
-    # ('Money Movement', 'Deposit', None),
-    # ('Money Movement', 'Dividend', None),
-    # ('Money Movement', 'Fee', None),
-    # ('Receive Deliver', 'ACAT', 'Buy to Open'),
-    # ('Receive Deliver', 'ACAT', 'Sell to Open'),
-    # ('Receive Deliver', 'Assignment', None),
-    # ('Receive Deliver', 'Cash Settled Assignment', None),
-    # ('Receive Deliver', 'Cash Settled Exercise', None),
-    # ('Receive Deliver', 'Exercise', None),
-    # ('Receive Deliver', 'Expiration', None),
+    # ("Money Movement", "Deposit", None),
+    # ("Money Movement", "Dividend", None),
+    # ("Money Movement", "Fee", None),
+    # ("Receive Deliver", "ACAT", "Buy to Open"),
+    # ("Receive Deliver", "ACAT", "Sell to Open"),
+    # ("Receive Deliver", "Assignment", None),
+    # ("Receive Deliver", "Cash Settled Assignment", None),
+    # ("Receive Deliver", "Cash Settled Exercise", None),
+    # ("Receive Deliver", "Exercise", None),
+    # ("Receive Deliver", "Expiration", None),
     # From Graeme22@
-    # ('Receive Deliver', 'Buy to Open', 'Buy to Open'),
-    # ('Receive Deliver', 'Sell to Close', 'Sell to Close'),
-    # ('Receive Deliver', 'Transfer', 'Buy to Open'),
+    # ("Receive Deliver", "Buy to Open", "Buy to Open"),
+    # ("Receive Deliver", "Sell to Close", "Sell to Close"),
+    # ("Receive Deliver", "Transfer", "Buy to Open"),
 }
 
 
@@ -64,7 +64,7 @@ def main(database: str):
 
     table = (
         petl.fromdicts(value for key, value in db.items() if not key.startswith("__"))
-        # .cut('transaction-type', 'transaction-sub-type', 'action')
+        # .cut("transaction-type", "transaction-sub-type", "action")
         # .distinct()
         # .complement(known)
         .select(Filter)

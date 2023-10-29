@@ -58,12 +58,6 @@ def GetTransactionId(rec: Record) -> int:
         return "^{}.{}".format(rec.order_id, rec.sequence)
 
 
-_ROW_TYPES = {
-    "Trade": "Trade",
-    "Receive Deliver": "Expire",
-}
-
-
 def GetRowType(rowtype: str, rec: Record) -> str:
     """Validate the row type."""
     if rowtype == "Trade":

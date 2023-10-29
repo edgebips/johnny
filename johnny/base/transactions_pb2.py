@@ -12,32 +12,17 @@ from google.protobuf import symbol_database as _symbol_database
 _sym_db = _symbol_database.Default()
 
 
+from johnny.base import common_pb2 as johnny_dot_base_dot_common__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x1ejohnny/base/transactions.proto\x12\x06johnny\"\n\n\x08\x44\x61teTime\"\t\n\x07\x44\x65\x63imal\"\xcd\x05\n\x0bTransaction\x12\x0f\n\x07\x61\x63\x63ount\x18\x01 \x02(\t\x12\x16\n\x0etransaction_id\x18\x02 \x02(\t\x12\"\n\x08\x64\x61tetime\x18\x03 \x02(\x0b\x32\x10.johnny.DateTime\x12,\n\x07rowtype\x18\x04 \x02(\x0e\x32\x1b.johnny.Transaction.RowType\x12\x10\n\x08order_id\x18\x05 \x01(\t\x12\x0e\n\x06symbol\x18\x06 \x02(\t\x12\x32\n\x06\x65\x66\x66\x65\x63t\x18\x07 \x01(\x0e\x32\".johnny.Transaction.PositionEffect\x12\x34\n\x0binstruction\x18\x08 \x01(\x0e\x32\x1f.johnny.Transaction.Instruction\x12!\n\x08quantity\x18\t \x01(\x0b\x32\x0f.johnny.Decimal\x12\x1e\n\x05price\x18\n \x01(\x0b\x32\x0f.johnny.Decimal\x12\x1d\n\x04\x63ost\x18\x0b \x01(\x0b\x32\x0f.johnny.Decimal\x12\x1d\n\x04\x63\x61sh\x18\x0c \x01(\x0b\x32\x0f.johnny.Decimal\x12$\n\x0b\x63ommissions\x18\r \x01(\x0b\x32\x0f.johnny.Decimal\x12\x1d\n\x04\x66\x65\x65s\x18\x0e \x01(\x0b\x32\x0f.johnny.Decimal\x12\x13\n\x0b\x64\x65scription\x18\x0f \x01(\t\x12\x10\n\x08match_id\x18\x10 \x01(\t\x12\x10\n\x08\x63hain_id\x18\x11 \x01(\t\x12\x0c\n\x04init\x18\x12 \x01(\x08\"\\\n\x07RowType\x12\t\n\x05Trade\x10\x01\x12\n\n\x06\x45xpire\x10\x02\x12\n\n\x06\x41ssign\x10\x03\x12\x0c\n\x08\x45xercise\x10\x04\x12\x08\n\x04Mark\x10\x05\x12\x08\n\x04Open\x10\x06\x12\x0c\n\x08\x44ividend\x10\x07\"*\n\x0ePositionEffect\x12\x0b\n\x07OPENING\x10\x01\x12\x0b\n\x07\x43LOSING\x10\x02\" \n\x0bInstruction\x12\x07\n\x03\x42UY\x10\x01\x12\x08\n\x04SELL\x10\x02')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x1ejohnny/base/transactions.proto\x12\x06johnny\x1a\x18johnny/base/common.proto\"\xcd\x05\n\x0bTransaction\x12\x0f\n\x07\x61\x63\x63ount\x18\x01 \x02(\t\x12\x16\n\x0etransaction_id\x18\x02 \x02(\t\x12\"\n\x08\x64\x61tetime\x18\x03 \x02(\x0b\x32\x10.johnny.DateTime\x12,\n\x07rowtype\x18\x04 \x02(\x0e\x32\x1b.johnny.Transaction.RowType\x12\x10\n\x08order_id\x18\x05 \x01(\t\x12\x0e\n\x06symbol\x18\x06 \x02(\t\x12\x32\n\x06\x65\x66\x66\x65\x63t\x18\x07 \x01(\x0e\x32\".johnny.Transaction.PositionEffect\x12\x34\n\x0binstruction\x18\x08 \x01(\x0e\x32\x1f.johnny.Transaction.Instruction\x12!\n\x08quantity\x18\t \x01(\x0b\x32\x0f.johnny.Decimal\x12\x1e\n\x05price\x18\n \x01(\x0b\x32\x0f.johnny.Decimal\x12\x1d\n\x04\x63ost\x18\x0b \x01(\x0b\x32\x0f.johnny.Decimal\x12\x1d\n\x04\x63\x61sh\x18\x0c \x01(\x0b\x32\x0f.johnny.Decimal\x12$\n\x0b\x63ommissions\x18\r \x01(\x0b\x32\x0f.johnny.Decimal\x12\x1d\n\x04\x66\x65\x65s\x18\x0e \x01(\x0b\x32\x0f.johnny.Decimal\x12\x13\n\x0b\x64\x65scription\x18\x0f \x01(\t\x12\x10\n\x08match_id\x18\x10 \x01(\t\x12\x10\n\x08\x63hain_id\x18\x11 \x01(\t\x12\x0c\n\x04init\x18\x12 \x01(\x08\"\\\n\x07RowType\x12\t\n\x05Trade\x10\x01\x12\n\n\x06\x45xpire\x10\x02\x12\n\n\x06\x41ssign\x10\x03\x12\x0c\n\x08\x45xercise\x10\x04\x12\x08\n\x04Mark\x10\x05\x12\x08\n\x04Open\x10\x06\x12\x0c\n\x08\x44ividend\x10\x07\"*\n\x0ePositionEffect\x12\x0b\n\x07OPENING\x10\x01\x12\x0b\n\x07\x43LOSING\x10\x02\" \n\x0bInstruction\x12\x07\n\x03\x42UY\x10\x01\x12\x08\n\x04SELL\x10\x02')
 
 
 
-_DATETIME = DESCRIPTOR.message_types_by_name['DateTime']
-_DECIMAL = DESCRIPTOR.message_types_by_name['Decimal']
 _TRANSACTION = DESCRIPTOR.message_types_by_name['Transaction']
 _TRANSACTION_ROWTYPE = _TRANSACTION.enum_types_by_name['RowType']
 _TRANSACTION_POSITIONEFFECT = _TRANSACTION.enum_types_by_name['PositionEffect']
 _TRANSACTION_INSTRUCTION = _TRANSACTION.enum_types_by_name['Instruction']
-DateTime = _reflection.GeneratedProtocolMessageType('DateTime', (_message.Message,), {
-  'DESCRIPTOR' : _DATETIME,
-  '__module__' : 'johnny.base.transactions_pb2'
-  # @@protoc_insertion_point(class_scope:johnny.DateTime)
-  })
-_sym_db.RegisterMessage(DateTime)
-
-Decimal = _reflection.GeneratedProtocolMessageType('Decimal', (_message.Message,), {
-  'DESCRIPTOR' : _DECIMAL,
-  '__module__' : 'johnny.base.transactions_pb2'
-  # @@protoc_insertion_point(class_scope:johnny.Decimal)
-  })
-_sym_db.RegisterMessage(Decimal)
-
 Transaction = _reflection.GeneratedProtocolMessageType('Transaction', (_message.Message,), {
   'DESCRIPTOR' : _TRANSACTION,
   '__module__' : 'johnny.base.transactions_pb2'
@@ -48,16 +33,12 @@ _sym_db.RegisterMessage(Transaction)
 if _descriptor._USE_C_DESCRIPTORS == False:
 
   DESCRIPTOR._options = None
-  _DATETIME._serialized_start=42
-  _DATETIME._serialized_end=52
-  _DECIMAL._serialized_start=54
-  _DECIMAL._serialized_end=63
-  _TRANSACTION._serialized_start=66
-  _TRANSACTION._serialized_end=783
-  _TRANSACTION_ROWTYPE._serialized_start=613
-  _TRANSACTION_ROWTYPE._serialized_end=705
-  _TRANSACTION_POSITIONEFFECT._serialized_start=707
-  _TRANSACTION_POSITIONEFFECT._serialized_end=749
-  _TRANSACTION_INSTRUCTION._serialized_start=751
-  _TRANSACTION_INSTRUCTION._serialized_end=783
+  _TRANSACTION._serialized_start=69
+  _TRANSACTION._serialized_end=786
+  _TRANSACTION_ROWTYPE._serialized_start=616
+  _TRANSACTION_ROWTYPE._serialized_end=708
+  _TRANSACTION_POSITIONEFFECT._serialized_start=710
+  _TRANSACTION_POSITIONEFFECT._serialized_end=752
+  _TRANSACTION_INSTRUCTION._serialized_start=754
+  _TRANSACTION_INSTRUCTION._serialized_end=786
 # @@protoc_insertion_point(module_scope)

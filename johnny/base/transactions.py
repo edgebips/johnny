@@ -13,6 +13,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 
 from johnny.base.etl import Record, Table
+from johnny.base.transactions_pb2 import Transaction
 
 
 GetFn = Callable[[str], Tuple[Table, Table]]
@@ -55,9 +56,6 @@ def IsZoneAware(d: datetime.datetime) -> bool:
     return d.tzinfo is not None and d.tzinfo.utcoffset(d) is not None
 
 
-# Valid row types.
-ROW_TYPES = {"Trade", "Expire", "Open", "Mark", "Assign", "Exercise", "Dividend"}
-
 # Valid effect types. The empty string is used to indicate "unknown".
 EFFECT = {"OPENING", "CLOSING", ""}
 
@@ -87,7 +85,7 @@ def ValidateTransactionRecord(r: Record):
 
     assert isinstance(r.datetime, datetime.datetime)
     assert not IsZoneAware(r.datetime)
-    assert r.rowtype in ROW_TYPES
+    assert r.rowtype in Transaction.RowType.keys()
     assert r.effect in EFFECT or r.effect == "", r
     assert r.instruction in INSTRUCTION or r.instruction == "", r
 

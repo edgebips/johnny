@@ -8,8 +8,7 @@ syntax = "proto2";
 
 package johnny;
 
-message DateTime {}
-message Decimal {}
+import "johnny/base/common.proto";
 
 // Opening and Closing
 //

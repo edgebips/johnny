@@ -12,21 +12,14 @@ from google.protobuf import symbol_database as _symbol_database
 _sym_db = _symbol_database.Default()
 
 
+from johnny.base import common_pb2 as johnny_dot_base_dot_common__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x1bjohnny/base/positions.proto\x12\x06johnny\"\t\n\x07\x44\x65\x63imal\"\xc7\x02\n\x08Position\x12\x0f\n\x07\x61\x63\x63ount\x18\x01 \x02(\t\x12\r\n\x05group\x18\x02 \x01(\t\x12\x0e\n\x06symbol\x18\x03 \x02(\t\x12!\n\x08quantity\x18\x04 \x02(\x0b\x32\x0f.johnny.Decimal\x12\x1e\n\x05price\x18\x05 \x02(\x0b\x32\x0f.johnny.Decimal\x12\x1d\n\x04mark\x18\x06 \x01(\x0b\x32\x0f.johnny.Decimal\x12\x1d\n\x04\x63ost\x18\x07 \x02(\x0b\x32\x0f.johnny.Decimal\x12 \n\x07net_liq\x18\x08 \x02(\x0b\x32\x0f.johnny.Decimal\x12#\n\nunit_delta\x18\t \x01(\x0b\x32\x0f.johnny.Decimal\x12\x1d\n\x04\x62\x65ta\x18\n \x01(\x0b\x32\x0f.johnny.Decimal\x12$\n\x0bindex_price\x18\x0b \x01(\x0b\x32\x0f.johnny.Decimal')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x1bjohnny/base/positions.proto\x12\x06johnny\x1a\x18johnny/base/common.proto\"\xc7\x02\n\x08Position\x12\x0f\n\x07\x61\x63\x63ount\x18\x01 \x02(\t\x12\r\n\x05group\x18\x02 \x01(\t\x12\x0e\n\x06symbol\x18\x03 \x02(\t\x12!\n\x08quantity\x18\x04 \x02(\x0b\x32\x0f.johnny.Decimal\x12\x1e\n\x05price\x18\x05 \x02(\x0b\x32\x0f.johnny.Decimal\x12\x1d\n\x04mark\x18\x06 \x01(\x0b\x32\x0f.johnny.Decimal\x12\x1d\n\x04\x63ost\x18\x07 \x02(\x0b\x32\x0f.johnny.Decimal\x12 \n\x07net_liq\x18\x08 \x02(\x0b\x32\x0f.johnny.Decimal\x12#\n\nunit_delta\x18\t \x01(\x0b\x32\x0f.johnny.Decimal\x12\x1d\n\x04\x62\x65ta\x18\n \x01(\x0b\x32\x0f.johnny.Decimal\x12$\n\x0bindex_price\x18\x0b \x01(\x0b\x32\x0f.johnny.Decimal')
 
 
 
-_DECIMAL = DESCRIPTOR.message_types_by_name['Decimal']
 _POSITION = DESCRIPTOR.message_types_by_name['Position']
-Decimal = _reflection.GeneratedProtocolMessageType('Decimal', (_message.Message,), {
-  'DESCRIPTOR' : _DECIMAL,
-  '__module__' : 'johnny.base.positions_pb2'
-  # @@protoc_insertion_point(class_scope:johnny.Decimal)
-  })
-_sym_db.RegisterMessage(Decimal)
-
 Position = _reflection.GeneratedProtocolMessageType('Position', (_message.Message,), {
   'DESCRIPTOR' : _POSITION,
   '__module__' : 'johnny.base.positions_pb2'
@@ -37,8 +30,6 @@ _sym_db.RegisterMessage(Position)
 if _descriptor._USE_C_DESCRIPTORS == False:
 
   DESCRIPTOR._options = None
-  _DECIMAL._serialized_start=39
-  _DECIMAL._serialized_end=48
-  _POSITION._serialized_start=51
-  _POSITION._serialized_end=378
+  _POSITION._serialized_start=66
+  _POSITION._serialized_end=393
 # @@protoc_insertion_point(module_scope)

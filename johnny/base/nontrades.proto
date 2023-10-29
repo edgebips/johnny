@@ -8,8 +8,7 @@ syntax = "proto2";
 
 package johnny;
 
-message DateTime {}
-message Decimal {}
+import "johnny/base/common.proto";
 
 // This is a table intended to support a normalized format for all the non-trade
 // rows to be converted into some other accounting system, like Beancount.
@@ -88,11 +87,11 @@ message NonTrade {
   // Balance-Affecting Fields
 
   // `amount: Decimal`: The signed amount being applied to the account balance.
-  required DateTime amount = 9;
+  required Decimal amount = 9;
 
   // `balance: Optional[Decimal]`: An optional resulting balance field of the
   // corresponding account after the amount is applied. This is used to validate
   // the balance amount after, and are not intended to be set to the total
   // non-trades balance of amounts.
-  optional DateTime balance = 10;
+  optional Decimal balance = 10;
 }

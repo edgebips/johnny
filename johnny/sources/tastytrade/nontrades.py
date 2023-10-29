@@ -42,6 +42,7 @@ def ImportNonTrades(config: config_pb2.Config) -> petl.Table:
         .rename("transaction-sub-type", "nativetype")
         .addfield("account", None)
         .rename("id", "transaction_id")
+        .convert("transaction_id", str)
         .addfield("ref", None)
         .rename("value", "amount")
         .addfield("balance", None)

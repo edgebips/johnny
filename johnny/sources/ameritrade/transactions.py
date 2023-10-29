@@ -48,12 +48,11 @@ from johnny.base import number
 from johnny.base import transactions as txnlib
 from johnny.base.config import Account
 from johnny.base.etl import petl, Table, Record, Replace, WrapRecords, Assert
+from johnny.sources.ameritrade import config_pb2
 from johnny.sources.ameritrade import nontrades
 from johnny.sources.ameritrade import symbols
 from johnny.sources.ameritrade import utils
-from johnny.sources.ameritrade import config_pb2
 from johnny.utils import csv_utils
-
 
 Table = petl.Table
 Record = petl.Record

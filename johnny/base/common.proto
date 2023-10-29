@@ -1,0 +1,14 @@
+// -*- mode: protobuf -*-
+// Common symbols.
+//
+//   Copyright (C) 2023  Martin Blais
+//   License: GNU GPLv2
+
+
+syntax = "proto2";
+
+package johnny;
+
+// Placeholder for types.
+message DateTime {}
+message Decimal {}
