@@ -24,11 +24,11 @@ message NonTrade {
   // clarify this at some point by either removing them or adding a subaccount
   // field.
   enum RowType {
-    CashBalance = 1;         // A balance of the cash account
+    Balance = 1;             // A balance of the cash account
     FuturesBalance = 2;      // A balance of the futures account.
     Adjustment = 3;          // A balance adjustment (of many types)
     FuturesMarkToMarket = 4; // A mark-to-mark futures transfer.
-    BalanceInterest = 5;     // Interest on balance.
+    CreditInterest = 5;      // Interest on balance.
     MarginInterest = 6;      // Interest on margin.
     InternalTransfer = 7;    // An internal transfer.
     ExternalTransfer = 8;    // An outgoing transfer.

@@ -19,11 +19,11 @@ def GetRowType(rec: Record) -> str:
     Type = nontradeslib.Type
     code = rec.ActivityCode
     if not code:
-        return Type.CashBalance
+        return Type.Balance
     if code == "DEP":
         return Type.ExternalTransfer if rec.Amount >= 0 else Type.ExternalTransfer
     if code == "CINT":
-        return Type.BalanceInterest
+        return Type.CreditInterest
     if code == "OFEE":
         if re.search(r"\bSNAPSHOT\b", rec.ActivityDescription):
             return Type.DataFee

@@ -45,7 +45,7 @@ def ValidateRecord(r: Record):
     checks.AssertEnum(NonTrade.RowType, r.rowtype)
     checks.AssertString(r.account)
     assert (
-        (r.rowtype in {Type.CashBalance, Type.FuturesBalance})
+        (r.rowtype in {Type.Balance, Type.FuturesBalance})
         or checks.CheckString(r.transaction_id)
     ), r
     checks.AssertDateTime(r.datetime)

@@ -28,7 +28,7 @@ def GetRowType(rec: Record) -> nontrades.Type:
 
     if rtype == "BAL":
         if rec.description.startswith("Cash balance at the start"):
-            return Type.CashBalance
+            return Type.Balance
         elif rec.description.startswith("Futures cash balance at the start"):
             return Type.FuturesBalance
 
@@ -44,7 +44,7 @@ def GetRowType(rec: Record) -> nontrades.Type:
 
     elif rtype == "DOI":
         if rec.description.startswith("FREE BALANCE INTEREST ADJUSTMENT"):
-            return Type.BalanceInterest
+            return Type.CreditInterest
         elif rec.description.startswith("MARGIN INTEREST ADJUSTMENT"):
             return Type.MarginInterest
         elif rec.description.startswith("ORDINARY DIVIDEND"):
@@ -76,7 +76,7 @@ def GetRowType(rec: Record) -> nontrades.Type:
 
     elif rtype == "RAD":
         if rec.description.startswith("CASH ALTERNATIVES INTEREST"):
-            return Type.BalanceInterest
+            return Type.CreditInterest
         elif rec.description.startswith("INTERNAL TRANSFER BETWEEN ACCOUNTS"):
             return Type.InternalTransfer
 
