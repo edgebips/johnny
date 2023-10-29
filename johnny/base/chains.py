@@ -295,7 +295,8 @@ def _LinkByOverlapping(transactions: Table) -> List[Tuple[str, str]]:
         if rec["rowtype"] == txnlib.Type.Dividend:
             # There needs to be an active underlying, otherwise why are we
             # receiving a dividend?.
-            assert not isnew
+            if isnew:
+                raise AssertionError("No active underlying for dividend.")
 
         term_id = "{}/{}/{}/{}".format(
             rec.account, rec.underlying, expiration, next(idgen)
@@ -422,7 +423,11 @@ def InitialTransactions(
 
 def MarkTransactions(pairs: Iterator[Tuple[str, str]]) -> Decimal:
     """Extract the active positions transactions."""
-    return [transaction_id for transaction_id, rowtype in pairs if rowtype == txnlib.Type.Mark]
+    return [
+        transaction_id
+        for transaction_id, rowtype in pairs
+        if rowtype == txnlib.Type.Mark
+    ]
 
 
 def InitialCredits(rec: Record) -> Decimal:
@@ -448,9 +453,9 @@ def PositionCost(rec: Record) -> Decimal:
 
 
 def _CalculateNetLiq(pairs: Iterator[Tuple[str, Decimal]]):
-    return Decimal(sum(cost for rowtype, cost in pairs if rowtype == txnlib.Type.Mark)).quantize(
-        Q2
-    )
+    return Decimal(
+        sum(cost for rowtype, cost in pairs if rowtype == txnlib.Type.Mark)
+    ).quantize(Q2)
 
 
 def _CalculateCash(pairs: Iterator[Tuple[str, Decimal]]):

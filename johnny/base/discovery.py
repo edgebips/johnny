@@ -198,6 +198,7 @@ def _ImportAllAccounts(
 def ImportAllTransactions(config: Config, logger: Optional[logging.Logger]) -> Table:
     """Read all transactions, and do all necessary processing."""
     table = _ImportAllAccounts(ImportTransactions, config, logger)
+
     # Match transactions to each other, synthesize opening balances, and mark
     # ending positions.
     log = timing.create_logger(logger)

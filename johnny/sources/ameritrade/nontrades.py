@@ -47,10 +47,6 @@ def GetRowType(rec: Record) -> nontrades.Type:
             return Type.BalanceInterest
         elif rec.description.startswith("MARGIN INTEREST ADJUSTMENT"):
             return Type.MarginInterest
-        elif re.match(r".* TERM GAIN DISTRIBUTION~", rec.description):
-            return Type.Distribution
-        elif re.match(r"PARTNERSHIP DISTRIBUTION~", rec.description):
-            return Type.Distribution
         elif rec.description.startswith("ORDINARY DIVIDEND"):
             return Type.Dividend
 

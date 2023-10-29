@@ -63,7 +63,7 @@ message Transaction {
     Exercise = 4; // (an exercise, a removal type of event),
     Mark = 5;     // (a virtual sale).
     Open = 6;     // (a virtual transaction to create an opening balance)
-    Dividend = 7; // (a dividend payment associated with this trade)
+    Dividend = 7; // (a dividend payment or other distributions associated with a trade)
   }
   required RowType rowtype = 4;
 

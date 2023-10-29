@@ -43,6 +43,7 @@ from johnny.base import chains as chainslib
 from johnny.base import config as configlib
 from johnny.base import instrument
 from johnny.base import mark
+from johnny.base import transactions as txnlib
 from johnny.base import match
 from johnny.base import recap as recaplib
 from johnny.base.etl import petl, Table, Record

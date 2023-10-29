@@ -321,13 +321,17 @@ def ProcessDividends(table: Table) -> Tuple[Table, Table]:
         table.addfield(
             "valid_div",
             lambda r: Assert(
-                r.type == "DOI" and r.description.startswith("ORDINARY DIVIDEND")
+                r.type == "DOI"
+                and re.match(r"(ORDINARY DIVIDEND|.*\bDISTRIBUTION\b)", r.description)
             ),
         )
         .addfield("order_id", lambda r: r["rowid"])
         .addfield("pair_id", lambda r: r["rowid"])
         .capture(
-            "description", r"ORDINARY DIVIDEND~(.*)", ["symbol"], include_original=True
+            "description",
+            r"(?:DIVIDEND|DISTRIBUTION)~(.*)",
+            ["symbol"],
+            include_original=True,
         )
         .addfield("underlying", lambda r: r["symbol"])
         .addfield("rowtype", txnlib.Type.Dividend)
@@ -774,6 +778,8 @@ def _ParseDescriptionRecord(row: Record) -> Dict[str, Any]:
     if row.type == "DOI":
         if re.match(".* DIVIDEND", row.description):
             return _ParseDividendDescription(row.description)
+        if re.match(".* DISTRIBUTION", row.description):
+            return _ParseDistributionDescription(row.description)
     return {}
 
 
@@ -897,6 +903,15 @@ def _ParseDividendDescription(description: str) -> Dict[str, Any]:
     match = re.match(
         "ORDINARY (?P<strategy>DIVIDEND)~(?P<symbol>[A-Z0-9]+)", description
     )
+    assert match, description
+    matches = match.groupdict()
+    matches["quantity"] = Decimal("0")
+    return matches
+
+
+def _ParseDistributionDescription(description: str) -> Dict[str, Any]:
+    """Parse the description field of an expiration."""
+    match = re.match(".* (?P<strategy>DISTRIBUTION)~(?P<symbol>[A-Z0-9]+)", description)
     assert match, description
     matches = match.groupdict()
     matches["quantity"] = Decimal("0")
