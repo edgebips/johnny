@@ -25,12 +25,13 @@ message NonTrade {
     FuturesMarkToMarket = 4; // A mark-to-mark futures transfer.
     BalanceInterest = 5;     // Interest on balance.
     MarginInterest = 6;      // Interest on margin.
-    InternalTransfer = 7;   // An internal transfer.
+    InternalTransfer = 7;    // An internal transfer.
     ExternalTransfer = 8;    // An outgoing transfer.
-    MonthlyFee = 9;         // A monthly fee.
-    TransferFee = 10;        // A wire transfer fee.
-    HardToBorrowFee = 11;    // A hard-to-borrow fee.
-    Sweep = 12;              // A cash sweep (typically to be ignored).
+    TransferFee = 9;         // A wire transfer fee.
+    MonthlyFee = 10;         // A monthly fee.
+    DataFee = 11;            // A data access fee, e.g. to get a quote.
+    HardToBorrowFee = 12;    // A hard-to-borrow fee.
+    Sweep = 13;              // A cash sweep (typically to be ignored).
   }
   //// TODO(blais): What do we do with InternalTransfer, ExternalTransfer, ExternalTransfer?
   //// I think translate to Withdrawal and Deposit?  Don't care about internal?

@@ -3,6 +3,7 @@
 from decimal import Decimal
 import datetime as dt
 from os import path
+import re
 
 from johnny.base import discovery
 from johnny.base import nontrades as nontradeslib
@@ -24,7 +25,10 @@ def GetRowType(rec: Record) -> str:
     if code == "CINT":
         return Type.BalanceInterest
     if code == "OFEE":
-        return Type.MonthlyFee
+        if re.search(r"\bSNAPSHOT\b", rec.ActivityDescription):
+            return Type.DataFee
+        if re.search(r"Monthly Minimum Fee", rec.ActivityDescription):
+            return Type.MonthlyFee
     if code == "ADJ":
         return Type.Adjustment
     if code == "DIV":
