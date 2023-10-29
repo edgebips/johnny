@@ -18,6 +18,11 @@ message NonTrade {
   // Row Types
 
   // `rowtype: str`: An enum string for the row type.
+  //
+  // Please note that some of the rows in this table technically refer to a
+  // Futures or Forex subaccount in the same institution. We probably need to
+  // clarify this at some point by either removing them or adding a subaccount
+  // field.
   enum RowType {
     CashBalance = 1;         // A balance of the cash account
     FuturesBalance = 2;      // A balance of the futures account.
@@ -31,7 +36,8 @@ message NonTrade {
     MonthlyFee = 10;         // A monthly fee.
     DataFee = 11;            // A data access fee, e.g. to get a quote.
     HardToBorrowFee = 12;    // A hard-to-borrow fee.
-    Sweep = 13;              // A cash sweep (typically to be ignored).
+    Sweep = 13;              // A sweep to/from futures in the cash account.
+    FuturesSweep = 14;       // A sweep to/from futures in the futures account.
   }
   //// TODO(blais): What do we do with InternalTransfer, ExternalTransfer, ExternalTransfer?
   //// I think translate to Withdrawal and Deposit?  Don't care about internal?

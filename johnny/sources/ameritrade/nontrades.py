@@ -59,7 +59,10 @@ def GetRowType(rec: Record) -> nontrades.Type:
             return Type.ExternalTransfer
 
     elif rtype == "FSWP":
-        return Type.Sweep
+        if rec.subaccount == "Cash":
+            return Type.Sweep
+        elif rec.subaccount == "Futures":
+            return Type.FuturesSweep
 
     elif rtype == "JRN":
         if rec.description.startswith("MISCELLANEOUS JOURNAL ENTRY"):

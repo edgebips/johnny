@@ -1068,7 +1068,10 @@ def GetTransactions(filename: str) -> Tuple[Table, Table]:
     # Make the final ordering correct and finalize the columns.
     txns = txns.cut(txnlib.FIELDS)
 
-    nontrade = petl.cat(cashbal_nontrade, futures_nontrade)
+    nontrade = petl.cat(
+        cashbal_nontrade.addfield("subaccount", "Cash"),
+        futures_nontrade.addfield("subaccount", "Futures"),
+    )
 
     return txns, nontrade
 
