@@ -15,19 +15,20 @@ Q2 = Decimal("0.01")
 
 
 def GetRowType(rec: Record) -> str:
+    Type = nontradeslib.Type
     code = rec.ActivityCode
     if not code:
-        return "CashBalance"
+        return Type.CashBalance
     if code == "DEP":
-        return "ExternalTransfer" if rec.Amount >= 0 else "ExternalTransfer"
+        return Type.ExternalTransfer if rec.Amount >= 0 else Type.ExternalTransfer
     if code == "CINT":
-        return "BalanceInterest"
+        return Type.BalanceInterest
     if code == "OFEE":
-        return "MonthlyFee"
+        return Type.MonthlyFee
     if code == "ADJ":
-        return "Adjustment"
+        return Type.Adjustment
     if code == "DIV":
-        return "Dividend"
+        return Type.Dividend
     raise ValueError(f"Could not find rowtype for {rec}")
 
 

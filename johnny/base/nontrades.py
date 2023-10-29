@@ -5,9 +5,13 @@ __license__ = "GNU GPLv2"
 
 from decimal import Decimal
 import datetime
+import enum
 
 from johnny.base.etl import Record, Table
 from johnny.base.nontrades_pb2 import NonTrade
+
+
+Type = enum.StrEnum("Type", {k: k for k in NonTrade.RowType.keys()})
 
 
 # Transaction table field names.

@@ -11,6 +11,7 @@ from more_itertools import last
 from johnny.base import config as configlib
 from johnny.base import discovery
 from johnny.base import instrument
+from johnny.base import transactions as txnlib
 from johnny.base.etl import Table, Record
 
 Instrument = instrument.Instrument
@@ -58,7 +59,7 @@ def FetchPricesFromTransactionsLog(transactions: Table) -> Mapping[str, Decimal]
 
     table = (
         transactions.sort("datetime")
-        .select(lambda r: r.rowtype not in {"Open", "Mark"})
+        .select(lambda r: r.rowtype not in {txnlib.Type.Open, txnlib.Type.Mark})
         .rowreduce("symbol", fn, header=["symbol", "price", "datetime"])
     )
     return {
@@ -91,21 +92,21 @@ def Mark(transactions: Table, price_map: Mapping[str, Tuple[Decimal, str]]) -> T
 
     def set_mark(price: Decimal, row: Record) -> Decimal:
         "Set mark price from price database."
-        if row.rowtype != "Mark":
+        if row.rowtype != txnlib.Type.Mark:
             return price
         price, _ = price_map.get(row.symbol, (price, "N/A"))
         return price
 
     def set_description(description: str, row: Record) -> Decimal:
         "Place the source of the price in the description."
-        if row.rowtype != "Mark":
+        if row.rowtype != txnlib.Type.Mark:
             return description
         _, source = price_map.get(row.symbol, (None, "N/A"))
         return f"{description} (source: {source})"
 
     def get_cost(cost: Decimal, rec: Record) -> Decimal:
         "Calculate cost from updated price."
-        if rec.rowtype != "Mark":
+        if rec.rowtype != txnlib.Type.Mark:
             return cost
         sign = -1 if rec.instruction == "BUY" else +1
         return sign * rec.quantity * rec.price * rec.multiplier

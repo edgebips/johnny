@@ -43,6 +43,7 @@ from johnny.base import strategy as strategylib
 from johnny.base import instrument
 from johnny.base import inventories
 from johnny.base import mark
+from johnny.base import transactions as txnlib
 from johnny.base.etl import AssertColumns, Record, Table, WrapRecords
 from johnny.utils import timing
 
@@ -291,7 +292,7 @@ def _LinkByOverlapping(transactions: Table) -> List[Tuple[str, str]]:
         # need to insert a unique id.
         expiration = _GetExpiration(rec)
         isnew = expiration not in undermap
-        if rec["rowtype"] == "Dividend":
+        if rec["rowtype"] == txnlib.Type.Dividend:
             # There needs to be an active underlying, otherwise why are we
             # receiving a dividend?.
             assert not isnew
@@ -304,7 +305,7 @@ def _LinkByOverlapping(transactions: Table) -> List[Tuple[str, str]]:
             term = undermap[expiration] = Term(term_id)
 
         if isnew:
-            if expiration is None and rec.rowtype != "Dividend":
+            if expiration is None and rec.rowtype != txnlib.Type.Dividend:
                 # This is an underlying, not an option on one.
                 # Link it to all the currently active expirations.
                 for uexpiration, expiration_term in undermap.items():
@@ -318,7 +319,7 @@ def _LinkByOverlapping(transactions: Table) -> List[Tuple[str, str]]:
                     outright_term = undermap[None]
                     links.append((term.id, outright_term.id))
         else:
-            if rec.rowtype == "Dividend":
+            if rec.rowtype == txnlib.Type.Dividend:
                 # This is a dividend.
                 # Link it to the underlying.
                 # Assert that it's active.
@@ -330,7 +331,7 @@ def _LinkByOverlapping(transactions: Table) -> List[Tuple[str, str]]:
         transaction_links.append((term.id, rec.transaction_id))
 
         # Update quantities.
-        if rec.rowtype != "Dividend":
+        if rec.rowtype != txnlib.Type.Dividend:
             sign = -1 if rec.instruction == "SELL" else +1
             term.quantities[rec.symbol] += sign * rec.quantity
             if term.quantities[rec.symbol] == ZERO:
@@ -421,7 +422,7 @@ def InitialTransactions(
 
 def MarkTransactions(pairs: Iterator[Tuple[str, str]]) -> Decimal:
     """Extract the active positions transactions."""
-    return [transaction_id for transaction_id, rowtype in pairs if rowtype == "Mark"]
+    return [transaction_id for transaction_id, rowtype in pairs if rowtype == txnlib.Type.Mark]
 
 
 def InitialCredits(rec: Record) -> Decimal:
@@ -432,12 +433,12 @@ def InitialCredits(rec: Record) -> Decimal:
 def PositionCost(rec: Record) -> Decimal:
     """Compute the cost of the position from a group of chain rows, using FIFO
     matching."""
-    if not any(rec.rowtype == "Mark" for rec in rec.txns):
+    if not any(rec.rowtype == txnlib.Type.Mark for rec in rec.txns):
         return
 
     inv = collections.defaultdict(inventories.FifoInventory)
     for txn in rec.txns:
-        if txn.rowtype in {"Mark", "Dividend"}:
+        if txn.rowtype in {txnlib.Type.Mark, txnlib.Type.Dividend}:
             continue
         sign = +1 if txn.instruction == "SELL" else -1
         unit_cost = abs(txn.cost / txn.quantity)
@@ -447,14 +448,14 @@ def PositionCost(rec: Record) -> Decimal:
 
 
 def _CalculateNetLiq(pairs: Iterator[Tuple[str, Decimal]]):
-    return Decimal(sum(cost for rowtype, cost in pairs if rowtype == "Mark")).quantize(
+    return Decimal(sum(cost for rowtype, cost in pairs if rowtype == txnlib.Type.Mark)).quantize(
         Q2
     )
 
 
 def _CalculateCash(pairs: Iterator[Tuple[str, Decimal]]):
     return Decimal(
-        sum(cost for rowtype, cost in pairs if rowtype == "Dividend")
+        sum(cost for rowtype, cost in pairs if rowtype == txnlib.Type.Dividend)
     ).quantize(Q2)
 
 
@@ -782,10 +783,8 @@ def UpdateConfig(transactions: Table, chains_db: Chains) -> Chains:
         # Update various maps.
         transactions_map[txn.transaction_id] = txn
         referenced_chain_ids.add(txn.chain_id)
-        if txn.rowtype == "Mark":
+        if txn.rowtype == txnlib.Type.Mark:
             active_chain_ids.add(txn.chain_id)
-
-        if txn.rowtype == "Mark":
             continue
 
         transaction_id = txn.transaction_id

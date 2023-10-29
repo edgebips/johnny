@@ -54,6 +54,7 @@ from johnny.sources.ameritrade import symbols
 from johnny.sources.ameritrade import utils
 from johnny.utils import csv_utils
 
+
 Table = petl.Table
 Record = petl.Record
 debug = False
@@ -282,7 +283,7 @@ def ProcessExpirationsToTransactions(cash_table: Table) -> Table:
         # Fix up the remaining fields.
         .addfield("order_id", GetOrderIdFromSymbol)
         .addfield("effect", "CLOSING")
-        .addfield("rowtype", "Expire")
+        .addfield("rowtype", txnlib.Type.Expire)
         .addfield("instype", None)
         .addfield("commissions", ZERO)
         .rename("commissions_fees", "fees")
@@ -329,7 +330,7 @@ def ProcessDividends(table: Table) -> Tuple[Table, Table]:
             "description", r"ORDINARY DIVIDEND~(.*)", ["symbol"], include_original=True
         )
         .addfield("underlying", lambda r: r["symbol"])
-        .addfield("rowtype", "Dividend")
+        .addfield("rowtype", txnlib.Type.Dividend)
         .addfield("instruction", "")
         .addfield("effect", "")
         .addfield("instype", "Equity")
@@ -517,7 +518,7 @@ def SplitGroupsToTransactions(groups: List[Group], is_futures: bool) -> Table:
                     trow.exec_time,
                     trow.order_id,
                     trow.pair_id,
-                    "Trade",
+                    txnlib.Type.Trade,
                     trow.side,
                     trow.pos_effect,
                     symbol,
@@ -570,9 +571,8 @@ def CashBalance_Prepare(table: Table) -> Table:
         # Remove bottom totals line.
         .select("description", lambda v: v != "TOTAL")
         # Convert date/time to a single field.
-        .addfield(
-            "datetime", partial(ParseDateTimePair, "date", "time"), index=1
-        ).cutout("date", "time")
+        .addfield("datetime", partial(ParseDateTimePair, "date", "time"), index=1)
+        .cutout("date", "time")
         # Convert numbers to Decimal instances.
         .convert(
             ("misc_fees", "commissions_fees", "amount", "balance"), number.ToDecimal

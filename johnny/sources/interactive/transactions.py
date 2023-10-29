@@ -380,8 +380,14 @@ def GetTransactions(filename: str) -> Tuple[Table, Table]:
         )
         .cutout("TradeCommission", "cdiff")
         .rename("ActivityCode", "rowtype")
-        .convert("rowtype", lambda v: "Dividend" if v == "DIV" else "Trade")
-        .addfield("cash", lambda r: r["Amount"] if r["rowtype"] == "Dividend" else ZERO)
+        .convert(
+            "rowtype",
+            lambda v: txnlib.Type.Dividend if v == "DIV" else txnlib.Type.Trade,
+        )
+        .addfield(
+            "cash",
+            lambda r: r["Amount"] if r["rowtype"] == txnlib.Type.Dividend else ZERO,
+        )
     )
     trade = (
         trade.rename(

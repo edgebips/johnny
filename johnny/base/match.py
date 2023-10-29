@@ -65,6 +65,7 @@ import itertools
 from johnny.base.etl import petl, AssertColumns, Record, Table
 from johnny.base import instrument
 from johnny.base import inventories
+from johnny.base import transactions as txnlib
 
 
 ZERO = Decimal(0)
@@ -142,7 +143,7 @@ def Process(
     for rec in transactions.namedtuples():
         inv = invs[InstKey(rec.account, rec.symbol)]
 
-        if rec.rowtype in {"Trade", "Open"}:
+        if rec.rowtype in {txnlib.Type.Trade, txnlib.Type.Open}:
             if rec.effect == "OPENING":
                 inv.opening(rec, accum)
             elif rec.effect == "CLOSING":
@@ -151,10 +152,14 @@ def Process(
                 assert not rec.effect
                 inv.match(rec, accum)
 
-        elif rec.rowtype in {"Expire", "Assign", "Exercise"}:
+        elif rec.rowtype in {
+            txnlib.Type.Expire,
+            txnlib.Type.Assign,
+            txnlib.Type.Exercise,
+        }:
             inv.expire(rec, accum, rec.rowtype)
 
-        elif rec.rowtype in {"Dividend"}:
+        elif rec.rowtype in {txnlib.Type.Dividend}:
             inv.receive(rec, accum, rec.rowtype)
 
         else:
@@ -222,7 +227,7 @@ def _AddMissingExpirations(
                 commissions=ZERO,
                 fees=ZERO,
             )
-            inv.expire(rec, accum, "Expire")
+            inv.expire(rec, accum, txnlib.Type.Expire)
 
 
 def _AddMarkTransactions(
@@ -262,7 +267,7 @@ def _AddMarkTransactions(
             cash=ZERO,
             commissions=ZERO,
             fees=ZERO,
-            rowtype="Mark",
+            rowtype=txnlib.Type.Mark,
             instruction=("SELL" if pquantity >= 0 else "BUY"),
             effect="CLOSING",
             match_id=match_id,

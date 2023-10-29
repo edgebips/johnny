@@ -14,6 +14,7 @@ from parameterized import parameterized
 
 from johnny.base import inventories
 from johnny.base.etl import petl, Table, AssertTableEqual
+import johnny.base.transactions as txnlib
 
 
 Lot = inventories.Lot
@@ -211,7 +212,7 @@ def MatchTable(
     # Run through the input table.
     nomatch_table = table.convert("match_id", lambda _: "")
     for rec in nomatch_table.namedtuples():
-        if rec.rowtype == "Trade":
+        if rec.rowtype == txnlib.Type.Trade:
             if use_effect:
                 if rec.effect == "OPENING":
                     inv.opening(rec, accum)
@@ -221,7 +222,7 @@ def MatchTable(
                     continue
                 assert not rec.effect
             inv.match(rec, accum)
-        elif rec.rowtype == "Expire":
+        elif rec.rowtype == txnlib.Type.Expire:
             inv.expire(rec, accum)
         else:
             raise ValueError(f"Invalid row type: {rec.rowtype}")

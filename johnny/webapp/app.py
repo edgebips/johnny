@@ -142,7 +142,7 @@ def Initialize():
             )
 
             # Extract current positions from marks.
-            positions = transactions.selecteq("rowtype", "Mark")
+            positions = transactions.selecteq("rowtype", txnlib.Type.Mark)
 
             STATE = State(transactions, positions, chains_table, chains_map, config)
             app.logger.info("Done.")
@@ -303,7 +303,7 @@ def expiring():
     days = int(flask.request.args.get("days", 20))
     today = datetime.date.today()
     min_dte = (
-        STATE.transactions.selecteq("rowtype", "Mark")
+        STATE.transactions.selecteq("rowtype", txnlib.Type.Mark)
         .applyfn(instrument.Expand, "symbol")
         .selecttrue("expiration")
         .addfield("dte", lambda r: (r.expiration - today).days)

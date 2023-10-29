@@ -8,6 +8,7 @@ from typing import Callable, Tuple
 import collections
 import datetime
 import functools
+import enum
 
 import pyarrow as pa
 import pyarrow.parquet as pq
@@ -16,11 +17,15 @@ from johnny.base.etl import Record, Table
 from johnny.base.transactions_pb2 import Transaction
 
 
+Type = enum.StrEnum("Type", {k: k for k in Transaction.RowType.keys()})
+
+
 GetFn = Callable[[str], Tuple[Table, Table]]
 ParserFn = Callable[[str], Table]
 ZERO = Decimal(0)
 
 
+# TODO(blais): Remove this and replace by inspection of the proto.
 # Transaction table field names.
 FIELDS = [
     # Event info
@@ -107,7 +112,7 @@ def ValidateTransactionRecord(r: Record):
 
     assert isinstance(r.description, str)
 
-    if r.rowtype == "Dividend":
+    if r.rowtype == Type.Dividend:
         assert not r.quantity
         assert not r.price
         assert not r.cost

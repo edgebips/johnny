@@ -13,9 +13,10 @@ import seaborn as sns
 
 sns.set()
 
-from johnny.base import config as configlib
 from johnny.base import chains as chainslib
+from johnny.base import config as configlib
 from johnny.base.etl import Table, Record
+import johnny.base.transactions as txnlib
 
 Chain = chainslib.Chain
 
@@ -42,7 +43,7 @@ def get_chains_at_date(
     # A set of chain ids with transactions on the date.
     # This is used to figure out if an adjustment took place on a chain.
     traded_chains = set(
-        transactions.selectne("rowtype", "Mark")
+        transactions.selectne("rowtype", txnlib.Type.Mark)
         .select(lambda r: r.datetime.date() == date)
         .values("chain_id")
     )

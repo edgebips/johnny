@@ -26,13 +26,14 @@ from dateutil import parser
 import pytz
 import tzlocal
 
-from johnny.base.config import Account
 from johnny.base import config as configlib
 from johnny.base import transactions as txnlib
+from johnny.base.config import Account
 from johnny.base.etl import petl, Table, Record, WrapRecords
 from johnny.base.number import ToDecimal
-from johnny.sources.tastytrade import symbols
 from johnny.sources.tastytrade import config_pb2
+from johnny.sources.tastytrade import symbols
+from johnny.sources.tastytrade import nontrades
 
 
 ZERO = Decimal(0)
@@ -88,50 +89,39 @@ def PreprocessTransactions(items: Iterator[Tuple[str, Json]]) -> Iterator[Json]:
 # The other types are ignored.
 TRANSACTION_TYPES = {
     # Futures trades.
-    ("Trade", "Buy"): "Trade",
-    ("Trade", "Sell"): "Trade",
+    ("Trade", "Buy"): txnlib.Type.Trade,
+    ("Trade", "Sell"): txnlib.Type.Trade,
     # Equity trades.
-    ("Trade", "Buy to Close"): "Trade",
-    ("Trade", "Buy to Open"): "Trade",
-    ("Trade", "Sell to Close"): "Trade",
-    ("Trade", "Sell to Open"): "Trade",
+    ("Trade", "Buy to Close"): txnlib.Type.Trade,
+    ("Trade", "Buy to Open"): txnlib.Type.Trade,
+    ("Trade", "Sell to Close"): txnlib.Type.Trade,
+    ("Trade", "Sell to Open"): txnlib.Type.Trade,
     # Expirations.
-    ("Receive Deliver", "Expiration"): "Expire",
+    ("Receive Deliver", "Expiration"): txnlib.Type.Expire,
     # Stock actions.
-    ("Receive Deliver", "Forward Split"): "Trade",
-    ("Receive Deliver", "Reverse Split"): "Trade",
-    ("Receive Deliver", "Symbol Change"): "Trade",
-    ("Receive Deliver", "Symbol Change"): "Trade",
+    ("Receive Deliver", "Forward Split"): txnlib.Type.Trade,
+    ("Receive Deliver", "Reverse Split"): txnlib.Type.Trade,
+    ("Receive Deliver", "Symbol Change"): txnlib.Type.Trade,
+    ("Receive Deliver", "Symbol Change"): txnlib.Type.Trade,
     # Assignment and exercise.
-    ("Receive Deliver", "Assignment"): "Assign",
-    ("Receive Deliver", "Exercise"): "Exercise",
-    ("Receive Deliver", "Cash Settled Assignment"): "Assign",
-    ("Receive Deliver", "Cash Settled Exercise"): "Exercise",
-    ("Receive Deliver", "Buy to Open"): "Trade",
-    ("Receive Deliver", "Sell to Open"): "Trade",
-    ("Receive Deliver", "Buy to Close"): "Trade",
-    ("Receive Deliver", "Sell to Close"): "Trade",
+    ("Receive Deliver", "Assignment"): txnlib.Type.Assign,
+    ("Receive Deliver", "Exercise"): txnlib.Type.Exercise,
+    ("Receive Deliver", "Cash Settled Assignment"): txnlib.Type.Assign,
+    ("Receive Deliver", "Cash Settled Exercise"): txnlib.Type.Exercise,
+    ("Receive Deliver", "Buy to Open"): txnlib.Type.Trade,
+    ("Receive Deliver", "Sell to Open"): txnlib.Type.Trade,
+    ("Receive Deliver", "Buy to Close"): txnlib.Type.Trade,
+    ("Receive Deliver", "Sell to Close"): txnlib.Type.Trade,
     # Transfers.
-    ("Receive Deliver", "ACAT"): "Trade",
-    ("Receive Deliver", "ACAT"): "Trade",
+    ("Receive Deliver", "ACAT"): txnlib.Type.Trade,
+    ("Receive Deliver", "ACAT"): txnlib.Type.Trade,
     # Dividends.
-    ("Money Movement", "Dividend"): "Dividend",
-}
-
-OTHER_TYPES = {
-    ("Money Movement", "Balance Adjustment"): "Adjustment",
-    ("Money Movement", "Credit Interest"): "BalanceInterest",
-    # Note: This contains amounts affecting balance for futures.
-    ("Money Movement", "Mark to Market"): "FuturesMarkToMarket",
-    ("Money Movement", "Transfer"): "InternalTransfer",
-    ("Money Movement", "Withdrawal"): "ExternalTransfer",
-    ("Money Movement", "Deposit"): "ExternalTransfer",
-    ("Money Movement", "Fee"): "TransferFee",
+    ("Money Movement", "Dividend"): txnlib.Type.Dividend,
 }
 
 ALL_TYPES = {}
 ALL_TYPES.update(TRANSACTION_TYPES)
-ALL_TYPES.update(OTHER_TYPES)
+ALL_TYPES.update(nontrades.NONTRADE_TYPES)
 
 
 def GetRowType(rec: Record) -> bool:
@@ -159,9 +149,9 @@ def ParseTime(row: Record):
 
 def GetPosEffect(rec: Record) -> Optional[str]:
     """Get position effect."""
-    if rec.rowtype in {"Expire", "Exercise", "Assign"}:
+    if rec.rowtype in {txnlib.Type.Expire, txnlib.Type.Exercise, txnlib.Type.Assign}:
         return "CLOSING"
-    if rec.rowtype in {"Dividend"}:
+    if rec.rowtype in {txnlib.Type.Dividend}:
         return ""
     action = rec["action"]
     if action.endswith("to Open"):
@@ -181,7 +171,7 @@ def GetInstruction(rec: Record) -> Optional[str]:
         return "BUY"
     elif action.startswith("Sell"):
         return "SELL"
-    elif rec.rowtype == "Expire":
+    elif rec.rowtype == txnlib.Type.Expire:
         # The signs aren't set. We're going to use this value temporarily, and
         # once the stream is done, we compute and map the signs {e80fcd889943}.
         return ""
@@ -193,7 +183,7 @@ def ConvertQuantity(value_str: Optional[str], rec: Record) -> Decimal:
     """Convert and round integer values to decimal and leave fractional alone.
     This is only used to trim unnecessary trailing ".0" suffixes.
     """
-    if rec.rowtype == "Dividend":
+    if rec.rowtype == txnlib.Type.Dividend:
         return ZERO
     rounded_value_str = re.sub(r"\.0$", "", value_str)
     return Decimal(rounded_value_str)
@@ -210,7 +200,7 @@ def CalculateFees(rec: Record) -> Decimal:
 
 def CalculateCost(rec: Record) -> Decimal:
     """Calculate the raw cost."""
-    if rec["rowtype"] == "Dividend":
+    if rec["rowtype"] == txnlib.Type.Dividend:
         return ZERO
 
     derived_net_value = rec["value"] + rec["commissions"] + rec["fees"]
@@ -235,14 +225,14 @@ def CalculateCost(rec: Record) -> Decimal:
 
 def CalculateCash(rec: Record) -> Decimal:
     """Calculate the cash portion, from dividends."""
-    return rec["value"] if rec["rowtype"] == "Dividend" else ZERO
+    return rec["value"] if rec["rowtype"] == txnlib.Type.Dividend else ZERO
 
 
 def CalculatePrice(value: str, rec: Record) -> Decimal:
     """Clean up prices and calculate them where missing."""
     if rec["transaction-sub-type"] in {"Forward Split", "Reverse Split"}:
         return abs(rec.cost / rec.quantity / rec.instrument.multiplier)
-    if rec["rowtype"] == "Dividend":
+    if rec["rowtype"] == txnlib.Type.Dividend:
         return ZERO
     if value is None:
         return ZERO
@@ -337,22 +327,6 @@ def GetTransactions(filename: str) -> Table:
     return table
 
 
-def GetOther(filename: str) -> Table:
-    # Convert numerical fields to decimals.
-    db = shelve.open(filename, "r")
-    items = PreprocessTransactions(db.items())
-
-    # Filter rows that we care about. Note that this removes mark-to-market
-    # entries.
-    filt_items = (
-        petl.fromdicts(items)
-        # Add row type and filter out the row types we're not interested
-        # in.
-        .addfield("rowtype", GetRowType).selectin("rowtype", set(OTHER_TYPES.values()))
-    )
-    return filt_items
-
-
 def ImportTransactions(config: config_pb2.Config) -> petl.Table:
     return GetTransactions(path.expandvars(config.dbm_filename))
 
@@ -366,7 +340,7 @@ def main(database: str):
         transactions = Import(database, None, Account.TRANSACTIONS)
         transactions = GetTransactions(database)
         # print(transactions.head(10).lookallstr())
-        transactions.selecteq("rowtype", "Dividend").tocsv()
+        transactions.selecteq("rowtype", txnlib.Type.Dividend).tocsv()
 
     if 0:
         nontrades = Import(database, None, Account.OTHER)

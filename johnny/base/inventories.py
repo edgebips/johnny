@@ -16,6 +16,7 @@ from decimal import Decimal
 from typing import Callable, List, Tuple, NamedTuple, Optional
 
 from johnny.base.etl import AssertFields, Record
+import johnny.base.transactions as txnlib
 
 
 Instruction = str
@@ -516,7 +517,10 @@ class OpenCloseFifoInventory:
         return self.match(rec, accumfn)
 
     def expire(
-        self, rec: Record, accumfn: TxnAccumFn, rowtype: Optional[str] = "Expire"
+        self,
+        rec: Record,
+        accumfn: TxnAccumFn,
+        rowtype: Optional[str] = txnlib.Type.Expire,
     ):
         """Match the inventory state.
         Return the signed matched size and match id to apply.
@@ -544,7 +548,7 @@ class OpenCloseFifoInventory:
 
     def receive(self, rec: Record, accumfn: TxnAccumFn, rowtype: str):
         """Receive a dividend or some other type of adjustment."""
-        if rowtype not in {"Dividend"}:
+        if rowtype not in {txnlib.Type.Dividend}:
             raise MatchError(f"Invalid row type: {rec}")
 
         accumfn(rec._replace(match_id=self.get_match_id(rec)), "DIVIDEND")

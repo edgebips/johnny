@@ -5,89 +5,89 @@ import datetime as dt
 import re
 from os import path
 
-from johnny.base.etl import Record, Table, petl
-from johnny.base import nontrades
 from johnny.base import discovery
+from johnny.base import nontrades
+from johnny.base.etl import Record, Table, petl
 from johnny.sources.ameritrade import config_pb2
 from johnny.sources.ameritrade import transactions as txnlib
 
 
-NonTrade = nontrades.NonTrade
 Q2 = Decimal("0.01")
 
 
-def GetSymbol(rec: Record) -> NonTrade.RowType:
+def GetSymbol(rec: Record) -> str:
     mobj = re.search(r"~([A-Z]+)\s*$", rec.description)
     return mobj.group(1) if mobj else ""
 
 
-def GetRowType(rec: Record) -> NonTrade.RowType:
+def GetRowType(rec: Record) -> nontrades.Type:
+    Type = nontrades.Type
     rtype = rec.type
     if not rtype:
         raise ValueError(f"Invalid row without a 'type' field: {rec}")
 
     if rtype == "BAL":
         if rec.description.startswith("Cash balance at the start"):
-            return NonTrade.CashBalance
+            return Type.CashBalance
         elif rec.description.startswith("Futures cash balance at the start"):
-            return NonTrade.FuturesBalance
+            return Type.FuturesBalance
 
     elif rtype == "ADJ":
         if re.match(
             r"(courtesy|courteys) +(adjustment|credit)", rec.description, flags=re.I
         ):
-            return NonTrade.Adjustment
+            return Type.Adjustment
         elif re.search(
             r"mark to market at .* official settlement price", rec.description
         ):
-            return NonTrade.FuturesMarkToMarket
+            return Type.FuturesMarkToMarket
 
     elif rtype == "DOI":
         if rec.description.startswith("FREE BALANCE INTEREST ADJUSTMENT"):
-            return NonTrade.BalanceInterest
+            return Type.BalanceInterest
         elif rec.description.startswith("MARGIN INTEREST ADJUSTMENT"):
-            return NonTrade.MarginInterest
+            return Type.MarginInterest
         elif re.match(r".* TERM GAIN DISTRIBUTION~", rec.description):
-            return NonTrade.Distribution
+            return Type.Distribution
         elif re.match(r"PARTNERSHIP DISTRIBUTION~", rec.description):
-            return NonTrade.Distribution
+            return Type.Distribution
         elif rec.description.startswith("ORDINARY DIVIDEND"):
-            return NonTrade.Dividend
+            return Type.Dividend
 
     elif rtype == "EFN":
         if rec.description.startswith("CLIENT REQUESTED ELECTRONIC FUNDING RECEIPT"):
-            return NonTrade.ExternalTransfer
+            return Type.ExternalTransfer
         elif rec.description.startswith(
             "CLIENT REQUESTED ELECTRONIC FUNDING DISBURSEMENT"
         ):
-            return NonTrade.ExternalTransfer
+            return Type.ExternalTransfer
 
     elif rtype == "FSWP":
-        return NonTrade.Sweep
+        return Type.Sweep
 
     elif rtype == "JRN":
         if rec.description.startswith("MISCELLANEOUS JOURNAL ENTRY"):
-            return NonTrade.Adjustment
+            return Type.Adjustment
         elif rec.description.startswith("MARK TO THE MARKET"):
-            return NonTrade.FuturesMarkToMarket
+            return Type.FuturesMarkToMarket
         elif rec.description.startswith("INTRA-ACCOUNT TRANSFER"):
-            return NonTrade.InternalTransfer
+            return Type.InternalTransfer
         elif rec.description.startswith("HARD TO BORROW FEE"):
-            return NonTrade.HardToBorrowFee
+            return Type.HardToBorrowFee
 
     elif rtype == "RAD":
         if rec.description.startswith("CASH ALTERNATIVES INTEREST"):
-            return NonTrade.BalanceInterest
+            return Type.BalanceInterest
         elif rec.description.startswith("INTERNAL TRANSFER BETWEEN ACCOUNTS"):
-            return NonTrade.InternalTransfer
+            return Type.InternalTransfer
 
     elif rtype == "WIN":
         if rec.description.startswith("THIRD PARTY"):
-            return NonTrade.ExternalTransfer
+            return Type.ExternalTransfer
 
     elif rtype == "WOU":
         if rec.description.startswith("WIRE OUTGOING"):
-            return NonTrade.ExternalTransfer
+            return Type.ExternalTransfer
 
     raise ValueError(f"Unknown {rtype} row: {rec}")
 
@@ -102,7 +102,7 @@ def ConvertNonTrades(other: Table, account_id: str) -> Table:
     other = other.cutout(*remove_fields)
 
     other = (
-        other.addfield("rowtype", lambda rec: NonTrade.RowType.Name(GetRowType(rec)))
+        other.addfield("rowtype", GetRowType)
         .addfield("account", account_id)
         .rename("rowid", "transaction_id")
         .addfield("symbol", GetSymbol)

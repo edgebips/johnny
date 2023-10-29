@@ -61,21 +61,25 @@ def GetTransactionId(rec: Record) -> int:
 def GetRowType(rowtype: str, rec: Record) -> str:
     """Validate the row type."""
     if rowtype == "Trade":
-        return "Trade"
+        return txnlib.Type.Trade
     elif rowtype == "Receive Deliver":
         if re.match(
             r"Removal of .* due to (expiration|exercise|assignment)", rec.Description
         ):
-            return "Expire"
+            return txnlib.Type.Expire
         elif re.match(r"(Buy|Sell) to", rec.Description):
-            return "Trade"
+            return txnlib.Type.Trade
         elif re.match(r"Symbol change", rec.Description):
-            return "Trade"
+            return txnlib.Type.Trade
         elif re.match(r"Bought.*Awarded .* Long", rec.Description):
-            return "Trade"
+            return txnlib.Type.Trade
         elif re.match(r"Special dividend: (Open|Close)", rec.Description):
-            return "Trade"
+            raise NotImplementedError("This should probably be a dividend type. "
+                                      "Fix this.")
+            return txnlib.Type.Trade
         elif re.match(r".* cost basis adjustment", rec.Description):
+            raise NotImplementedError("This should be an attributed adjustment, "
+                                      "like a dividend.")
             return "Other"
     return KeyError(
         "Invalid rowtype '{}'; description: '{}'".format(rowtype, rec.Description)
@@ -100,7 +104,7 @@ def GetPrice(rec: Record) -> Decimal:
     """Get the per-contract price."""
 
     # If this is an expiration, the price is always zero.
-    if rec.rowtype == "Expire":
+    if rec.rowtype == txnlib.Type.Expire:
         return ZERO
 
     # Try to find the price from the description. Note that this isn't always
@@ -167,7 +171,7 @@ def GetInstruction(rec: Record) -> Optional[str]:
         return "BUY"
     elif rec.Action.startswith("SELL"):
         return "SELL"
-    elif rec.rowtype == "Expire":
+    elif rec.rowtype == txnlib.Type.Expire:
         # The signs aren't set. We're going to use this value temporarily, and
         # once the stream is done, we compute and map the signs {e80fcd889943}.
         return ""
@@ -181,7 +185,7 @@ def GetPosEffect(rec: Record) -> Optional[str]:
         return "OPENING"
     elif rec.Action.endswith("TO_CLOSE"):
         return "CLOSING"
-    elif rec.rowtype == "Expire":
+    elif rec.rowtype == txnlib.Type.Expire:
         return "CLOSING"
     else:
         return ""
@@ -223,7 +227,7 @@ def DeduplicateExpirations(table: Table) -> Table:
     expiration_quantities = {}  # symbol -> quantity
     remove_transactions = set()  # txn-id
     for rec in table.records():
-        if rec.rowtype == "Expire":
+        if rec.rowtype == txnlib.Type.Expire:
             if rec.symbol not in expiration_txns:
                 expiration_txns[rec.symbol] = rec.transaction_id
                 expiration_quantities[rec.symbol] = rec.quantity
@@ -281,7 +285,7 @@ def NormalizeTrades(table: petl.Table, account: str) -> petl.Table:
         .rename("Type", "rowtype")
         .convert("rowtype", GetRowType, pass_row=True)
         # Ignore dividends for now. TODO(blais): Implement those.
-        .selectnotin("rowtype", {"Dividend", "Other"})
+        .selectnotin("rowtype", {txnlib.Type.Dividend})
         # Parse the date into datetime.
         .addfield("datetime", lambda r: parser.parse(r.Date).replace(tzinfo=None))
         # Convert the futures expiration date.

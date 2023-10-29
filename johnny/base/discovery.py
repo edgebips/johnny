@@ -78,7 +78,7 @@ def ReadInitialPositions(filename: str) -> Table:
         .addfield("order_id", lambda r: "o{}".format(r.transaction_id))
         .addfield("account", "")
         .convert("datetime", lambda v: parser.parse(v))
-        .addfield("rowtype", "Open")
+        .addfield("rowtype", txnlib.Type.Open)
         .addfield("effect", "OPENING")
         .convert("quantity", Decimal)
         .convert("cost", Decimal)
