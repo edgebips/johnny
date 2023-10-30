@@ -51,6 +51,9 @@ annotate:
 accept-specific-chains:
 	cat | ./experiments/accept-chains.py -g Premium -s FINAL
 
+find-transfers:
+	./experiments/find-transfers.py 'Assets:US:(Interactive|Ameritrade|Tastyworks):Main' -d 2021-01-01
+
 # Proto generation rules.
 PROTOS_PB2 =                                    \
 johnny/base/common_pb2.py                       \

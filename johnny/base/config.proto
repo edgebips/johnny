@@ -218,9 +218,7 @@ enum InstrumentType {
 
 // A set of accounts for conversion to Beancount.
 message BeancountAccounts {
-  optional string account_assets = 1;
-  optional string account_cash = 2;
-  optional string account_pnl = 3;
-  optional string account_commissions = 4;
-  optional string account_fees = 5;
+  optional string account_cash = 1;
+  optional string account_futures = 2;
+  optional string account_forex = 3;
 }

@@ -24,11 +24,12 @@ this.
 __copyright__ = "Copyright (C) 2021  Martin Blais"
 __license__ = "GNU GPLv2"
 
+from typing import List, Optional
+import copy
 import logging
 import os
 import re
-import copy
-from typing import List, Optional
+import sys
 
 import click
 
@@ -38,6 +39,7 @@ from johnny.base import chains as chainslib
 from johnny.base import config as configlib
 from johnny.base import instrument
 from johnny.base.etl import petl, Table
+from johnny.exports import beancount as be
 
 
 def SelectAccount(config: configlib.Config, account_regex: str):
@@ -166,6 +168,15 @@ def imported_chains(ctx: click.Context):
     config = ctx.obj["config"]
     chains = petl.frompickle(config.output.chains_pickle)
     print(chains.lookallstr())
+
+
+@cli.command()
+@click.pass_context
+def export_nontrades(ctx: click.Context):
+    "Convert nontrades to Beancount format."
+    config = ctx.obj["config"]
+    imported = petl.frompickle(config.output.nontrades_pickle)
+    be.ExportNonTrades(config, imported, sys.stdout)
 
 
 if __name__ == "__main__":
