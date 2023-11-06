@@ -133,11 +133,11 @@ def Convert_Sweep(account: Account, index: int, rec: Record):
 
 
 def Convert_InternalTransfer(account: Account, index: int, rec: Record):
-    return _SimpleTransaction(account, index, rec, "Expenses:Unknown")
+    return # _SimpleTransaction(account, index, rec, "Expenses:Unknown")
 
 
 def Convert_ExternalTransfer(account: Account, index: int, rec: Record):
-    return _SimpleTransaction(account, index, rec, "Expenses:Unknown")
+    return # _SimpleTransaction(account, index, rec, "Expenses:Unknown")
 
 
 # TODO(blais): Add config and fetch account name from ther.
@@ -168,7 +168,8 @@ def ExportNonTrades(config: Config, nontrades: Table, file: TextIO):
             raise ValueError(f"Unknown account: {rec.account}")
 
         entry = func(account, index, rec)
-        printer.print_entry(entry)
+        if entry:
+            printer.print_entry(entry)
 
 
 ## def _GetAccounts(config: Config, account: str) -> BeancountAccounts:

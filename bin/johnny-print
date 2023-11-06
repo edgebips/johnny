@@ -136,7 +136,7 @@ def marks(ctx: click.Context):
 
 @cli.command()
 @click.pass_context
-def imported_transations(ctx: click.Context):
+def imported_transactions(ctx: click.Context):
     "Print imported transactions (from database)."
     config = ctx.obj["config"]
     imported = petl.frompickle(config.output.transactions_pickle)
