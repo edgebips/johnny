@@ -59,9 +59,16 @@ def ImportNonTrades(config: config_pb2.Config) -> petl.Table:
         "leg-count",
         "destination-venue",
     ]
+    remove_cols = set(remove_cols) & set(table.fieldnames())
     removed = table.cut(*remove_cols).distinct()
     assert removed.nrows() == 1, "Rows removed aren't all vacuous."
     table = table.cutout(*remove_cols)
+
+    # Add missing columns (can happen if there weren't any transactions ever).
+    add_cols = {"symbol"}
+    for col in add_cols:
+        if col not in table.fieldnames():
+            table = table.addfield(col, None)
 
     # Add datetime.
     table = (
@@ -76,4 +83,4 @@ def ImportNonTrades(config: config_pb2.Config) -> petl.Table:
         .cut(nontradeslib.FIELDS)
     )
 
-    return table.sort("rowtype")
+    return table.sort("datetime")

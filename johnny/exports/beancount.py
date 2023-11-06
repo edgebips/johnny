@@ -52,8 +52,9 @@ def SimplePosting(account, units, cost=None):
     return data.Posting(account, units, cost, None, None, None)
 
 
-def Meta(index, **kwargs):
+def Meta(index, rec, **kwargs):
     meta = data.new_metadata("<johnny>", index)
+    meta["rowtype"] = rec.rowtype
     meta.update(kwargs)
     return meta
 
@@ -63,12 +64,12 @@ def Links(rec: Record):
 
 
 def Tags(rec: Record):
-    return {f"rowtype-{rec.rowtype}"}
+    return None  # {f"rowtype-{rec.rowtype}"}
 
 
 def Convert_Balance(account: Account, index: int, rec: Record):
     return data.Balance(
-        Meta(index),
+        Meta(index, rec),
         rec.datetime.date(),
         GetAssets(account, "Cash"),
         Amount(rec.balance, "USD"),
@@ -79,7 +80,7 @@ def Convert_Balance(account: Account, index: int, rec: Record):
 
 def _SimpleTransaction(account: Account, index: int, rec: Record, to_account: str):
     return data.Transaction(
-        Meta(index),
+        Meta(index, rec),
         rec.datetime.date(),
         flags.FLAG_OKAY,
         None,
@@ -131,6 +132,14 @@ def Convert_Sweep(account: Account, index: int, rec: Record):
     )
 
 
+def Convert_InternalTransfer(account: Account, index: int, rec: Record):
+    return _SimpleTransaction(account, index, rec, "Expenses:Unknown")
+
+
+def Convert_ExternalTransfer(account: Account, index: int, rec: Record):
+    return _SimpleTransaction(account, index, rec, "Expenses:Unknown")
+
+
 # TODO(blais): Add config and fetch account name from ther.
 def ExportNonTrades(config: Config, nontrades: Table, file: TextIO):
     nontrades = nontrades.selectnotin(
@@ -151,7 +160,7 @@ def ExportNonTrades(config: Config, nontrades: Table, file: TextIO):
     for index, rec in enumerate(nontrades.records()):
         func = globals().get(f"Convert_{rec.rowtype}", None)
         if not func:
-            print(rec)
+            print(f";; {rec}")
             continue
 
         account = account_config_map.get(rec.account, None)

@@ -257,7 +257,7 @@ def GetTransactions(filename: str) -> Table:
 
     # Filter rows that we care about. Note that this removes mark-to-market
     # entries.
-    filt_items = (
+    table = (
         petl.fromdicts(items)
         # Add row type and filter out the row types we're not interested
         # in.
@@ -266,8 +266,14 @@ def GetTransactions(filename: str) -> Table:
         )
     )
 
+    # Add missing columns (can happen if there weren't any transactions ever).
+    add_cols = {"order-id", "symbol", "quantity"}
+    for col in add_cols:
+        if col not in table.fieldnames():
+            table = table.addfield(col, None)
+
     table = (
-        filt_items
+        table
         # Map account number.
         .convert("account-number", MapAccountNumber)
         .rename("account-number", "account")

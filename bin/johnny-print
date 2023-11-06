@@ -171,11 +171,14 @@ def imported_chains(ctx: click.Context):
 
 
 @cli.command()
+@click.option("--account", "-a", help="Optional account to filter with.")
 @click.pass_context
-def export_nontrades(ctx: click.Context):
+def export_nontrades(ctx: click.Context, account: Optional[str]):
     "Convert nontrades to Beancount format."
     config = ctx.obj["config"]
     imported = petl.frompickle(config.output.nontrades_pickle)
+    if account:
+        imported = imported.selecteq("account", account)
     be.ExportNonTrades(config, imported, sys.stdout)
 
 
