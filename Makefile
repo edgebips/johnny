@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Set JOHNNY_CONFIG in order for this to work.
-DOWNLOADS = $(HOME)/q/johnny-data/downloads/tastytrade
+DOWNLOADS = $(HOME)/q/johnny-data/downloads/tastytrade_api
 CHAINS = $(shell grep chains_db $(JOHNNY_CONFIG) | head -n1 | sed  -e 's/.*chains_db: *"//;s/"//')
 CHAINS_NEW = $(shell grep chains_db $(JOHNNY_CONFIG) | tail -n1 | sed  -e 's/.*chains_db: *"//;s/"//')
 
@@ -9,8 +9,9 @@ test:
 	python3 -m pytest -x johnny
 
 update:
-	tastyworks-update -a Individual $(DOWNLOADS)/tastyworks-individual.db
-	tastyworks-update -a Roth       $(DOWNLOADS)/tastyworks-roth.db
+	tastyworks-update -a Individual  $(DOWNLOADS)/tastyworks-individual.db
+	tastyworks-update -a Roth        $(DOWNLOADS)/tastyworks-roth.db
+	tastyworks-update -a Traditional $(DOWNLOADS)/tastyworks-traditional.db
 
 move-files:
 	johnny-move-files
@@ -52,7 +53,8 @@ accept-specific-chains:
 	cat | ./experiments/accept-chains.py -g Premium -s FINAL
 
 find-transfers:
-	./experiments/find-transfers.py 'Assets:US:(Interactive|Ameritrade|Tastyworks):Main' -d 2021-01-01
+	./experiments/find-transfers.py 'Assets:US:(Interactive|Ameritrade|Tastyworks)' # --end-date=2023-01-01
+
 
 # Proto generation rules.
 PROTOS_PB2 =                                    \
