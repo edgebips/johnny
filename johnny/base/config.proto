@@ -16,7 +16,7 @@
 //   platform through which information is obtained. For example, "Ameritrade"
 //   has a website that provides downloadable transaction data but we get more
 //   complete information by using its "thinkorswim" platform (which is also
-//   part of Ameritrade). Tastytrade (formerly Tastyworks) has CSV downloads but
+//   part of Ameritrade). Tastytrade (formerly Tastytrade) has CSV downloads but
 //   we've been able to reverse engineer some of its API enough to get
 //   transaction data more reliably sync'ed to a key/value store. Therefore, the
 //   account configuration includes optional support for multiple sources of

@@ -1,14 +1,14 @@
-# Tastyworks Internal Transactions Log
+# Tastytrade Internal Transactions Log
 ## Introduction
 
 Here is a spec describing the format of the JSON documents that can be
 downloaded for each of the transactions in the log, the field names and their
 possible values. Note that this is possibly incomplete, and only derived by
 observing the values appearing in my personal user streams of transactions. As
-per Tastyworks, there is no official specification document describing the
+per Tastytrade, there is no official specification document describing the
 format of the log (despite its availability in the History tab).
 
-You can use the `tastyworks-update` script in order to maintain a local mirror
+You can use the `tastytrade-update` script in order to maintain a local mirror
 of your transactions log for processing.
 
 

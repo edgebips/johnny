@@ -1,4 +1,4 @@
-"""Parsing symbols from Tastyworks to a common normalized symbology called `BeanSyms`."""
+"""Parsing symbols from Tastytrade to a common normalized symbology called `BeanSyms`."""
 
 __copyright__ = "Copyright (C) 2021  Martin Blais"
 __license__ = "GNU GPLv2"
@@ -15,7 +15,7 @@ Instrument = instrument.Instrument
 
 
 def ParseSymbol(symbol: str, instype: Optional[str] = None) -> Instrument:
-    """Parse a symbol from the Tastyworks platforms."""
+    """Parse a symbol from the Tastytrade platforms."""
     # Note: The instrument type is a normalized one, not the original one.
     if not symbol:
         return None

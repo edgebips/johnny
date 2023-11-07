@@ -1,4 +1,4 @@
-"""Tax worksheets and form 8949 parsing for Tastyworks.
+"""Tax worksheets and form 8949 parsing for Tastytrade.
 """
 
 import re
@@ -102,9 +102,9 @@ def _parse_security_description(description: str, und: str, txntype: str) -> str
     return und.lstrip("*")
 
 
-# TODO(blais): Non-equity options aren't categorized as such by Tastyworks as of
+# TODO(blais): Non-equity options aren't categorized as such by Tastytrade as of
 # 2022-03-20. This restores our correct categorization to Tastywork's incorrect
 # ones, in order to perform comparisons.
 def uncorrect_nonequity(table):
-    "Tastyworks is incorrectly missing non-equity options as equity options."
+    "Tastytrade is incorrectly missing non-equity options as equity options."
     return table.replace("instype", "NonEquityOption", "EquityOption")

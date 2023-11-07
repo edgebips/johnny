@@ -53,7 +53,7 @@ accept-specific-chains:
 	cat | ./experiments/accept-chains.py -g Premium -s FINAL
 
 find-transfers:
-	./experiments/find-transfers.py 'Assets:US:(Interactive|Ameritrade|Tastyworks)' # --end-date=2023-01-01
+	./experiments/find-transfers.py 'Assets:US:(Interactive|Ameritrade|Tastytrade)' # --end-date=2023-01-01
 
 
 # Proto generation rules.

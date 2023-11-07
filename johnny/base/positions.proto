@@ -20,7 +20,7 @@ message Position {
   required string account = 1;
 
   // `group: Optional[str]`: A group name that can be created by the application, if
-  // possible. thinkorswim has the ability to create position groups. Tastyworks
+  // possible. thinkorswim has the ability to create position groups. Tastytrade
   // does not. This is a kind of user label common to multiple positions.
   optional string group = 2;
 
@@ -59,7 +59,7 @@ message Position {
 
   // `unit_delta: Decimal`: The per-unit delta (option delta) of the instrument
   // (range: between 0 and 1). In thinkorswim, this is the OptionDelta. In
-  // tastyworks, it is the "/ Delta" column. This can be used to compute absolute
+  // tastytrade, it is the "/ Delta" column. This can be used to compute absolute
   // dollar-deltas in order to compute leverage ratios.
   optional Decimal unit_delta = 9;
 

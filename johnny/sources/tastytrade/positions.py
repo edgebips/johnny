@@ -1,4 +1,4 @@
-"""Tastyworks - Parse positions CSV file.
+"""Tastytrade - Parse positions CSV file.
 """
 
 __copyright__ = "Copyright (C) 2021  Martin Blais"

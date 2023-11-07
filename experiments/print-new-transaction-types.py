@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Identify unique transaction types tripled from a Tastyworks database.
+"""Identify unique transaction types tripled from a Tastytrade database.
 """
 
 __copyright__ = "Copyright (C) 2021  Martin Blais"

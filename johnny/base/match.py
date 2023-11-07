@@ -417,7 +417,7 @@ def _FuturesNotionalOpen(rows: List[Record]) -> Decimal:
 def _ShortOptionsNullify(matches: Table) -> Table:
     """
     On short options sales, nullify the cost basis as per the following rule:
-    https://support.tastyworks.com/support/solutions/articles/43000615420--0-00-cost-basis-on-short-equity-options-
+    https://support.tastytrade.com/support/solutions/articles/43000615420--0-00-cost-basis-on-short-equity-options-
     """
     return (
         matches.addfield(

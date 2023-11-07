@@ -103,7 +103,7 @@ message Transaction {
   // inferred automatically later, from processing the entire file from the
   // initial positions. (The Thinkorswim log provides a value, but when it
   // crosses the null position line it is incorrectly set to `TO_CLOSE`;
-  // Tastyworks does not provide a value for effect.) Rows may be split if
+  // Tastytrade does not provide a value for effect.) Rows may be split if
   // necessary (when crossing the null position line), in order to provide
   // accurate cost basis values.
   enum PositionEffect {

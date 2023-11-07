@@ -13,7 +13,7 @@ Transactions are grouped together if
 
 This code is designed to be independent of the source, as we went to be able to
 do this on all options platforms, such as Ameritrade, InteractiveBrokers,
-Vanguard and Tastyworks.
+Vanguard and Tastytrade.
 """
 
 __copyright__ = "Copyright (C) 2021  Martin Blais"

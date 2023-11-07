@@ -1,6 +1,6 @@
-"""Tastyworks - Convert local database of updated transactions from the API.
+"""Tastytrade - Convert local database of updated transactions from the API.
 
-You can use tastyworks-update to maintain a local database of unprocessed
+You can use tastytrade-update to maintain a local database of unprocessed
 transactions. This program can then read that database and convert it to our
 desired normalized format.
 """
@@ -249,7 +249,7 @@ def GetOrderId(order_id: Optional[int], rec: Record) -> str:
 
 
 def GetTransactions(filename: str) -> Table:
-    """Open a local database of Tastyworks API transactions and normalize it."""
+    """Open a local database of Tastytrade API transactions and normalize it."""
 
     # Convert numerical fields to decimals.
     db = shelve.open(filename, "r")

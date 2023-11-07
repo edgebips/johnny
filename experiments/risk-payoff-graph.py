@@ -89,8 +89,8 @@ def get_product(underlying: str) -> str:
     type=click.Path(exists=True),
     help="Configuration filename. Default to $JOHNNY_CONFIG",
 )
-@click.option("--username", "-u", help="Tastyworks username.")
-@click.option("--password")  # Tastyworks password.
+@click.option("--username", "-u", help="Tastytrade username.")
+@click.option("--password")  # Tastytrade password.
 def main(config: Optional[str], username: Optional[str], password: Optional[str]):
     # Load the database.
     filename = configlib.GetConfigFilenameWithDefaults(config)

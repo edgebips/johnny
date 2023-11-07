@@ -1,4 +1,4 @@
-"""Tastyworks - Parse transactions history CSV file.
+"""Tastytrade - Parse transactions history CSV file.
 
 Click on "History" >> "Transactions" >> [period] >> [CSV]
 
@@ -364,7 +364,7 @@ def SplitTables(table: Table) -> Tuple[Table, Table]:
 def GetAccount(filename: str) -> str:
     """Get the account id."""
     match = re.match(
-        r"tastyworks_transactions_(.*)_" r"(\d{4}-\d{2}-\d{2})_(\d{4}-\d{2}-\d{2}).csv",
+        r"tastytrade_transactions_(.*)_" r"(\d{4}-\d{2}-\d{2})_(\d{4}-\d{2}-\d{2}).csv",
         path.basename(filename),
     )
     if not match:

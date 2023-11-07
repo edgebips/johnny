@@ -54,12 +54,12 @@ in-development versions.
 ## Inputs
 
 There a two tools, which feed off of CSV downloads from either of thinkorswim or
-Tastyworks. The tool automatically identifies the files from a directory of
+Tastytrade. The tool automatically identifies the files from a directory of
 these files all in the same place.
 
 You will need both a positions file and a transactions log downloads.
 
-### Tastyworks
+### Tastytrade
 
 - **Positions** Go to the `Positions` tab, click on `CSV`, save file to a
   directory. Make sure you have the following columns in your position tab:
@@ -107,26 +107,26 @@ Two types of inputs can be specified: transaction sources and position sources.
 * Position sources are lists of positions that provide updated prices. They are
   only used to mark open positions.
 
-Here's an example of an input setup for a Tastyworks account:
+Here's an example of an input setup for a Tastytrade account:
 
     input {
       accounts {
         nickname: "x18"
         logtype: TRANSACTIONS
         module: "johnny.sources.tastytrade.transactions"
-        source: "/home/user/trading/tastyworks-individual.db"
+        source: "/home/user/trading/tastytrade-individual.db"
       }
       accounts {
         nickname: "x20"
         logtype: TRANSACTIONS
         module: "johnny.sources.tastytrade.transactions"
-        source: "/home/user/trading/tastyworks-roth.db"
+        source: "/home/user/trading/tastytrade-roth.db"
       }
       accounts {
         nickname: "twpos"
         logtype: POSITIONS
         module: "johnny.sources.tastytrade.positions"
-        source: "/home/user/trading/tastyworks_positions_*_*.csv"
+        source: "/home/user/trading/tastytrade_positions_*_*.csv"
       }
       ...
     }
@@ -188,19 +188,19 @@ Here's what a full input configuration might look like:
         nickname: "x18"
         logtype: TRANSACTIONS
         module: "johnny.sources.tastytrade.transactions"
-        source: "/home/user/trading/tastyworks-individual.db"
+        source: "/home/user/trading/tastytrade-individual.db"
       }
       accounts {
         nickname: "x20"
         logtype: TRANSACTIONS
         module: "johnny.sources.tastytrade.transactions"
-        source: "/home/user/trading/tastyworks-roth.db"
+        source: "/home/user/trading/tastytrade-roth.db"
       }
       accounts {
         nickname: "twpos"
         logtype: POSITIONS
         module: "johnny.sources.tastytrade.positions"
-        source: "/home/user/trading/tastyworks_positions_*_*.csv"
+        source: "/home/user/trading/tastytrade_positions_*_*.csv"
       }
       accounts {
         nickname: "x96"
