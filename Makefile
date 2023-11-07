@@ -9,9 +9,9 @@ test:
 	python3 -m pytest -x johnny
 
 update:
-	tastyworks-update -a Individual  $(DOWNLOADS)/tastyworks-individual.db
-	tastyworks-update -a Roth        $(DOWNLOADS)/tastyworks-roth.db
-	tastyworks-update -a Traditional $(DOWNLOADS)/tastyworks-traditional.db
+	tastytrade-update -a Individual  $(DOWNLOADS)/tastytrade-individual.db
+	tastytrade-update -a Roth        $(DOWNLOADS)/tastytrade-roth.db
+	tastytrade-update -a Traditional $(DOWNLOADS)/tastytrade-traditional.db
 
 move-files:
 	johnny-move-files
