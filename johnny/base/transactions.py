@@ -82,7 +82,7 @@ def ValidateRecord(r: Record):
     checks.AssertString(r.description)
     checks.AssertString(r.symbol)
     checks.AssertValidSymbol(r.symbol)
-    checks.AssertOptionalString(r.transaction_id)
+    checks.AssertString(r.transaction_id)
     checks.AssertOptionalString(r.order_id)
 
     checks.AssertOptionalEnum(Transaction.PositionEffect, r.effect)

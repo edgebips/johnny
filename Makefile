@@ -55,6 +55,10 @@ accept-specific-chains:
 find-transfers:
 	./experiments/find-transfers.py 'Assets:US:(Interactive|Ameritrade|Tastytrade)' # --end-date=2023-01-01
 
+TREASURIES_INPUT = $(shell cat $(JOHNNY_CONFIG) | grep ameritrade_download_transactions_for_treasuries | sed -e 's@.*"\(.*\)"@\1@')
+treasuries:
+	python3 -m johnny.sources.ameritrade.treasuries $(TREASURIES_INPUT)
+
 
 # Proto generation rules.
 PROTOS_PB2 =                                    \

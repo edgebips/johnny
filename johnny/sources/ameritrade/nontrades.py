@@ -114,13 +114,16 @@ def ConvertNonTrades(other: Table, account_id: str) -> Table:
 
 
 def ImportNonTrades(config: config_pb2.Config) -> petl.Table:
+    treasuries_table = txnlib.ImportTreasuries(config)
+
     pattern = path.expandvars(config.thinkorswim_account_statement_csv_file_pattern)
     fnmap = discovery.GetLatestFilePerYear(pattern)
     other_list = []
     for year, filename in sorted(fnmap.items()):
-        _, other = txnlib.GetTransactions(filename)
+        _, other = txnlib.GetTransactions(filename, treasuries_table)
         other = other.select(lambda r, y=year: r.datetime.year == y)
         other_list.append(other)
     table = petl.cat(*other_list)
+
     nontrades = ConvertNonTrades(table, "<ameritrade>")
     return nontrades

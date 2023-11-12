@@ -14,7 +14,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x1cjohnny/base/instrument.proto\x12\x06johnny\"\n\n\x08\x44\x61teTime\"\t\n\x07\x44\x65\x63imal\"\xc0\x03\n\nInstrument\x12\x32\n\x07instype\x18\x01 \x02(\x0e\x32!.johnny.Instrument.InstrumentType\x12\x12\n\nunderlying\x18\x02 \x02(\t\x12\x0f\n\x07\x65xpcode\x18\x03 \x01(\t\x12$\n\nexpiration\x18\x04 \x01(\x0b\x32\x10.johnny.DateTime\x12.\n\x07putcall\x18\x05 \x01(\x0e\x32\x1d.johnny.Instrument.OptionType\x12\x1f\n\x06strike\x18\x06 \x01(\x0b\x32\x0f.johnny.Decimal\x12#\n\nmultiplier\x18\x07 \x01(\x0b\x32\x0f.johnny.Decimal\"\x9b\x01\n\x0eInstrumentType\x12\n\n\x06\x45quity\x10\x01\x12\x10\n\x0c\x45quityOption\x10\x02\x12\x13\n\x0fNonEquityOption\x10\x03\x12\x10\n\x0c\x43ollectibles\x10\x04\x12\n\n\x06\x46uture\x10\x05\x12\x10\n\x0c\x46utureOption\x10\x06\x12\t\n\x05Index\x10\x07\x12\x0f\n\x0bIndexOption\x10\x08\x12\n\n\x06\x43rypto\x10\t\"\x1f\n\nOptionType\x12\x07\n\x03PUT\x10\x01\x12\x08\n\x04\x43\x41LL\x10\x02')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x1cjohnny/base/instrument.proto\x12\x06johnny\"\n\n\x08\x44\x61teTime\"\t\n\x07\x44\x65\x63imal\"\xca\x03\n\nInstrument\x12\x32\n\x07instype\x18\x01 \x02(\x0e\x32!.johnny.Instrument.InstrumentType\x12\x12\n\nunderlying\x18\x02 \x02(\t\x12\x0f\n\x07\x65xpcode\x18\x03 \x01(\t\x12$\n\nexpiration\x18\x04 \x01(\x0b\x32\x10.johnny.DateTime\x12.\n\x07putcall\x18\x05 \x01(\x0e\x32\x1d.johnny.Instrument.OptionType\x12\x1f\n\x06strike\x18\x06 \x01(\x0b\x32\x0f.johnny.Decimal\x12#\n\nmultiplier\x18\x07 \x01(\x0b\x32\x0f.johnny.Decimal\"\xa5\x01\n\x0eInstrumentType\x12\n\n\x06\x45quity\x10\x01\x12\x10\n\x0c\x45quityOption\x10\x02\x12\x13\n\x0fNonEquityOption\x10\x03\x12\x10\n\x0c\x43ollectibles\x10\x04\x12\n\n\x06\x46uture\x10\x05\x12\x10\n\x0c\x46utureOption\x10\x06\x12\t\n\x05Index\x10\x07\x12\x0f\n\x0bIndexOption\x10\x08\x12\n\n\x06\x43rypto\x10\t\x12\x08\n\x04\x42ond\x10\n\"\x1f\n\nOptionType\x12\x07\n\x03PUT\x10\x01\x12\x08\n\x04\x43\x41LL\x10\x02')
 
 
 
@@ -52,9 +52,9 @@ if _descriptor._USE_C_DESCRIPTORS == False:
   _DECIMAL._serialized_start=52
   _DECIMAL._serialized_end=61
   _INSTRUMENT._serialized_start=64
-  _INSTRUMENT._serialized_end=512
+  _INSTRUMENT._serialized_end=522
   _INSTRUMENT_INSTRUMENTTYPE._serialized_start=324
-  _INSTRUMENT_INSTRUMENTTYPE._serialized_end=479
-  _INSTRUMENT_OPTIONTYPE._serialized_start=481
-  _INSTRUMENT_OPTIONTYPE._serialized_end=512
+  _INSTRUMENT_INSTRUMENTTYPE._serialized_end=489
+  _INSTRUMENT_OPTIONTYPE._serialized_start=491
+  _INSTRUMENT_OPTIONTYPE._serialized_end=522
 # @@protoc_insertion_point(module_scope)

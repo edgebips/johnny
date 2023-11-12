@@ -62,7 +62,9 @@ def PrintTable(table: Table, ctx: click.Context):
     if ctx.obj["expand"]:
         table = instrument.Expand(table, "symbol")
     # Convert null values just before printing. Display only.
-    table = table.replaceall(None, "")  ## TODO(blais): Uncomment this.
+    table = table.replaceall(None, "")
+    # Sort by datetime.
+    table = table.sort("datetime")
     print(table.lookallstr())
 
 

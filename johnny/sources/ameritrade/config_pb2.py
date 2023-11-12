@@ -14,7 +14,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n&johnny/sources/ameritrade/config.proto\x12\x11johnny.ameritrade\"z\n\x06\x43onfig\x12\x36\n.thinkorswim_account_statement_csv_file_pattern\x18\x01 \x01(\t\x12\x38\n0thinkorswim_positions_statement_csv_file_pattern\x18\x02 \x01(\t')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n&johnny/sources/ameritrade/config.proto\x12\x11johnny.ameritrade\"\xb3\x01\n\x06\x43onfig\x12\x36\n.thinkorswim_account_statement_csv_file_pattern\x18\x01 \x01(\t\x12\x38\n0thinkorswim_positions_statement_csv_file_pattern\x18\x02 \x01(\t\x12\x37\n/ameritrade_download_transactions_for_treasuries\x18\x03 \x01(\t')
 
 
 
@@ -29,6 +29,6 @@ _sym_db.RegisterMessage(Config)
 if _descriptor._USE_C_DESCRIPTORS == False:
 
   DESCRIPTOR._options = None
-  _CONFIG._serialized_start=61
-  _CONFIG._serialized_end=183
+  _CONFIG._serialized_start=62
+  _CONFIG._serialized_end=241
 # @@protoc_insertion_point(module_scope)

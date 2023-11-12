@@ -26,6 +26,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union, Iterable
 import collections
 import csv
 import datetime
+import datetime as dt
 import hashlib
 import itertools
 import logging
@@ -52,6 +53,7 @@ from johnny.sources.ameritrade import config_pb2
 from johnny.sources.ameritrade import nontrades
 from johnny.sources.ameritrade import symbols
 from johnny.sources.ameritrade import utils
+from johnny.sources.ameritrade import treasuries
 from johnny.utils import csv_utils
 
 
@@ -61,6 +63,7 @@ debug = False
 ONE = Decimal(1)
 ZERO = Decimal(0)
 Q3 = Decimal("0.001")
+Q4 = Decimal("0.0001")
 
 
 # Include the commnissions on the last leg. This matches the worksheets.
@@ -165,12 +168,15 @@ def ReconcilePairsOrderIds(table: Table, threshold: int) -> Table:
     return table
 
 
+TREASURIES_REGEX = re.compile(r"912[0-9]{2}[0-9A-Z]{4}")
+
+
 def ProcessTradeHistory(
     equities_cash: Table, futures_cash: Table, trade_hist: Table
 ) -> Tuple[List[Any], List[Any], Table, Table]:
     """Join the trade history table with the equities table.
 
-    Note that the equities table does not contian the ref ids, so they we have
+    Note that the equities table does not contain the ref ids, so they we have
     to use the symbol as the second key to disambiguate further from the time of
     execution. (If TD allowed exporting the ref from the Cash Statement we would
     just use that, that would resolve the problem. There is a bug in the
@@ -186,34 +192,46 @@ def ProcessTradeHistory(
     # and decimate it by matching rows from the cash tables. Then we verify that
     # the trade history has been fully accounted for by checking that it's empty.
     trade_hist_map = trade_hist.recordlookup("exec_time")
+    trow_flds = trade_hist.fieldnames()
 
     # Process the equities cash table.
     def MatchTradingRows(cash_table: Table):
+        # Split up trades and other (cash) row.
+        trades_table, other_table = cash_table.biselect(lambda r: r.type == "TRD")
+        # print(other_table.lookallstr())
+
         order_groups = []
-        other_rows = []
-        mapping = cash_table.recordlookup("datetime")
+        mapping = trades_table.recordlookup("datetime")
         for dtime, cash_rows in mapping.items():
-            # If the transaction is not a trade, ignore it.
-            # Dividends, expirations are processed elsewhere.
-            if not any(crow.type == "TRD" for crow in cash_rows):
-                other_rows.extend(cash_rows)
-                continue
+            # print(WrapRecords(cash_rows))
 
-            # Pull up the rows corresponding to this cash statement and remove
-            # them from the trade history.
-            try:
-                trade_rows = trade_hist_map.pop(dtime)
-            except KeyError:
-                message = "Trade history for cash rows: '{}' not found".format(
-                    cash_rows
-                )
-                logging.error(message)
-                continue
+            # Pull out treasuries specially; they do not have a trade row.
+            # Register them with empty trade_rows.
+            if all(TREASURIES_REGEX.fullmatch(crow.symbol) for crow in cash_rows):
+                for crow in cash_rows:
+                    trow = _SynthesizeTradeRowForTreasury(crow, trow_flds)
+                    order_groups.append((dtime, [crow], [trow]))
 
-            order_groups.append((dtime, cash_rows, trade_rows))
+            # Pull out callable actions that I didn't trigger and synthesize a
+            # trade row; these will not show up in the trade history.
+            elif all(
+                re.match(".* - FULL CALL$", crow.description) for crow in cash_rows
+            ):
+                trade_rows = _SynthesizeTradeRowForCallable(cash_rows, trow_flds)
+                order_groups.append((dtime, cash_rows, trade_rows))
 
-        # Ensure that even an empty table has the right field names.
-        other_table = petl.wrap([cash_table.header()] + other_rows)
+            else:
+                # Pull up the rows corresponding to this cash statement and remove
+                # them from the trade history.
+                try:
+                    trade_rows = trade_hist_map.pop(dtime)
+                except KeyError:
+                    message = (
+                        f"Trade history row for cash rows not found:\n'{cash_rows}'"
+                    )
+                    logging.error(message)
+                else:
+                    order_groups.append((dtime, cash_rows, trade_rows))
 
         return order_groups, other_table
 
@@ -225,11 +243,94 @@ def ProcessTradeHistory(
     # Assert that the trade history table has been fully accounted for.
     if trade_hist_map:
         raise ValueError(
-            "Some trades from the trade history not covered by cash: "
+            "Some trades from the trade history are not covered by cash: "
             "{}".format(trade_hist_map)
         )
 
     return (equities_groups, futures_groups, equities_others, futures_others)
+
+
+def _SynthesizeTradeRowForCallable(
+    cash_rows: List[Record], trow_flds: List[str]
+) -> List[Record]:
+    """Callable products may sometimes be called without a corresponding trade
+    in the trade history table. Synthesize those explicitly so we can process as
+    if it was contained.
+    """
+    trade_rows = []
+    for crow in cash_rows:
+        order_id = crow.rowid
+        trade_rows.append(
+            Record(
+                (
+                    crow.datetime,
+                    crow.strategy,
+                    "SELL",  # Calling is always a sell.
+                    -crow.quantity,
+                    "CLOSING",
+                    abs(crow.amount / crow.quantity).quantize(Q4),
+                    order_id,
+                    "Trade",
+                    crow.symbol,
+                    None,
+                    None,
+                    None,
+                    None,
+                    ONE,
+                    crow.symbol,
+                    crow.quantity,
+                    None,
+                    None,
+                ),
+                trow_flds,
+            )
+        )
+    return trade_rows
+
+
+def _SynthesizeTradeRowForTreasury(crow: Record, trow_flds: List[str]) -> Record:
+    """Make up a take trade row so you can process T-Bills.
+
+    Process them like the rest of the activity. This is a bit awful (it might
+    otherwise be better to separate these out for special handling) but it
+    simplifies the logic a bit.
+
+    Example crow:
+    rowid     datetime             type  ref         description                         commissions_fees  amount     balance     misc_fees  symbol     strategy  quantity
+    45e0f595  2023-06-02 01:00:00  TRD   6247843362  BOT 100.0 912797GV3 UPON BUY TRADE                 0  -98284.98  -285979.12       0.00  912797GV3  SINGLE       100.0
+
+    Example trow (this is what we're creating):
+    exec_time            spread  side  qty    pos_effect  price  order_id    instype  underlying  expiration  expcode  putcall  strike  multiplier  symbol  quantity  pair_id     order_diff
+    2023-06-02 09:55:45  STOCK   SELL  -3500  CLOSING     22.64  6247525900  Equity   DBC         None        None     None     None             1  DBC         3500  6247525900
+    """
+    side = "BUY" if crow.description.startswith("BOT") else "SELL"
+    pos_effect = "OPENING" if side == "BUY" else "CLOSING"
+    order_id = crow.rowid
+    pair_id = None
+    price = abs(crow.amount / crow.quantity).quantize(Q4)
+    return Record(
+        (
+            crow.datetime,
+            "BOND",
+            side,
+            crow.quantity,  # TODO(blais): Adjust the sign
+            pos_effect,
+            price,
+            order_id,
+            "Bond",
+            crow.symbol,
+            None,  # TODO(blais): Can we add maturity in the 'expiration' field?
+            None,
+            None,
+            None,
+            ONE,
+            crow.symbol,
+            crow.quantity,
+            pair_id,
+            None,
+        ),
+        trow_flds,
+    )
 
 
 def _CreateInstrument(r: Record) -> str:
@@ -322,14 +423,17 @@ def ProcessDividends(table: Table) -> Tuple[Table, Table]:
             "valid_div",
             lambda r: Assert(
                 r.type == "DOI"
-                and re.match(r"(ORDINARY DIVIDEND|.*\bDISTRIBUTION\b)", r.description)
+                and re.match(
+                    r"(ORDINARY DIVIDEND|.*\bDISTRIBUTION|US TREASURY INTEREST\b)",
+                    r.description,
+                )
             ),
         )
         .addfield("order_id", lambda r: r["rowid"])
         .addfield("pair_id", lambda r: r["rowid"])
         .capture(
             "description",
-            r"(?:DIVIDEND|DISTRIBUTION)~(.*)",
+            r"(?:DIVIDEND|DISTRIBUTION|US TREASURY INTEREST)~(.*)",
             ["symbol"],
             include_original=True,
         )
@@ -374,8 +478,27 @@ def ProcessDividends(table: Table) -> Tuple[Table, Table]:
             ]
         )
     )
-
+    table = OffsetCouponTimes(table)
     return table, petl.empty()
+
+
+def OffsetCouponTimes(table: Table) -> Table:
+    """US Treasuries often provide a coupon on redemption.
+
+    These are often delivered at a 1am time at the very same time as redemption
+    and show up after it in the statement. Ensure that for the purpose of
+    matching for building chains this cash distribution ("dividend") occurs
+    before the redemption ("sale").
+    """
+    def OffsetCouponTime(datetime: dt.datetime, rec: Record) -> dt.datetime:
+        datetime = rec.datetime
+        if rec.description.startswith(
+            "US TREASURY INTEREST"
+        ) and rec.datetime.time() == dt.time(1, 0, 0):
+            datetime -= dt.timedelta(seconds=1)
+        return datetime
+
+    return table.convert("datetime", OffsetCouponTime, pass_row=True)
 
 
 Group = Tuple[datetime.date, List[Record], List[Record]]
@@ -437,8 +560,8 @@ def SplitGroupsToTransactions(groups: List[Group], is_futures: bool) -> Table:
     rows = [_TXN_FIELDS]
     for group in groups:
         dtime, cash_rows, trade_rows = group
-        if 0:
-            PrintGroup(group)
+        # if any(crow.symbol == "JJU" for crow in cash_rows):
+        #     PrintGroup(group)
 
         # Attempt to match up each cash row to each trade rows. We assert that
         # we always find only two situations: N:N matches, where we can pair up
@@ -764,6 +887,8 @@ def ParseDescription(table: Table) -> Table:
         .addfield("symbol", lambda r: r._desc.get("symbol", ""))
         .addfield("strategy", lambda r: r._desc.get("strategy", ""))
         .addfield("quantity", lambda r: r._desc.get("quantity", ""))
+        .addfield("rate", lambda r: r._desc.get("rate", ""))
+        .addfield("maturity", lambda r: r._desc.get("maturity", ""))
         .cutout("_desc")
     )
 
@@ -778,8 +903,10 @@ def _ParseDescriptionRecord(row: Record) -> Dict[str, Any]:
     if row.type == "DOI":
         if re.match(".* DIVIDEND", row.description):
             return _ParseDividendDescription(row.description)
-        if re.match(".* DISTRIBUTION", row.description):
+        elif re.match(".* DISTRIBUTION", row.description):
             return _ParseDistributionDescription(row.description)
+        elif re.match("US TREASURY INTEREST", row.description):
+            return _ParseTreasuryInterestDescription(row.description, row.amount)
     return {}
 
 
@@ -900,21 +1027,45 @@ def _ParseTradeDescription(description: str) -> Dict[str, Any]:
 
 def _ParseDividendDescription(description: str) -> Dict[str, Any]:
     """Parse the description field of an expiration."""
-    match = re.match(
-        "ORDINARY (?P<strategy>DIVIDEND)~(?P<symbol>[A-Z0-9]+)", description
-    )
-    assert match, description
-    matches = match.groupdict()
+    mo = re.match("ORDINARY (?P<strategy>DIVIDEND)~(?P<symbol>[A-Z0-9]+)", description)
+    assert mo, description
+    matches = mo.groupdict()
     matches["quantity"] = Decimal("0")
     return matches
 
 
 def _ParseDistributionDescription(description: str) -> Dict[str, Any]:
     """Parse the description field of an expiration."""
-    match = re.match(".* (?P<strategy>DISTRIBUTION)~(?P<symbol>[A-Z0-9]+)", description)
-    assert match, description
-    matches = match.groupdict()
+    mo = re.match(".* (?P<strategy>DISTRIBUTION)~(?P<symbol>[A-Z0-9]+)", description)
+    assert mo, description
+    matches = mo.groupdict()
     matches["quantity"] = Decimal("0")
+    return matches
+
+
+def _ParseTreasuryInterestDescription(
+    description: str, amount: Decimal
+) -> Dict[str, Any]:
+    """Parse the description field of US Treasury interest."""
+
+    # Note that this doesn't include the actual instrument name.
+    # Ways we could match it include
+    # - Finding the instrument that expires at the given maturity from this record.
+    # - Computing the quantity and matching against positions, which we do here.
+    # - Joining against a table we download from the tdameritrade website.
+
+    mo = re.fullmatch(
+        r"(?P<strategy>US TREASURY INTEREST)~(?P<instrument>"
+        r"(?P<name>.*) (?P<rate>\d*\.\d+)% (?P<maturity>\d\d/\d\d/\d\d\d\d))",
+        description,
+    )
+    assert mo, description
+    matches = mo.groupdict()
+    rate = matches["rate"] = Decimal(matches["rate"])
+    matches["symbol"] = matches["instrument"]
+    matches["maturity"] = dt.datetime.strptime(matches["maturity"], "%m/%d/%Y").date()
+    # Back out the quantity from the known amount and rate.
+    matches["quantity"] = (amount / (rate / 100) / 1000 * 2).quantize(ONE)
     return matches
 
 
@@ -986,7 +1137,35 @@ def CleanDescriptionPrefixes(string: str) -> str:
     return re.sub("(WEB:(AA_[A-Z]+|WEB_GRID_SNAP)|tAndroid) ", "", string)
 
 
-def GetTransactions(filename: str) -> Tuple[Table, Table]:
+def ReplaceTreasuryInterestSymbols(
+    equities_rest: Table, treasuries_table: Table
+) -> Table:
+    """Find the symbols for the treasury interest rows and replace them.
+
+    The imported transactions include coupon payments but unfortunately do not
+    include the particular symbol for the bond position that's responsible for
+    the coupon received. For this purpose we provide a secondary table
+    containing the symbols and we join it with our transactions.
+    """
+    # Unique key for bonds.
+    mapping = treasuries_table.selecteq(
+        "rowtype", txnlib.Type.Dividend
+    ).recordlookupone(["maturity", "rate"])
+
+    def ReplaceSymbol(value: str, row: Record) -> str:
+        if row.type == "DOI" and row.symbol.startswith("UNITED STATES TREASURY"):
+            key = (row.maturity, row.rate)
+            found = mapping.get(key)
+            if not found:
+                return value + "(ERROR: Symbol not found)"
+                # raise ValueError(f"Mapping for coupon row not found: {row}")
+            return found.symbol
+        return value
+
+    return equities_rest.convert("symbol", ReplaceSymbol, pass_row=True)
+
+
+def GetTransactions(filename: str, treasuries_table: Table) -> Tuple[Table, Table]:
     """Read and prepare all the tables to be joined."""
 
     tables = PrepareTables(filename)
@@ -1013,6 +1192,11 @@ def GetTransactions(filename: str) -> Tuple[Table, Table]:
     equities_groups, futures_groups, equities_rest, futures_rest = ProcessTradeHistory(
         equities_trade, futures_trade, trade_hist
     )
+
+    # Join against the treasuries table to find the positions the coupons are to
+    # be associated with. Unfortunately the transactions statement does not
+    # include the symbol so we have to resort to this hack.
+    equities_rest = ReplaceTreasuryInterestSymbols(equities_rest, treasuries_table)
 
     # Convert matched groups of rows to trnasctions.
     equities_txns = SplitGroupsToTransactions(equities_groups, False)
@@ -1096,6 +1280,7 @@ def GetTransactionId(rec: Record) -> str:
     if rec.order_sequence is None:
         return str(rec.order_id)
     else:
+        assert rec.order_id, rec
         return "{}.{}".format(rec.order_id, rec.order_sequence)
 
 
@@ -1138,12 +1323,25 @@ def PrepareTables(filename: str) -> Dict[str, Table]:
     return prepared_tables
 
 
+def ImportTreasuries(config: config_pb2.Config) -> petl.Table:
+    """Read the treasuries table used to map the interest coupons to the specific
+    bonds. This is joined with the imported transactions table.
+    """
+    treasuries_filename = path.expandvars(
+        config.ameritrade_download_transactions_for_treasuries
+    )
+    return treasuries.ImportTreasuries(treasuries_filename)
+
+
 def ImportTransactions(config: config_pb2.Config) -> petl.Table:
+    treasuries_table = ImportTreasuries(config)
+
+    # Proper import of the transactions for every year.
     pattern = path.expandvars(config.thinkorswim_account_statement_csv_file_pattern)
     fnmap = discovery.GetLatestFilePerYear(pattern)
     transactions_list = []
     for year, filename in sorted(fnmap.items()):
-        transactions, _ = GetTransactions(filename)
+        transactions, _ = GetTransactions(filename, treasuries_table)
         transactions_list.append(
             transactions.select(lambda r, y=year: r.datetime.year == y)
         )

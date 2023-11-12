@@ -63,7 +63,9 @@ message Transaction {
     Exercise = 4; // (an exercise, a removal type of event),
     Mark = 5;     // (a virtual sale).
     Open = 6;     // (a virtual transaction to create an opening balance)
-    Dividend = 7; // (a dividend payment or other distributions associated with a trade)
+    Dividend = 7; // (a dividend payment or other distributions associated with
+                  // a trade, and interest coupons for bonds. TODO(blais):
+                  // Rename to 'Cash' which is more general and appropriate.)
   }
   required RowType rowtype = 4;
 

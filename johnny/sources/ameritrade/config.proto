@@ -3,14 +3,21 @@ syntax = "proto2";
 package johnny.ameritrade;
 
 message Config {
-    // A globbing pattern, url, or other data telling the importer where to find
-    // the files to import. if more than a single file matches, only the latest
-    // file (by timestamp) will be imported. this is in essence, the configuration
-    // across all possible sources, which are expected to be local files. in order
-    // to contain dependencies, updating these local caches of remote transactions
-    // logs should be done in separate programs using whichever apis are
-    // necessary; this library merely imports them into a single normalized
-    // database.
-    optional string thinkorswim_account_statement_csv_file_pattern = 1;
-    optional string thinkorswim_positions_statement_csv_file_pattern = 2;
+  // A globbing pattern, url, or other data telling the importer where to find
+  // the files to import. if more than a single file matches, only the latest
+  // file (by timestamp) will be imported. this is in essence, the configuration
+  // across all possible sources, which are expected to be local files. in order
+  // to contain dependencies, updating these local caches of remote transactions
+  // logs should be done in separate programs using whichever apis are
+  // necessary; this library merely imports them into a single normalized
+  // database.
+  optional string thinkorswim_account_statement_csv_file_pattern = 1;
+  optional string thinkorswim_positions_statement_csv_file_pattern = 2;
+
+  // A filename to a CSV file with information about treasuries. This will be
+  // used to match US Treasury Interest lines from the cash account balance
+  // which unfortunately don't come with a symbol.
+  //
+  // See "johnny/source/ameritrade/treasuries.py" to produce this file.
+  optional string ameritrade_download_transactions_for_treasuries = 3;
 }
