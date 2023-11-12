@@ -12,6 +12,7 @@ import logging
 import os
 import sys
 import io
+import itertools
 from typing import Mapping, TextIO
 
 import click
@@ -46,6 +47,10 @@ def GetAssets(account: Account, subaccount: str) -> str:
 
 def GetIncome(account: Account, subaccount: str) -> str:
     return GetAssets(account, subaccount).replace("Assets:", "Income:")
+
+
+def GetExpenses(account: Account, subaccount: str) -> str:
+    return accountlib.join("Expenses:Financial", subaccount)
 
 
 def SimplePosting(account, units, cost=None):
@@ -133,11 +138,11 @@ def Convert_Sweep(account: Account, index: int, rec: Record):
 
 
 def Convert_InternalTransfer(account: Account, index: int, rec: Record):
-    return # _SimpleTransaction(account, index, rec, "Expenses:Unknown")
+    return  # _SimpleTransaction(account, index, rec, "Expenses:Unknown")
 
 
 def Convert_ExternalTransfer(account: Account, index: int, rec: Record):
-    return # _SimpleTransaction(account, index, rec, "Expenses:Unknown")
+    return  # _SimpleTransaction(account, index, rec, "Expenses:Unknown")
 
 
 # TODO(blais): Add config and fetch account name from ther.
@@ -170,6 +175,197 @@ def ExportNonTrades(config: Config, nontrades: Table, file: TextIO):
         entry = func(account, index, rec)
         if entry:
             printer.print_entry(entry)
+
+
+# -------------------------------------------------------------------------------
+
+
+def Convert_Open(account: Account, index: int, rec: Record):
+    return
+
+
+def Posting(account, units, cost=None):
+    return data.Posting(account, units, cost, None, None, None)
+
+
+def Convert_Trade(account: Account, index: int, rec: Record):
+    table = WrapRecords([rec])
+    print(
+        "\n".join(
+            ";; {}".format(line)
+            for line in str(table.lookallstr()).strip().splitlines()
+        )
+    )
+    return data.Transaction(
+        Meta(index, rec),
+        rec.datetime.date(),
+        flags.FLAG_OKAY,
+        None,
+        rec.description,
+        Tags(rec),
+        Links(rec),
+        [
+            # SimplePosting(GetAssets(account, "Cash"), Amount(rec.amount, "USD")),
+            # SimplePosting(to_account, -Amount(rec.amount, "USD")),
+        ],
+    )
+
+
+def Convert_Cash(account: Account, index: int, rec: Record):
+    return
+
+
+def Convert_Mark(account: Account, index: int, rec: Record):
+    return
+
+
+def Convert_Expire(account: Account, index: int, rec: Record):
+    return
+
+
+def Convert_Assign(account: Account, index: int, rec: Record):
+    return
+
+
+def Convert_Exercise(account: Account, index: int, rec: Record):
+    return
+
+
+def ExportTransactions(
+    config: Config, transactions: Table, chains: Table, file: TextIO
+):
+    """Export compressed chains of transactions."""
+
+    account_config_map = {
+        account.nickname: account for account in config.input.accounts
+    }
+
+    chains = chains.cutout(
+        "pnl_win",
+        "pnl_loss",
+        "net_win",
+        "net_loss",
+        "net_liq",
+        "fifo_cost",
+        "vol_real",
+        "return_real",
+        "move_real",
+        "stdev_real",
+        "vol_impl",
+        "return_impl",
+        "move_impl",
+        "stdev_impl",
+    ).selecteq("status", "FINAL")
+
+    tmapping = transactions.recordlookup("chain_id")
+    for chain in chains.records():
+        # Get the chain rows, convert to a table.
+        chain_rows = tmapping[chain.chain_id]
+        chain_table = WrapRecords(chain_rows)
+
+        # Compute aggregates.
+        aggs = chain_table.aggregate(
+            key=None,
+            aggregation={
+                "cost": ("cost", sum),
+                "cash": ("cash", sum),
+                "commissions": ("commissions", sum),
+                "fees": ("fees", sum),
+            },
+        ).convertall(lambda v: v.quantize(Q2))
+        it = iter(aggs)
+        next(it)
+        cost, cash, commissions, fees = next(it)
+
+        # Render a text description of the chain.
+        output = "\n".join(
+            map(
+                ";; {}".format,
+                itertools.chain(
+                    str(WrapRecords([chain]).lookallstr()).splitlines(),
+                    [""],
+                    str(chain_table.cutout("chain_id").lookallstr()).splitlines(),
+                ),
+            )
+        )
+
+        meta = data.new_metadata("<johnny>", 0)
+        meta["chain"] = chain.chain_id
+        meta["mindate"] = chain.mindate
+        meta["maxdate"] = chain.maxdate
+
+        description = ", ".join(
+            [
+                f"Chain {chain.chain_id}",
+                f"Underlyings: {chain.underlyings}",
+                f"Group: {chain.group}",
+                f"Strategy: {chain.strategy}",
+                f"Investment: {chain.investment}",
+                f"Term: {chain.investment}",
+            ]
+        )
+
+        txn = data.Transaction(
+            meta,
+            chain.maxdate,
+            flags.FLAG_OKAY,
+            None,
+            description,
+            None,
+            None,
+            [],
+        )
+        # cost, cash, commissions, fees = next(it)
+        account = account_config_map[chain.account]
+        if cost:
+            txn.postings.append(
+                SimplePosting(GetAssets(account, "Cash"), Amount(cost, "USD"))
+            )
+        if cash:
+            txn.postings.append(
+                SimplePosting(GetAssets(account, "Cash"), Amount(cash, "USD"))
+            )
+        if commissions:
+            txn.postings.append(
+                SimplePosting(GetExpenses(account, "Commissions"), Amount(commissions, "USD"))
+            )
+        if fees:
+            txn.postings.append(
+                SimplePosting(GetExpenses(account, "Fees"), Amount(fees, "USD"))
+            )
+        pnl = cost + cash + commissions + fees
+        txn.postings.append(
+            SimplePosting(GetIncome(account, "PnL"), Amount(-pnl, "USD"))
+        )
+
+
+        print(f"***** {chain.chain_id}")
+        print()
+        print(output)
+        printer.print_entry(txn, file=sys.stdout)
+
+    # print(chains.lookallstr())
+    # print(transactions.lookallstr())
+
+
+# --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+# for index, rec in enumerate(nontrades.records()):
+#     func = globals().get(f"Convert_{rec.rowtype}", None)
+#     if not func:
+#         print(f";; {rec}")
+#         raise
+#         continue
+
+
+#     account = account_config_map.get(rec.account, None)
+#     if not account:
+#         raise ValueError(f"Unknown account: {rec.account}")
+
+#     entry = func(account, index, rec)
+#     if entry:
+#         printer.print_entry(entry)
 
 
 ## def _GetAccounts(config: Config, account: str) -> BeancountAccounts:

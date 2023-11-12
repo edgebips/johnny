@@ -175,13 +175,27 @@ def imported_chains(ctx: click.Context):
 @cli.command()
 @click.option("--account", "-a", help="Optional account to filter with.")
 @click.pass_context
+def export_transactions(ctx: click.Context, account: Optional[str]):
+    "Convert trades to Beancount format."
+    config = ctx.obj["config"]
+    chains = petl.frompickle(config.output.chains_pickle)
+    transactions = petl.frompickle(config.output.transactions_pickle)
+    if account:
+        chains = chains.selecteq("account", account)
+        transactions = transactions.selecteq("account", account)
+    be.ExportTransactions(config, transactions, chains, sys.stdout)
+
+
+@cli.command()
+@click.option("--account", "-a", help="Optional account to filter with.")
+@click.pass_context
 def export_nontrades(ctx: click.Context, account: Optional[str]):
     "Convert nontrades to Beancount format."
     config = ctx.obj["config"]
-    imported = petl.frompickle(config.output.nontrades_pickle)
+    nontrades = petl.frompickle(config.output.nontrades_pickle)
     if account:
-        imported = imported.selecteq("account", account)
-    be.ExportNonTrades(config, imported, sys.stdout)
+        nontrades = nontrades.selecteq("account", account)
+    be.ExportNonTrades(config, nontrades, sys.stdout)
 
 
 if __name__ == "__main__":
