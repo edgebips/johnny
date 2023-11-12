@@ -188,7 +188,7 @@ def _ImportAllAccounts(
     log = timing.create_logger(logger)
     tables = []
     for account in config.input.accounts:
-        with log(f"read for {account.nickname}"):
+        with log(f"{process_func.__name__} for {account.nickname}"):
             table = process_func(account)
             if table:
                 tables.append(table)

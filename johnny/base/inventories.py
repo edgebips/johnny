@@ -548,7 +548,7 @@ class OpenCloseFifoInventory:
 
     def receive(self, rec: Record, accumfn: TxnAccumFn, rowtype: str):
         """Receive a dividend or some other type of adjustment."""
-        if rowtype not in {txnlib.Type.Dividend}:
+        if rowtype not in {txnlib.Type.Cash}:
             raise MatchError(f"Invalid row type: {rec}")
 
         accumfn(rec._replace(match_id=self.get_match_id(rec)), "DIVIDEND")

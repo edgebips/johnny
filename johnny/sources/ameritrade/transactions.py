@@ -438,7 +438,7 @@ def ProcessDividends(table: Table) -> Tuple[Table, Table]:
             include_original=True,
         )
         .addfield("underlying", lambda r: r["symbol"])
-        .addfield("rowtype", txnlib.Type.Dividend)
+        .addfield("rowtype", txnlib.Type.Cash)
         .addfield("instruction", "")
         .addfield("effect", "")
         .addfield("instype", "Equity")
@@ -1149,7 +1149,7 @@ def ReplaceTreasuryInterestSymbols(
     """
     # Unique key for bonds.
     mapping = treasuries_table.selecteq(
-        "rowtype", txnlib.Type.Dividend
+        "rowtype", txnlib.Type.Cash
     ).recordlookupone(["maturity", "rate"])
 
     def ReplaceSymbol(value: str, row: Record) -> str:

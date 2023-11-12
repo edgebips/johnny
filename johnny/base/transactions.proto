@@ -46,7 +46,7 @@ message Transaction {
   // is
   //   inserted by further processing code.
   //
-  // - `Dividend` needs to have a `price`, `quantity` and `cost` values of zero
+  // - `Cash` needs to have a `price`, `quantity` and `cost` values of zero
   // or
   //   empty and a `cash` colum equal to the dollar amount of the dividend.
   //   Furthermore, note that the date of the dividend may follow the closing
@@ -63,9 +63,8 @@ message Transaction {
     Exercise = 4; // (an exercise, a removal type of event),
     Mark = 5;     // (a virtual sale).
     Open = 6;     // (a virtual transaction to create an opening balance)
-    Dividend = 7; // (a dividend payment or other distributions associated with
-                  // a trade, and interest coupons for bonds. TODO(blais):
-                  // Rename to 'Cash' which is more general and appropriate.)
+    Cash = 7;     // (a dividend payment, interest coupons, or other cash
+                  // distributions associated with a position.)
   }
   required RowType rowtype = 4;
 
@@ -140,7 +139,7 @@ message Transaction {
 
   // `cash: Decimal`: A dollar amount of cash deposited (removed) associated
   // with the position. This should be left unset except for rows of type
-  // `Dividend`.
+  // `Cash`.
   optional Decimal cash = 12;
 
   // `commissions: Decimal`: The dollar amount of commissions charged. This is a

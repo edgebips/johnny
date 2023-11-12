@@ -159,7 +159,7 @@ def Process(
         }:
             inv.expire(rec, accum, rec.rowtype)
 
-        elif rec.rowtype in {txnlib.Type.Dividend}:
+        elif rec.rowtype in {txnlib.Type.Cash}:
             inv.receive(rec, accum, rec.rowtype)
 
         else:

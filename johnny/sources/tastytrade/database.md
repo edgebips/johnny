@@ -46,7 +46,7 @@ There are possible values for `transaction-type` in the log:
   * `Transfer`:
   * `Withdrawal`:
   * `Deposit`:
-  * `Dividend`:
+  * `Cash`:
   * `Fee`:
 
   The `action` field is always unset.

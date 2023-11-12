@@ -25,7 +25,7 @@ def main():
     # print(transactions.lookallstr())
 
     for rec in transactions.aggregate("chain_id", WrapRecords).records():
-        dividends = rec.value.selecteq("rowtype", "Dividend")
+        dividends = rec.value.selecteq("rowtype", "Cash")
         if petl.nrows(dividends):
             print(rec.value.lookallstr())
 

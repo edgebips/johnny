@@ -116,7 +116,7 @@ TRANSACTION_TYPES = {
     ("Receive Deliver", "ACAT"): txnlib.Type.Trade,
     ("Receive Deliver", "ACAT"): txnlib.Type.Trade,
     # Dividends.
-    ("Money Movement", "Dividend"): txnlib.Type.Dividend,
+    ("Money Movement", "Dividend"): txnlib.Type.Cash,
 }
 
 ALL_TYPES = {}
@@ -151,7 +151,7 @@ def GetPosEffect(rec: Record) -> Optional[str]:
     """Get position effect."""
     if rec.rowtype in {txnlib.Type.Expire, txnlib.Type.Exercise, txnlib.Type.Assign}:
         return "CLOSING"
-    if rec.rowtype in {txnlib.Type.Dividend}:
+    if rec.rowtype in {txnlib.Type.Cash}:
         return ""
     action = rec["action"]
     if action.endswith("to Open"):
@@ -183,7 +183,7 @@ def ConvertQuantity(value_str: Optional[str], rec: Record) -> Decimal:
     """Convert and round integer values to decimal and leave fractional alone.
     This is only used to trim unnecessary trailing ".0" suffixes.
     """
-    if rec.rowtype == txnlib.Type.Dividend:
+    if rec.rowtype == txnlib.Type.Cash:
         return ZERO
     rounded_value_str = re.sub(r"\.0$", "", value_str)
     return Decimal(rounded_value_str)
@@ -200,7 +200,7 @@ def CalculateFees(rec: Record) -> Decimal:
 
 def CalculateCost(rec: Record) -> Decimal:
     """Calculate the raw cost."""
-    if rec["rowtype"] == txnlib.Type.Dividend:
+    if rec["rowtype"] == txnlib.Type.Cash:
         return ZERO
 
     derived_net_value = rec["value"] + rec["commissions"] + rec["fees"]
@@ -225,14 +225,14 @@ def CalculateCost(rec: Record) -> Decimal:
 
 def CalculateCash(rec: Record) -> Decimal:
     """Calculate the cash portion, from dividends."""
-    return rec["value"] if rec["rowtype"] == txnlib.Type.Dividend else ZERO
+    return rec["value"] if rec["rowtype"] == txnlib.Type.Cash else ZERO
 
 
 def CalculatePrice(value: str, rec: Record) -> Decimal:
     """Clean up prices and calculate them where missing."""
     if rec["transaction-sub-type"] in {"Forward Split", "Reverse Split"}:
         return abs(rec.cost / rec.quantity / rec.instrument.multiplier)
-    if rec["rowtype"] == txnlib.Type.Dividend:
+    if rec["rowtype"] == txnlib.Type.Cash:
         return ZERO
     if value is None:
         return ZERO
@@ -346,7 +346,7 @@ def main(database: str):
         transactions = Import(database, None, Account.TRANSACTIONS)
         transactions = GetTransactions(database)
         # print(transactions.head(10).lookallstr())
-        transactions.selecteq("rowtype", txnlib.Type.Dividend).tocsv()
+        transactions.selecteq("rowtype", txnlib.Type.Cash).tocsv()
 
     if 0:
         nontrades = Import(database, None, Account.OTHER)

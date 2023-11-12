@@ -48,7 +48,7 @@ def GetRowType(rec: Record) -> nontrades.Type:
         elif rec.description.startswith("MARGIN INTEREST ADJUSTMENT"):
             return Type.MarginInterest
         elif rec.description.startswith("ORDINARY DIVIDEND"):
-            return Type.Dividend
+            return Type.Cash
 
     elif rtype == "EFN":
         if rec.description.startswith("CLIENT REQUESTED ELECTRONIC FUNDING RECEIPT"):

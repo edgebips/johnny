@@ -292,7 +292,7 @@ def _LinkByOverlapping(transactions: Table) -> List[Tuple[str, str]]:
         # need to insert a unique id.
         expiration = _GetExpiration(rec)
         isnew = expiration not in undermap
-        if rec["rowtype"] == txnlib.Type.Dividend:
+        if rec["rowtype"] == txnlib.Type.Cash:
             # There needs to be an active underlying, otherwise why are we
             # receiving a dividend?.
             if isnew:
@@ -306,7 +306,7 @@ def _LinkByOverlapping(transactions: Table) -> List[Tuple[str, str]]:
             term = undermap[expiration] = Term(term_id)
 
         if isnew:
-            if expiration is None and rec.rowtype != txnlib.Type.Dividend:
+            if expiration is None and rec.rowtype != txnlib.Type.Cash:
                 # This is an underlying, not an option on one.
                 # Link it to all the currently active expirations.
                 for uexpiration, expiration_term in undermap.items():
@@ -320,7 +320,7 @@ def _LinkByOverlapping(transactions: Table) -> List[Tuple[str, str]]:
                     outright_term = undermap[None]
                     links.append((term.id, outright_term.id))
         else:
-            if rec.rowtype == txnlib.Type.Dividend:
+            if rec.rowtype == txnlib.Type.Cash:
                 # This is a dividend.
                 # Link it to the underlying.
                 # Assert that it's active.
@@ -332,7 +332,7 @@ def _LinkByOverlapping(transactions: Table) -> List[Tuple[str, str]]:
         transaction_links.append((term.id, rec.transaction_id))
 
         # Update quantities.
-        if rec.rowtype != txnlib.Type.Dividend:
+        if rec.rowtype != txnlib.Type.Cash:
             sign = -1 if rec.instruction == "SELL" else +1
             term.quantities[rec.symbol] += sign * rec.quantity
             if term.quantities[rec.symbol] == ZERO:
@@ -443,7 +443,7 @@ def PositionCost(rec: Record) -> Decimal:
 
     inv = collections.defaultdict(inventories.FifoInventory)
     for txn in rec.txns:
-        if txn.rowtype in {txnlib.Type.Mark, txnlib.Type.Dividend}:
+        if txn.rowtype in {txnlib.Type.Mark, txnlib.Type.Cash}:
             continue
         sign = +1 if txn.instruction == "SELL" else -1
         unit_cost = abs(txn.cost / txn.quantity)
@@ -460,7 +460,7 @@ def _CalculateNetLiq(pairs: Iterator[Tuple[str, Decimal]]):
 
 def _CalculateCash(pairs: Iterator[Tuple[str, Decimal]]):
     return Decimal(
-        sum(cost for rowtype, cost in pairs if rowtype == txnlib.Type.Dividend)
+        sum(cost for rowtype, cost in pairs if rowtype == txnlib.Type.Cash)
     ).quantize(Q2)
 
 

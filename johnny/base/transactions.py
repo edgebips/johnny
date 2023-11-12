@@ -98,7 +98,7 @@ def ValidateRecord(r: Record):
     checks.AssertDecimal(r.fees)
 
     # Check that dividends don't have trade information.
-    if r.rowtype == Type.Dividend:
+    if r.rowtype == Type.Cash:
         assert r.quantity == ZERO
         assert r.price == ZERO
         assert r.cost == ZERO

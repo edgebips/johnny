@@ -32,7 +32,7 @@ def GetRowType(rec: Record) -> str:
     if code == "ADJ":
         return Type.Adjustment
     if code == "DIV":
-        return Type.Dividend
+        return Type.Cash
     raise ValueError(f"Could not find rowtype for {rec}")
 
 

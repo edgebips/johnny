@@ -285,7 +285,7 @@ def NormalizeTrades(table: petl.Table, account: str) -> petl.Table:
         .rename("Type", "rowtype")
         .convert("rowtype", GetRowType, pass_row=True)
         # Ignore dividends for now. TODO(blais): Implement those.
-        .selectnotin("rowtype", {txnlib.Type.Dividend})
+        .selectnotin("rowtype", {txnlib.Type.Cash})
         # Parse the date into datetime.
         .addfield("datetime", lambda r: parser.parse(r.Date).replace(tzinfo=None))
         # Convert the futures expiration date.

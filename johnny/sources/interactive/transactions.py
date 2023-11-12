@@ -382,11 +382,11 @@ def GetTransactions(filename: str) -> Tuple[Table, Table]:
         .rename("ActivityCode", "rowtype")
         .convert(
             "rowtype",
-            lambda v: txnlib.Type.Dividend if v == "DIV" else txnlib.Type.Trade,
+            lambda v: txnlib.Type.Cash if v == "DIV" else txnlib.Type.Trade,
         )
         .addfield(
             "cash",
-            lambda r: r["Amount"] if r["rowtype"] == txnlib.Type.Dividend else ZERO,
+            lambda r: r["Amount"] if r["rowtype"] == txnlib.Type.Cash else ZERO,
         )
     )
     trade = (

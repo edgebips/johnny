@@ -32,7 +32,7 @@ def GetRowType(rec: Record) -> str:
     if re.match(r"BONDS - REDEMPTION", rec.description):
         return txnlib.Type.Trade
     if re.match(r"US TREASURY INTEREST", rec.description):
-        return txnlib.Type.Dividend
+        return txnlib.Type.Cash
     raise ValueError(f"Can't figure out rowtype for {rec}")
 
 
