@@ -57,12 +57,12 @@ def GetPosEffect(rec: Record) -> str:
 
 
 def GetRate(rec: Record) -> str:
-    mo = re.search("(\d*\.\d+) %", rec.description)
+    mo = re.search(r"(\d*\.\d+) %", rec.description)
     return Decimal(mo.group(1)) if mo else None
 
 
 def GetMaturity(rec: Record) -> str:
-    mo = re.search("due (\d\d/\d\d/\d\d\d\d)", rec.description)
+    mo = re.search(r"due (\d\d/\d\d/\d\d\d\d)", rec.description)
     return dt.datetime.strptime(mo.group(1), "%m/%d/%Y").date()
 
 

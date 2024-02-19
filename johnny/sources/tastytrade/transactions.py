@@ -23,7 +23,6 @@ import os
 
 import click
 from dateutil import parser
-import pytz
 import tzlocal
 
 from johnny.base import config as configlib

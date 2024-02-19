@@ -102,7 +102,7 @@ def FromColumns(
 
     # Infer the multiplier if it is not provided.
     if multiplier is None:
-        match = re.match("(/.*)([FGHJKMNQUVXZ]2\d)", underlying)
+        match = re.match(r"(/.*)([FGHJKMNQUVXZ]2\d)", underlying)
         if match:
             _, calendar = match.groups()
         else:
@@ -189,7 +189,7 @@ def GetContractName(symbol: str) -> str:
     """Return the underlying root without the futures calendar expiration, e.g. '/CL'."""
     underlying = symbol.split("_")[0]
     if underlying.startswith("/"):
-        match = re.match("(.*)([FGHJKMNQUVXZ]2\d)", underlying)
+        match = re.match(r"(.*)([FGHJKMNQUVXZ]2\d)", underlying)
         assert match, string
         return match.group(1)
     else:
