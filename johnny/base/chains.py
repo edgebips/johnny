@@ -296,7 +296,8 @@ def _LinkByOverlapping(transactions: Table) -> List[Tuple[str, str]]:
             # There needs to be an active underlying, otherwise why are we
             # receiving a dividend?.
             if isnew:
-                raise AssertionError(f"No active underlying for dividend: {rec}")
+                recstr = WrapRecords([rec]).lookallstr()
+                raise AssertionError(f"No active underlying for dividend:\n{recstr}")
 
         term_id = "{}/{}/{}/{}".format(
             rec.account, rec.underlying, expiration, next(idgen)

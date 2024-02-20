@@ -490,6 +490,7 @@ def OffsetCouponTimes(table: Table) -> Table:
     matching for building chains this cash distribution ("dividend") occurs
     before the redemption ("sale").
     """
+
     def OffsetCouponTime(datetime: dt.datetime, rec: Record) -> dt.datetime:
         datetime = rec.datetime
         if rec.description.startswith(
@@ -805,9 +806,11 @@ def AccountTradeHistory_Prepare(table: Table) -> Table:
         # Convert date/time fields to objects.
         .convert(
             "exec_time",
-            lambda string: datetime.datetime.strptime(string, "%m/%d/%y %H:%M:%S")
-            if string
-            else None,
+            lambda string: (
+                datetime.datetime.strptime(string, "%m/%d/%y %H:%M:%S")
+                if string
+                else None
+            ),
         )
         # Fill in missing values.
         .filldown("exec_time")
@@ -1148,16 +1151,19 @@ def ReplaceTreasuryInterestSymbols(
     containing the symbols and we join it with our transactions.
     """
     # Unique key for bonds.
-    mapping = treasuries_table.selecteq(
-        "rowtype", txnlib.Type.Cash
-    ).recordlookupone(["maturity", "rate"])
+    mapping = treasuries_table.selecteq("rowtype", txnlib.Type.Trade).recordlookupone(
+        ["maturity", "rate"]
+    )
 
     def ReplaceSymbol(value: str, row: Record) -> str:
         if row.type == "DOI" and row.symbol.startswith("UNITED STATES TREASURY"):
             key = (row.maturity, row.rate)
             found = mapping.get(key)
             if not found:
-                return value + "(ERROR: Symbol not found)"
+                return (
+                    value
+                    + f"(ERROR: Symbol not found for key ({key[0]:%Y-%m-%d}, {key[1]}))"
+                )
                 # raise ValueError(f"Mapping for coupon row not found: {row}")
             return found.symbol
         return value
