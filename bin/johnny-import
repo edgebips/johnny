@@ -78,7 +78,11 @@ def import_(config: Optional[str], light: bool):
 
     # Mark the transactions at the price at the time of import.
     with log("mark"):
+        logging.warning("TODO(blais): There is a bug in the extract price list, the signs are all fakakta, fix this.")
+        ##print(positions.lookallstr())
         price_map = mark.GetPriceMap(transactions, positions)
+        ##pp(price_map)
+        ##raise SystemExit
         ptransactions = mark.Mark(transactions, price_map)
 
     # Calculate the chains and partial sums.

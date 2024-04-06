@@ -119,7 +119,8 @@ def GetPositions(filename: str, fallback_database) -> Table:
         .rename("MarkPrice", "mark")
         .convert("mark", ToDecimal)
         .rename("CostBasisMoney", "cost")
-        .convert("cost", ToDecimal)
+        # Invert the sign to fit convention in positions.proto.
+        .convert("cost", lambda v: -ToDecimal(v))
         .rename("PositionValue", "net_liq")
         .convert("net_liq", ToDecimal)
         # Add superfluous fields.

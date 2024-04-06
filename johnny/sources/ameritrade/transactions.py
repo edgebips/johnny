@@ -1347,7 +1347,11 @@ def ImportTransactions(config: config_pb2.Config) -> petl.Table:
     fnmap = discovery.GetLatestFilePerYear(pattern)
     transactions_list = []
     for year, filename in sorted(fnmap.items()):
-        transactions, _ = GetTransactions(filename, treasuries_table)
+        try:
+            transactions, _ = GetTransactions(filename, treasuries_table)
+        except AssertionError:
+            logging.error("Error while processing file '%s'", filename)
+            raise
         transactions_list.append(
             transactions.select(lambda r, y=year: r.datetime.year == y)
         )

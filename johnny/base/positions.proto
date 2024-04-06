@@ -37,10 +37,11 @@ message Position {
   // table.
   required Decimal quantity = 4;
 
-  // `price: Decimal`: The per-unit average traded price of the instrument. This is
-  // how much we paid or received per share of this position. This is a signed
-  // value; for a debit trade, the number will be negative; for a credit trade, the
-  // number will be positive.
+  // `price: Decimal`: The per-unit average traded price of the instrument. This
+  // is how much we paid or received per share of this position. This is a
+  // signed value; for stocks/futures instruments, the price will always be
+  // positive, as expected. However, for complex options positions, the number
+  // may be negative, e.g., for a credit trade, the number will be negative.
   required Decimal price = 5;
 
   // `mark: Decimal`: The per-unit value on the market of the instrument. The mark
@@ -49,8 +50,9 @@ message Position {
   // inverse that of the `price` field.
   optional Decimal mark = 6;
 
-  // `cost: Decimal`: The total cost for acquiring this position. This is a signed
-  // value as well, following the `price` field.
+  // `cost: Decimal`: The total cost for acquiring this position. This is a
+  // signed value. The cost will typically be a negative value for a regular
+  // instrument like stocks, such that (net_liq + cost) = pnl.
   required Decimal cost = 7;
 
   // `net_liq: Decimal`: The total value of this position, as marked by the `mark`

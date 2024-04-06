@@ -50,10 +50,12 @@ def ValidateRecord(r: Record):
     checks.AssertOptionalString(r.group)
     checks.AssertString(r.symbol)
     checks.AssertValidSymbol(r.symbol)
-    checks.AssertOptionalDecimal(r.quantity)  # TODO(blais): Why optional?
+    checks.AssertDecimal(r.quantity)
 
+    # Price and mark may be negative for credit trades for options.
     checks.AssertDecimal(r.price)
     checks.AssertDecimal(r.mark)
+
     checks.AssertDecimal(r.cost)
     checks.AssertDecimal(r.net_liq)
     checks.AssertDecimal(r.unit_delta)
