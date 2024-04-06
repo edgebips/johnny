@@ -12,6 +12,8 @@ import johnny.base.nontrades as nontradeslib
 NONTRADE_TYPES = {
     ("Money Movement", "Balance Adjustment"): nontradeslib.Type.Adjustment,
     ("Money Movement", "Credit Interest"): nontradeslib.Type.CreditInterest,
+    # Note: I *think* this "Debit Interest" is for margin interest.
+    ("Money Movement", "Debit Interest"): nontradeslib.Type.MarginInterest,
     # Note: This contains amounts affecting balance for futures.
     ("Money Movement", "Mark to Market"): nontradeslib.Type.FuturesMarkToMarket,
     ("Money Movement", "Transfer"): nontradeslib.Type.InternalTransfer,

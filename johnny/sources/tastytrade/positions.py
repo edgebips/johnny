@@ -118,7 +118,8 @@ def GetPositions(filename: str) -> Table:
         # Rename some fields for normalization.
         .rename("Quantity", "quantity")
         .convert("quantity", ToDecimal)
-        .rename("Trade Price", "price")
+        # Signs are inverted.
+        .addfield("price", lambda r: -r["Trade Price"])
         .rename("Cost", "cost")
         .rename("Mark", "mark")
         .rename("Net Liq", "net_liq")
