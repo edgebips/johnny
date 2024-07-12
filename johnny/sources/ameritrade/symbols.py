@@ -4,11 +4,13 @@
 from decimal import Decimal
 import datetime
 from typing import Mapping
+import re
+import dateutil.parser
 
 import mulmat
 from mulmat import multipliers
 from johnny.base import instrument
-from johnny.base.etl import Record
+from johnny.base.etl import Record, WrapRecords
 
 Instrument = instrument.Instrument
 
@@ -22,6 +24,9 @@ SYMBOL_NAME_CHANGES = {
     # 2021-08-03 - L will be split into 25% Victoria's Secret, 75% VSCO.
     # 'LB': 'BBWI'
 }
+
+
+TREASURIES_REGEX = re.compile(r"912[0-9]{2}[0-9A-Z]{4}")
 
 
 def ToInstrument(db_lookup: Mapping[str, Record], rec: Record) -> str:
@@ -64,6 +69,16 @@ def ToInstrument(db_lookup: Mapping[str, Record], rec: Record) -> str:
             expcode=rec.exp,
             strike=Decimal(rec.strike),
             putcall=rec.type[0],
+            multiplier=multiplier,
+        )
+
+    if rec.instype == "Bond":
+        assert TREASURIES_REGEX.fullmatch(underlying)
+        multiplier = 1000
+        maturity = dateutil.parser.parse(rec.exp).date()
+        return instrument.Instrument(
+            underlying=underlying,
+            expiration=maturity,
             multiplier=multiplier,
         )
 

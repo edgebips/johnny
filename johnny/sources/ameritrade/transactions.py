@@ -168,9 +168,6 @@ def ReconcilePairsOrderIds(table: Table, threshold: int) -> Table:
     return table
 
 
-TREASURIES_REGEX = re.compile(r"912[0-9]{2}[0-9A-Z]{4}")
-
-
 def ProcessTradeHistory(
     equities_cash: Table, futures_cash: Table, trade_hist: Table
 ) -> Tuple[List[Any], List[Any], Table, Table]:
@@ -207,7 +204,7 @@ def ProcessTradeHistory(
 
             # Pull out treasuries specially; they do not have a trade row.
             # Register them with empty trade_rows.
-            if all(TREASURIES_REGEX.fullmatch(crow.symbol) for crow in cash_rows):
+            if all(symbols.TREASURIES_REGEX.fullmatch(crow.symbol) for crow in cash_rows):
                 for crow in cash_rows:
                     trow = _SynthesizeTradeRowForTreasury(crow, trow_flds)
                     order_groups.append((dtime, [crow], [trow]))
@@ -858,6 +855,8 @@ def InferInstrumentType(rec: Record) -> str:
             return "Future Option"
         else:
             return "Equity Option"
+    elif rec.type == "BOND":
+        return "Bond"
     raise ValueError("Could not infer instrument type for {}".format(rec))
 
 

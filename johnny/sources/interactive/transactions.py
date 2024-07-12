@@ -228,11 +228,16 @@ def GetTransactions(filename: str) -> Tuple[Table, Table]:
 
     # Check that the list of trades matches the subset of trade rows from the
     # statement of funds.
-    funds_map = tablemap["STFU"].selecttrue("TradeID").recordlookupone("TradeID")
+    funds_map = (
+        tablemap["STFU"]
+        .selecttrue("TradeID")
+        .selectin("ActivityCode", {"BUY", "SELL"})
+        .recordlookupone("TradeID")
+    )
     trades_map = tablemap["TRNT"].recordlookupone("TradeID")
     comm_map = tablemap["UNBC"].recordlookupone("TradeID")
-    assert set(funds_map) == set(trades_map)
-    assert set(comm_map) <= set(funds_map)
+    assert set(funds_map) == set(trades_map), (set(funds_map), set(trades_map))
+    assert set(comm_map) <= set(funds_map), (set(comm_map), set(funds_map))
 
     # Perform general preparation to the statement of funds table that will be
     # useful for trade and non-trade data.
@@ -404,7 +409,8 @@ def GetTransactions(filename: str) -> Tuple[Table, Table]:
         )
         # Absolute value for quantity.
         .convert("order_id", lambda v: v or None)
-        .convert("quantity", abs).addfield("init", None)
+        .convert("quantity", abs)
+        .addfield("init", None)
     )
 
     # Reorder the final fields.
