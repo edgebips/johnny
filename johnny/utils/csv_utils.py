@@ -140,7 +140,7 @@ def csv_split_sections_with_titles(rows):
     Returns:
       A list of lists of rows (list-of-strings).
     """
-    sections_map = {}
+    sections_map = collections.defaultdict(list)
     for index, section in enumerate(csv_split_sections(rows)):
         # Skip too short sections, cannot possibly be a title.
         if len(section) < 2:
@@ -150,8 +150,12 @@ def csv_split_sections_with_titles(rows):
             section = section[1:]
         else:
             name = "Section {}".format(index)
-        sections_map[name] = section
-    return sections_map
+        if name in sections_map:
+            # Strip header.
+            sections_map[name].extend(section[1:])
+        else:
+            sections_map[name].extend(section)
+    return dict(sections_map)
 
 
 def iter_sections(fileobj, separating_predicate=None):
