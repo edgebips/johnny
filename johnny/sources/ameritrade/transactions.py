@@ -896,6 +896,8 @@ def ParseDescription(table: Table) -> Table:
         .addfield("quantity", lambda r: r._desc.get("quantity", ""))
         .addfield("rate", lambda r: r._desc.get("rate", ""))
         .addfield("maturity", lambda r: r._desc.get("maturity", ""))
+        .addfield("desc_instruction", lambda r: r._desc.get("instruction", ""))
+        .addfield("desc_price", lambda r: r._desc.get("price", ""))
         .cutout("_desc")
     )
 
@@ -924,7 +926,7 @@ def _ParseTradeDescription(description: str) -> Dict[str, Any]:
         [
             "(?P<web>TOSWeb )?",
             "(?P<type>MSO )?",
-            "(?P<side>BOT|SOLD) ",
+            "(?P<instruction>BOT|SOLD) ",
             "(?P<quantity>[+-]?[0-9.,]+) ",
             "(?P<rest>.*?)",
             "(?P<price> @-?[0-9.]+)?",
@@ -935,10 +937,11 @@ def _ParseTradeDescription(description: str) -> Dict[str, Any]:
     match = re.match(regexp, description)
     assert match, description
     matches = match.groupdict()
-    matches["side"] = "BUY" if matches["side"] == "BOT" else "SELL"
-    matches["quantity"] = abs(number.ToDecimal(matches["quantity"]))
-    quantity = matches["quantity"]
-    matches["price"] = (
+    instruction = matches["instruction"] = (
+        "BUY" if matches["instruction"] == "BOT" else "SELL"
+    )
+    quantity = matches["quantity"] = abs(number.ToDecimal(matches["quantity"]))
+    price = matches["price"] = (
         number.ToDecimal(matches["price"].lstrip(" @")) if matches["price"] else ""
     )
     matches["venue"] = matches["venue"].lstrip() if matches["venue"] else ""
@@ -968,8 +971,10 @@ def _ParseTradeDescription(description: str) -> Dict[str, Any]:
         sub = match.groupdict()
         return {
             "strategy": sub["strategy"],
+            "instruction": instruction,
             "quantity": quantity,
             "symbol": sub["underlying"],
+            "price": price,
         }
 
     # Custom options combos.
@@ -986,8 +991,10 @@ def _ParseTradeDescription(description: str) -> Dict[str, Any]:
         sub = match.groupdict()
         return {
             "strategy": sub["strategy"],
+            "instruction": instruction,
             "quantity": quantity,
             "symbol": sub["underlying"],
+            "price": price,
         }
 
     # Futures calendars.
@@ -997,15 +1004,23 @@ def _ParseTradeDescription(description: str) -> Dict[str, Any]:
         # Note: Return the front month instrument as the underlying.
         return {
             "strategy": sub["strategy"],
+            "instruction": instruction,
             "quantity": quantity,
             "symbol": sub["underlying"],
+            "price": price,
         }
 
     # Single option.
     match = re.match(f"{underlying} {details}", rest)
     if match:
         sub = match.groupdict()
-        return {"strategy": "SINGLE", "quantity": quantity, "symbol": sub["underlying"]}
+        return {
+            "strategy": "SINGLE",
+            "instruction": instruction,
+            "quantity": quantity,
+            "symbol": sub["underlying"],
+            "price": price,
+        }
 
     # 'GAMR 100 16 APR 21 100 PUT'  (-> SINGLE)
     match = re.match(rf"{underlying} \d+ {details}", rest)
@@ -1013,8 +1028,10 @@ def _ParseTradeDescription(description: str) -> Dict[str, Any]:
         sub = match.groupdict()
         return {
             "strategy": sub["strategy"],
+            "instruction": instruction,
             "quantity": quantity,
             "symbol": sub["underlying"],
+            "price": price,
         }
 
     # Regular stock or future.
@@ -1024,12 +1041,13 @@ def _ParseTradeDescription(description: str) -> Dict[str, Any]:
         sub = match.groupdict()
         return {
             "strategy": "OUTRIGHT",
+            "instruction": instruction,
             "quantity": quantity,
             "symbol": sub["underlying"],
+            "price": price,
         }
 
-    message = "Unknown description: '{}'".format(description)
-    raise ValueError(message)
+    raise ValueError("Unknown description: '{}'".format(description))
 
 
 def _ParseDividendDescription(description: str) -> Dict[str, Any]:
@@ -1190,6 +1208,7 @@ def GetTransactions(filename: str, treasuries_table: Table) -> Tuple[Table, Tabl
 
     # Split up the "Cash Balance" table and process non-trade entries.
     cashbal = tables["Cash Balance"]
+
     equities_trade, cashbal_nontrade = SplitCashBalance(cashbal, trade_hist)
 
     # Split up the "Futures Statements" table and process non-trade entries.
