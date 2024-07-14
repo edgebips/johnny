@@ -25,7 +25,6 @@ from os import path
 from typing import Any, Dict, List, Optional, Tuple, Union, Iterable
 import collections
 import csv
-import datetime
 import datetime as dt
 import hashlib
 import itertools
@@ -499,7 +498,7 @@ def OffsetCouponTimes(table: Table) -> Table:
     return table.convert("datetime", OffsetCouponTime, pass_row=True)
 
 
-Group = Tuple[datetime.date, List[Record], List[Record]]
+Group = Tuple[dt.date, List[Record], List[Record]]
 
 
 def PrintGroup(group: Group):
@@ -769,12 +768,12 @@ def FuturesStatements_Prepare(table: Table) -> Table:
     return ParseDescription(table)
 
 
-def _ParseFuturesDate(string: str) -> datetime.date:
+def _ParseFuturesDate(string: str) -> dt.date:
     """Parse a date from the futures section."""
     if string == "*":
-        return datetime.date.today()
+        return dt.date.today()
     else:
-        return datetime.datetime.strptime(string, "%m/%d/%y").date()
+        return dt.datetime.strptime(string, "%m/%d/%y").date()
 
 
 def ForexStatements_Prepare(table: Table) -> Table:
@@ -804,7 +803,7 @@ def AccountTradeHistory_Prepare(table: Table) -> Table:
         .convert(
             "exec_time",
             lambda string: (
-                datetime.datetime.strptime(string, "%m/%d/%y %H:%M:%S")
+                dt.datetime.strptime(string, "%m/%d/%y %H:%M:%S")
                 if string
                 else None
             ),
@@ -860,9 +859,9 @@ def InferInstrumentType(rec: Record) -> str:
     raise ValueError("Could not infer instrument type for {}".format(rec))
 
 
-def ParseDateTimePair(date_field: str, time_field: str, rec: Record) -> datetime.date:
+def ParseDateTimePair(date_field: str, time_field: str, rec: Record) -> dt.date:
     """Parse a pair of date and time fields."""
-    return datetime.datetime.strptime(
+    return dt.datetime.strptime(
         "{} {}".format(getattr(rec, date_field), getattr(rec, time_field)),
         "%m/%d/%y %H:%M:%S",
     )
