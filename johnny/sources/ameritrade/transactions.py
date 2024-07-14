@@ -673,8 +673,8 @@ def SplitGroupsToTransactions(groups: List[Group], is_futures: bool) -> Table:
                         trow.side,  # instruction
                         trow.pos_effect,  # effect
                         symbol,  # symbol
-                        trow.quantity,  # quantity
                         trow.multiplier,  # multiplier
+                        trow.quantity,  # quantity
                         trow.price,  # price
                         ZERO,  # cash
                         commissions,  # commissions
