@@ -560,12 +560,6 @@ _TXN_FIELDS = (
     "instruction",
     "effect",
     "symbol",
-    "instype",
-    "underlying",
-    "expiration",
-    "expcode",
-    "putcall",
-    "strike",
     "multiplier",
     "quantity",
     "price",
@@ -577,13 +571,18 @@ _TXN_FIELDS = (
 
 
 def SplitGroupsToTransactions(groups: List[Group], is_futures: bool) -> Table:
-    """Convert groups of cash and trade rows to transactions."""
+    """Convert groups of cash and trade rows to transactions.
+
+    We need to join the trade rows because that's where we have broken down
+    detail on quantity and symbol, expiration, position effect, and such.
+    Otherwise we have to fetch the data from the description.
+    """
 
     rows = [_TXN_FIELDS]
     for group in groups:
         dtime, cash_rows, trade_rows = group
-        # if any(crow.symbol == "JJU" for crow in cash_rows):
-        #     PrintGroup(group)
+        # if any(crow.symbol in {"44267T102", "HHH"} for crow in cash_rows):
+        # PrintGroup(group)
 
         # Attempt to match up each cash row to each trade rows. We assert that
         # we always find only two situations: N:N matches, where we can pair up
@@ -671,13 +670,6 @@ def SplitGroupsToTransactions(groups: List[Group], is_futures: bool) -> Table:
                     trow.side,
                     trow.pos_effect,
                     symbol,
-                    # TODO(blais): Remove these.
-                    trow.instype,
-                    trow.underlying,
-                    trow.expiration,
-                    trow.expcode,
-                    trow.putcall,
-                    trow.strike,
                     trow.multiplier,
                     trow.quantity,
                     trow.price,
