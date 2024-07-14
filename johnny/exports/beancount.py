@@ -128,6 +128,11 @@ def Convert_HardToBorrowFee(account: Account, index: int, rec: Record):
         account, index, rec, "Expenses:Financial:Fees:HardToBorrow"
     )
 
+def Convert_ForeignSecurityFee(account: Account, index: int, rec: Record):
+    return _SimpleTransaction(
+        account, index, rec, "Expenses:Financial:Fees:ForeignSecurity"
+    )
+
 
 def Convert_Sweep(account: Account, index: int, rec: Record):
     # Note: Assuming futures sweep here, because that's all I have.

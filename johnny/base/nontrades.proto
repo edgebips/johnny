@@ -38,6 +38,7 @@ message NonTrade {
     HardToBorrowFee = 12;    // A hard-to-borrow fee.
     Sweep = 13;              // A sweep to/from futures in the cash account.
     FuturesSweep = 14;       // A sweep to/from futures in the futures account.
+    ForeignSecurityFee = 15; // A fee for buying a foreign security.
   }
   //// TODO(blais): What do we do with InternalTransfer, ExternalTransfer, ExternalTransfer?
   //// I think translate to Withdrawal and Deposit?  Don't care about internal?

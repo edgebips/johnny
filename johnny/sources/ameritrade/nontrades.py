@@ -73,6 +73,8 @@ def GetRowType(rec: Record) -> nontrades.Type:
             return Type.InternalTransfer
         elif rec.description.startswith("HARD TO BORROW FEE"):
             return Type.HardToBorrowFee
+        elif rec.description.startswith("FOREIGN SECURITY FEE"):
+            return Type.ForeignSecurityFee
 
     elif rtype == "RAD":
         if rec.description.startswith("CASH ALTERNATIVES INTEREST"):
