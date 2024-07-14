@@ -297,7 +297,9 @@ def _LinkByOverlapping(transactions: Table) -> List[Tuple[str, str]]:
             # receiving a dividend?.
             if isnew:
                 recstr = WrapRecords([rec]).lookallstr()
-                raise AssertionError(f"No active underlying for dividend:\n{recstr}")
+                message = f"No active underlying for dividend:\n{recstr}"
+                logging.error(message)  # raise AssertionError(message)
+                continue
 
         term_id = "{}/{}/{}/{}".format(
             rec.account, rec.underlying, expiration, next(idgen)
@@ -555,7 +557,9 @@ def GetReturns(fieldname: str, rec: Record) -> float:
     total_vol = Decimal(math.sqrt((volatility**2) * time))
     cost = -rec.init
     mark = rec.net_liq
-    returns = rec.pnl_chain / cost
+    returns = (
+        (rec.pnl_chain / cost) if (rec.pnl_chain != ZERO and cost != ZERO) else ZERO
+    )
     move = Decimal(total_vol * cost).quantize(Q2) if volatility else None
     stdev = (returns / total_vol).quantize(Q2) if volatility else None
     return Returns(
