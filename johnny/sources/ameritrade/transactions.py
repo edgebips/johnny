@@ -1262,7 +1262,8 @@ def GetTransactions(filename: str, treasuries_table: Table) -> Tuple[Table, Tabl
 
     # Add some more missing columns.
     txns = (
-        txns.sort("order_id")
+        txns.convert("order_id", FillMissingOrderIds, pass_row=True)
+        .sort("order_id")
         # Add the account number to the table.
         .addfield("account", utils.GetAccountNumber(filename), index=0)
         # Make up a transaction id. It's a real bummer that the one that's
@@ -1313,6 +1314,20 @@ def GetTransactionId(rec: Record) -> str:
             print(WrapRecords([rec]).lookallstr())
         assert rec.order_id, rec
         return "{}.{}".format(rec.order_id, rec.order_sequence)
+
+
+def FillMissingOrderIds(order_id: str, rec: Record) -> str:
+    """Create a synthetic order_id when missing.
+
+    Note that this is due to the import bug from TOS that does not produce order
+    ids since 2024. We need to make it up somehow.
+    """
+    if order_id:
+        return order_id
+    md5 = hashlib.blake2s(digest_size=4)
+    md5.update(str(rec.datetime).encode("ascii"))
+    md5.update(str(rec.symbol).encode("ascii"))
+    return md5.hexdigest()[:8]
 
 
 def PrepareTables(filename: str) -> Dict[str, Table]:
