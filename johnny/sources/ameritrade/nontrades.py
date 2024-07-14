@@ -91,13 +91,30 @@ def GetRowType(rec: Record) -> nontrades.Type:
     raise ValueError(f"Unknown {rtype} row: {rec}")
 
 
+# rowid     datetime             type  ref          description                                                                commissions_fees  amount      balance     misc_fees  symbol  strategy  quantity  rate  maturity  desc_instruction  desc_price  subaccount  trade_date
+# ed8e5878  2024-05-13 00:00:00                     ---- Account migration from TDA to Schwab ----                                            0           0           0   -2899.71                                                                            Cash        None
+# 43183b5d  2024-05-14 01:00:00  BAL                Cash balance at the start of business day 14.05 CST                                       0           0     2899.71    2899.71                                                                            Cash        None
+def FilterOutSchwabMigration(table: Table) -> Table:
+    """Remove the account migration row and following from the Cash Balances table."""
+    return table.select(
+        "description",
+        lambda v: not re.search(
+            "Account migration from TDA to Schwab|Cash balance at the start of business day 14.05 CST",
+            v,
+        ),
+    )
+
+
 def ConvertNonTrades(other: Table, account_id: str) -> Table:
     """Convert input non-trades to normalized non-trades."""
+
+    # Remove migration rows.
+    other = FilterOutSchwabMigration(other)
 
     assert len(other.fieldnames()) == len(set(other.fieldnames())), other.fieldnames()
     remove_fields = ["commissions_fees", "misc_fees", "symbol", "strategy", "quantity"]
     for field in remove_fields:
-        assert len(set(other.values(field))) == 1
+        assert len(set(other.values(field))) == 1, (field, set(other.values(field)))
     other = other.cutout(*remove_fields)
 
     other = (
