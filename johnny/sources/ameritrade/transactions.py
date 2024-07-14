@@ -13,6 +13,13 @@ statements with the trade history.
 
 Caveats:
 - Transaction IDs are missing can have to be joined in later from the API.
+
+NOTE: We do not need the 'Order ID' column to join the Cash Balance and Account
+Trade History tables anymore, we join those two tables by unique datetime, due
+to a bug in the TOS export (the Order ID column does not export properly, though
+it appears in the UI). Joining the Account Trade History is needed because only
+it contains a nice breakdown of the transactions fields (in lieu of having to
+infer it from the Cash Balance rows' `description` field).
 """
 
 __copyright__ = "Copyright (C) 2021  Martin Blais"
@@ -158,11 +165,11 @@ def ReconcilePairsOrderIds(table: Table, threshold: int) -> Table:
         )
     )
 
-    if 0:
-        # Debug print.
-        for order_id, group in table.aggregate("pair_id", list).records():
-            if len(set(rec.order_id for rec in group)) > 1:
-                print(petl.wrap(chain([table.header()], group)).lookallstr())
+    # if 0:
+    #     # Debug print.
+    #     for order_id, group in table.aggregate("pair_id", list).records():
+    #         if len(set(rec.order_id for rec in group)) > 1:
+    #             print(petl.wrap(chain([table.header()], group)).lookallstr())
 
     return table
 
@@ -239,8 +246,8 @@ def ProcessTradeHistory(
     # Assert that the trade history table has been fully accounted for.
     if trade_hist_map:
         raise ValueError(
-            "Some trades from the trade history are not covered by cash: "
-            "{}".format(trade_hist_map)
+            "Some trades from the trade history are not covered by cash:\n"
+            "{}".format(pprint.pformat(trade_hist_map))
         )
 
     return (equities_groups, futures_groups, equities_others, futures_others)
@@ -336,7 +343,7 @@ def _CreateInstrument(r: Record) -> str:
     )
 
 
-def GetOrderIdFromSymbol(rec: Record) -> str:
+def GetOrderIdFromSymbolOnly(rec: Record) -> str:
     """Make up a unique order id for an expiration."""
     md5 = hashlib.blake2s(digest_size=4)
     md5.update(rec.symbol.encode("ascii"))
@@ -378,7 +385,7 @@ def ProcessExpirationsToTransactions(cash_table: Table) -> Table:
         .cutout("_x")
         .addfield("symbol", lambda r: str(_CreateInstrument(r)))
         # Fix up the remaining fields.
-        .addfield("order_id", GetOrderIdFromSymbol)
+        .addfield("order_id", GetOrderIdFromSymbolOnly)
         .addfield("effect", "CLOSING")
         .addfield("rowtype", txnlib.Type.Expire)
         .addfield("instype", None)
@@ -707,7 +714,8 @@ def CashBalance_Prepare(table: Table) -> Table:
         .cutout("misc_fees")
         .rename("misc_fees_inferred", "misc_fees")
     )
-    return ParseDescription(table)
+    table = ParseDescription(table)
+    return table.convert("symbol", symbols.AliasSymbol)
 
 
 def _CreateRowId(r: Record, fields: List[str]) -> str:
@@ -803,9 +811,7 @@ def AccountTradeHistory_Prepare(table: Table) -> Table:
         .convert(
             "exec_time",
             lambda string: (
-                dt.datetime.strptime(string, "%m/%d/%y %H:%M:%S")
-                if string
-                else None
+                dt.datetime.strptime(string, "%m/%d/%y %H:%M:%S") if string else None
             ),
         )
         # Fill in missing values.
@@ -836,7 +842,7 @@ def AccountTradeHistory_Prepare(table: Table) -> Table:
         .cutout("order_type")
         .cutout("net_price")
     )
-    return table
+    return table.convert("symbol", symbols.AliasSymbol)
 
 
 def InferInstrumentType(rec: Record) -> str:
@@ -1202,7 +1208,7 @@ def GetTransactions(filename: str, treasuries_table: Table) -> Tuple[Table, Tabl
     # include the symbol so we have to resort to this hack.
     equities_rest = ReplaceTreasuryInterestSymbols(equities_rest, treasuries_table)
 
-    # Convert matched groups of rows to trnasctions.
+    # Convert matched groups of rows to transactions.
     equities_txns = SplitGroupsToTransactions(equities_groups, False)
     futures_txns = SplitGroupsToTransactions(futures_groups, True)
 
@@ -1220,7 +1226,6 @@ def GetTransactions(filename: str, treasuries_table: Table) -> Tuple[Table, Tabl
             raise ValueError(f"Remaining unprocessed transactions: {rest}")
 
     # Concatenate the tables.
-    fieldnames = equities_txns.columns()
     txns = petl.cat(
         equities_txns,
         equities_expi,
@@ -1284,6 +1289,9 @@ def GetTransactionId(rec: Record) -> str:
     if rec.order_sequence is None:
         return str(rec.order_id)
     else:
+        if not rec.order_id:
+            print("No order id for:")
+            print(WrapRecords([rec]).lookallstr())
         assert rec.order_id, rec
         return "{}.{}".format(rec.order_id, rec.order_sequence)
 
