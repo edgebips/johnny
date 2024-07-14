@@ -174,6 +174,9 @@ def ReconcilePairsOrderIds(table: Table, threshold: int) -> Table:
     return table
 
 
+ONE_SEC = dt.timedelta(seconds=1)
+
+
 def ProcessTradeHistory(
     equities_cash: Table, futures_cash: Table, trade_hist: Table
 ) -> Tuple[List[Any], List[Any], Table, Table]:
@@ -206,35 +209,50 @@ def ProcessTradeHistory(
         order_groups = []
         mapping = trades_table.recordlookup("datetime")
         for dtime, cash_rows in mapping.items():
-            # print(WrapRecords(cash_rows))
-
-            # Pull out treasuries specially; they do not have a trade row.
-            # Register them with empty trade_rows.
-            if all(symbols.TREASURIES_REGEX.fullmatch(crow.symbol) for crow in cash_rows):
-                for crow in cash_rows:
-                    trow = _SynthesizeTradeRowForTreasury(crow, trow_flds)
-                    order_groups.append((dtime, [crow], [trow]))
-
-            # Pull out callable actions that I didn't trigger and synthesize a
-            # trade row; these will not show up in the trade history.
-            elif all(
-                re.match(".* - FULL CALL$", crow.description) for crow in cash_rows
-            ):
-                trade_rows = _SynthesizeTradeRowForCallable(cash_rows, trow_flds)
+            # Pull up the rows corresponding to this cash statement and remove
+            # them from the trade history.
+            try:
+                trade_rows = trade_hist_map.pop(dtime)
                 order_groups.append((dtime, cash_rows, trade_rows))
-
-            else:
-                # Pull up the rows corresponding to this cash statement and remove
-                # them from the trade history.
+            except KeyError:
                 try:
-                    trade_rows = trade_hist_map.pop(dtime)
-                except KeyError:
-                    message = (
-                        f"Trade history row for cash rows not found:\n'{cash_rows}'"
-                    )
-                    logging.error(message)
-                else:
+                    # Sometimes the cash row is one second after the trade row.
+                    trade_rows = trade_hist_map.pop(dtime - ONE_SEC)
                     order_groups.append((dtime, cash_rows, trade_rows))
+                except KeyError:
+                    # Pull out treasuries specially; those before the conversion to
+                    # Schwab do not have a trade row (after the conversion they
+                    # appear to). Register them with empty trade_rows.
+                    if all(
+                        symbols.TREASURIES_REGEX.fullmatch(crow.symbol)
+                        for crow in cash_rows
+                    ):
+                        for crow in cash_rows:
+                            trow = _SynthesizeTradeRowForTreasury(crow, trow_flds)
+                            order_groups.append((dtime, [crow], [trow]))
+
+                    # Pull out callable actions that I didn't trigger and synthesize a
+                    # trade row; these will not show up in the trade history.
+                    elif all(
+                        re.match(".* - FULL CALL$", crow.description)
+                        for crow in cash_rows
+                    ):
+                        trade_rows = _SynthesizeTradeRowForCallable(
+                            cash_rows, trow_flds
+                        )
+                        order_groups.append((dtime, cash_rows, trade_rows))
+
+                    else:
+                        # As of 2024, some of the cash rows did not include a
+                        # corresponding trade row. Allow it with an empty group
+                        # of trade_rows, which we will handle specially in
+                        # SplitGroupsToTransactions. Old code:
+                        # logging.error(
+                        #     "Trade history row not found for cash rows:\n{}".format(
+                        #         WrapRecords(cash_rows).lookallstr()
+                        #     )
+                        # )
+                        order_groups.append((dtime, cash_rows, []))  # Empty trade_rows.
 
         return order_groups, other_table
 
