@@ -20,4 +20,23 @@ message Config {
   //
   // See "johnny/source/ameritrade/treasuries.py" to produce this file.
   optional string ameritrade_download_transactions_for_treasuries = 3;
+
+  // Date of migration to Schwab. This is used to ignore Cash Balance rows after
+  // this date. We will switch to the better Schwab downloads for those, and
+  // that importer should automatically ignore the its rows before the
+  // migration.
+  //
+  // Note that Futures subaccount inforamtion is still only available in
+  // thinkorswim, so we will still have to process thinkorswim downloads for
+  // now.
+  //
+  // Note that thinkorswim still retains some informations not available in the
+  // Schwab download:
+  // - time (only date is provided)
+  // - a unique reference number
+  //
+  // Also, the thinkorswim download does not map 1-to-1 to the Schwab trades, it
+  // breaks down multiple executions, whereas Schwab's download shows the
+  // aggregated trades.
+  optional string schwab_migration_date = 4;
 }

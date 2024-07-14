@@ -20,6 +20,17 @@ to a bug in the TOS export (the Order ID column does not export properly, though
 it appears in the UI). Joining the Account Trade History is needed because only
 it contains a nice breakdown of the transactions fields (in lieu of having to
 infer it from the Cash Balance rows' `description` field).
+
+Now, please note that the Schwab migration causes some headaches:
+
+- Someone thought it a good idea some time before the migration to change the
+  description the Cash Balance table from UPPERCASE to Capitalized style and
+  change the data that comes after. This breaks a bunch of this code. I've
+  decided we'd be ignoring Cash Balance for dates after the migration an duse
+  the somewhare better Schwab download instead, so I just manually patched my
+  CSV files to UPPERCASE style with similar data addendums, it's not worth
+  making this code able to handle a few transactions like this.
+
 """
 
 __copyright__ = "Copyright (C) 2021  Martin Blais"
@@ -82,7 +93,6 @@ def SplitCashBalance(statement: Table, trade_hist: Table) -> Tuple[Table, Table]
 
     # Strategy has been inferred from the preparation and can be used to
     # distinguish trading and non-trading rows.
-    #
 
     # TODO(blais): Use biselect() here.
     nontrade = statement.select(lambda r: not r.strategy)
@@ -165,12 +175,6 @@ def ReconcilePairsOrderIds(table: Table, threshold: int) -> Table:
         )
     )
 
-    # if 0:
-    #     # Debug print.
-    #     for order_id, group in table.aggregate("pair_id", list).records():
-    #         if len(set(rec.order_id for rec in group)) > 1:
-    #             print(petl.wrap(chain([table.header()], group)).lookallstr())
-
     return table
 
 
@@ -178,7 +182,10 @@ ONE_SEC = dt.timedelta(seconds=1)
 
 
 def ProcessTradeHistory(
-    equities_cash: Table, futures_cash: Table, trade_hist: Table
+    equities_cash: Table,
+    futures_cash: Table,
+    trade_hist: Table,
+    migration_datetime: dt.datetime | None,
 ) -> Tuple[List[Any], List[Any], Table, Table]:
     """Join the trade history table with the equities table.
 
@@ -204,7 +211,6 @@ def ProcessTradeHistory(
     def MatchTradingRows(cash_table: Table):
         # Split up trades and other (cash) row.
         trades_table, other_table = cash_table.biselect(lambda r: r.type == "TRD")
-        # print(other_table.lookallstr())
 
         order_groups = []
         mapping = trades_table.recordlookup("datetime")
@@ -260,6 +266,17 @@ def ProcessTradeHistory(
     equities_groups, equities_others = MatchTradingRows(equities_cash)
     # Fetch the trade history rows for futures.
     futures_groups, futures_others = MatchTradingRows(futures_cash)
+
+    # Remove remaining Account Trade History after the migration date.
+    if migration_datetime:
+        trade_hist_map = {
+            dtime: rows
+            for dtime, rows in trade_hist_map.items()
+            if dtime < migration_datetime
+        }
+        # Note: This isn't perfect but it's just for the check below. We would
+        # only do this for cash rows, and avoid filtering out futures for the
+        # check.
 
     # Assert that the trade history table has been fully accounted for.
     if trade_hist_map:
@@ -445,8 +462,9 @@ def ProcessDividends(table: Table) -> Tuple[Table, Table]:
             lambda r: Assert(
                 r.type == "DOI"
                 and re.match(
-                    r"(ORDINARY DIVIDEND|.*\bDISTRIBUTION|US TREASURY INTEREST\b)",
+                    r"((ORDINARY|QUALIFIED) DIVIDEND|.*\bDISTRIBUTION|US TREASURY INTEREST\b)",
                     r.description,
+                    flags=re.IGNORECASE
                 )
             ),
         )
@@ -688,7 +706,11 @@ def SplitGroupsToTransactions(groups: List[Group], is_futures: bool) -> Table:
                 # transactions, no trade rows. We make do. Do your best. This
                 # happens VERY rarely (hopefully).
                 for index, crow in enumerate(cash_rows, start=1):
-                    logging.warning("Synthesizing transaction from cash rows:\n{}".format(WrapRecords([crow]).lookallstr()))
+                    logging.debug(
+                        "Synthesizing transaction from cash rows:\n{}".format(
+                            WrapRecords([crow]).lookallstr()
+                        )
+                    )
 
                     row_desc = (
                         "{}  [{}/{}]".format(description, index, len(cash_rows))
@@ -735,7 +757,7 @@ def SplitGroupsToTransactions(groups: List[Group], is_futures: bool) -> Table:
 # Prepare all the tables for processing
 
 
-def CashBalance_Prepare(table: Table) -> Table:
+def CashBalance_Prepare(table: Table, migration_datetime: dt.datetime | None) -> Table:
     """Process the cash account statement balance."""
     table = (
         table
@@ -771,6 +793,8 @@ def CashBalance_Prepare(table: Table) -> Table:
         .cutout("misc_fees")
         .rename("misc_fees_inferred", "misc_fees")
     )
+    if migration_datetime:
+        table = table.selectlt("datetime", migration_datetime)
     table = ParseDescription(table)
     return table.convert("symbol", symbols.AliasSymbol)
 
@@ -792,7 +816,9 @@ def _ComputeMiscFees(prev: Record, rec: Record, _: Record) -> Decimal:
     return diff_balance - ((rec.amount or ZERO) + (rec.commissions_fees or ZERO))
 
 
-def FuturesStatements_Prepare(table: Table) -> Table:
+def FuturesStatements_Prepare(
+    table: Table, migration_datetime: dt.datetime | None
+) -> Table:
     table = (
         table
         # Add unique row id right at the input.
@@ -830,6 +856,15 @@ def FuturesStatements_Prepare(table: Table) -> Table:
         )
         .convert("ref", lambda v: int(v) if v else 0)
     )
+    if migration_datetime:
+        # Here I'm just removing the one-off migration marker line.
+        # We want to have future lines even after the migration because Schwab's
+        # download does not provide detail for the futures account, so that will
+        # still only be available through TOS.
+        table = table.select(
+            "description",
+            lambda v: not re.search("Account migration from TDA to Schwab", v),
+        )
     return ParseDescription(table)
 
 
@@ -1109,7 +1144,9 @@ def _ParseTradeDescription(description: str) -> Dict[str, Any]:
 
 def _ParseDividendDescription(description: str) -> Dict[str, Any]:
     """Parse the description field of an expiration."""
-    mo = re.match("ORDINARY (?P<strategy>DIVIDEND)~(?P<symbol>[A-Z0-9]+)", description)
+    mo = re.match(
+        "(ORDINARY|QUALIFIED) (?P<strategy>DIVIDEND)~(?P<symbol>[A-Z0-9]+)", description
+    )
     assert mo, description
     matches = mo.groupdict()
     matches["quantity"] = Decimal("0")
@@ -1250,10 +1287,18 @@ def ReplaceTreasuryInterestSymbols(
     return equities_rest.convert("symbol", ReplaceSymbol, pass_row=True)
 
 
-def GetTransactions(filename: str, treasuries_table: Table) -> Tuple[Table, Table]:
+def GetTransactions(
+    filename: str, treasuries_table: Table, config: config_pb2.Config
+) -> Tuple[Table, Table]:
     """Read and prepare all the tables to be joined."""
 
-    tables = PrepareTables(filename)
+    migration_datetime = (
+        parser.parse(config.schwab_migration_date)
+        if config.schwab_migration_date
+        else None
+    )
+
+    tables = PrepareTables(filename, migration_datetime)
 
     # Pull out the trading log which contains trade information over all the
     # instrument but not any of the fees.
@@ -1265,7 +1310,6 @@ def GetTransactions(filename: str, treasuries_table: Table) -> Tuple[Table, Tabl
 
     # Split up the "Cash Balance" table and process non-trade entries.
     cashbal = tables["Cash Balance"]
-
     equities_trade, cashbal_nontrade = SplitCashBalance(cashbal, trade_hist)
 
     # Split up the "Futures Statements" table and process non-trade entries.
@@ -1276,7 +1320,7 @@ def GetTransactions(filename: str, treasuries_table: Table) -> Tuple[Table, Tabl
     # history and ensure a perfect match, returning groups of (date-time,
     # cash-rows, trade-rows), properly matched.
     equities_groups, futures_groups, equities_rest, futures_rest = ProcessTradeHistory(
-        equities_trade, futures_trade, trade_hist
+        equities_trade, futures_trade, trade_hist, migration_datetime
     )
 
     # Join against the treasuries table to find the positions the coupons are to
@@ -1387,13 +1431,19 @@ def FillMissingOrderIds(order_id: str, rec: Record) -> str:
     return md5.hexdigest()[:8]
 
 
-def PrepareTables(filename: str) -> Dict[str, Table]:
+def PrepareTables(
+    filename: str, migration_datetime: dt.datetime | None
+) -> Dict[str, Table]:
     """Clean up all the input tables."""
 
     # Handlers for each of the sections.
     handlers = {
-        "Cash Balance": CashBalance_Prepare,
-        "Futures Statements": FuturesStatements_Prepare,
+        "Cash Balance": partial(
+            CashBalance_Prepare, migration_datetime=migration_datetime
+        ),
+        "Futures Statements": partial(
+            FuturesStatements_Prepare, migration_datetime=migration_datetime
+        ),
         "Forex Statements": None,
         "Account Order History": None,
         "Account Trade History": AccountTradeHistory_Prepare,
@@ -1445,7 +1495,7 @@ def ImportTransactions(config: config_pb2.Config) -> petl.Table:
     transactions_list = []
     for year, filename in sorted(fnmap.items()):
         try:
-            transactions, _ = GetTransactions(filename, treasuries_table)
+            transactions, _ = GetTransactions(filename, treasuries_table, config)
         except AssertionError:
             logging.error("Error while processing file '%s'", filename)
             raise
