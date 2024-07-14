@@ -71,6 +71,7 @@ from johnny.sources.ameritrade import nontrades
 from johnny.sources.ameritrade import symbols
 from johnny.sources.ameritrade import utils
 from johnny.sources.ameritrade import treasuries
+from johnny.sources.schwab import treasuries as treasuries_schwab
 from johnny.utils import csv_utils
 
 
@@ -464,7 +465,7 @@ def ProcessDividends(table: Table) -> Tuple[Table, Table]:
                 and re.match(
                     r"((ORDINARY|QUALIFIED) DIVIDEND|.*\bDISTRIBUTION|US TREASURY INTEREST\b)",
                     r.description,
-                    flags=re.IGNORECASE
+                    flags=re.IGNORECASE,
                 )
             ),
         )
@@ -1267,19 +1268,19 @@ def ReplaceTreasuryInterestSymbols(
     containing the symbols and we join it with our transactions.
     """
     # Unique key for bonds.
-    mapping = treasuries_table.selecteq("rowtype", txnlib.Type.Trade).recordlookupone(
-        ["maturity", "rate"]
-    )
+    mapping = treasuries_table.recordlookupone(["maturity", "rate"])
 
     def ReplaceSymbol(value: str, row: Record) -> str:
         if row.type == "DOI" and row.symbol.startswith("UNITED STATES TREASURY"):
             key = (row.maturity, row.rate)
             found = mapping.get(key)
             if not found:
-                return (
-                    value
-                    + f"(ERROR: Symbol not found for key ({key[0]:%Y-%m-%d}, {key[1]}))"
+                message = (
+                    f"ERROR: Symbol not found for key ({key[0]:%Y-%m-%d}, {key[1]})"
                 )
+                raise ValueError(message)
+                # logging.error(message)
+                # return f"{value} ({message})"
                 # raise ValueError(f"Mapping for coupon row not found: {row}")
             return found.symbol
         return value
@@ -1480,10 +1481,21 @@ def ImportTreasuries(config: config_pb2.Config) -> petl.Table:
     """Read the treasuries table used to map the interest coupons to the specific
     bonds. This is joined with the imported transactions table.
     """
-    treasuries_filename = path.expandvars(
-        config.ameritrade_download_transactions_for_treasuries
-    )
-    return treasuries.ImportTreasuries(treasuries_filename)
+    if config.HasField("ameritrade_download_transactions_for_treasuries"):
+        treasuries_filename = path.expandvars(
+            config.ameritrade_download_transactions_for_treasuries
+        )
+        return treasuries.ImportTreasuries(treasuries_filename)
+
+    elif config.HasField("schwab_download_transactions_for_treasuries"):
+        # For greater time coverage, and the Ameritrade website isn't available
+        # to download transactions through the migration.
+        treasuries_filename = path.expandvars(
+            config.schwab_download_transactions_for_treasuries
+        )
+        return treasuries_schwab.ImportTreasuries(treasuries_filename)
+
+    return petl.empty()
 
 
 def ImportTransactions(config: config_pb2.Config) -> petl.Table:
