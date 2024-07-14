@@ -91,6 +91,8 @@ def ImportTreasuries(filename: str) -> Table:
         .convert("amount", ParseNumber)
         .convert("quantity", ParseNumber)
         .sort(["symbol", "date"])
+        .cut(["symbol", "rate", "maturity"])
+        .distinct()
     )
 
 
