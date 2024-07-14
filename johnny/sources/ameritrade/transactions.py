@@ -1284,7 +1284,7 @@ def GetTransactions(filename: str, treasuries_table: Table) -> Tuple[Table, Tabl
     # include the symbol so we have to resort to this hack.
     equities_rest = ReplaceTreasuryInterestSymbols(equities_rest, treasuries_table)
 
-    # Convert matched groups of rows to transctions.
+    # Convert matched groups of rows to transactions.
     equities_txns = SplitGroupsToTransactions(equities_groups, False)
     futures_txns = SplitGroupsToTransactions(futures_groups, True)
 
