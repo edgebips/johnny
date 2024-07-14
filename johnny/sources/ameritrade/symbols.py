@@ -25,6 +25,9 @@ SYMBOL_NAME_CHANGES = {
     # 'LB': 'BBWI'
 }
 
+SYMBOL_ALIASES = {
+    "44267T102": "HHH",
+}
 
 TREASURIES_REGEX = re.compile(r"912[0-9]{2}[0-9A-Z]{4}")
 
@@ -110,3 +113,9 @@ def FromInstrument(inst: Instrument) -> str:
         return inst.underlying
 
     raise ValueError("Invalid instrument type: {}".format(instype))
+
+
+def AliasSymbol(symbol: str) -> str:
+    """Translate some select symbols."""
+    # TODO(blais): This should be placed in the config.
+    return SYMBOL_ALIASES.get(symbol, symbol)
