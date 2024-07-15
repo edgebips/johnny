@@ -43,8 +43,11 @@ config-clobber clobber:
 config-commit commit:
 	hg commit -m "(Trading update)" $(CHAINS)
 
-final:
-	./experiments/accept-all.py
+finalize-closed-chains:
+	./experiments/finalize-closed-chains.py
+
+accept-auto-ids:
+	./experiments/accept-auto-ids.py
 
 annotate:
 	./experiments/annotate.py

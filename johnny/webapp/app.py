@@ -223,6 +223,8 @@ def GetNavigation() -> Dict[str, str]:
         "page_recap": flask.url_for("recap_today"),
         "page_leverage": flask.url_for("leverage"),
         "page_chains": flask.url_for("chains"),
+        "page_closed": flask.url_for("closed"),
+        "page_autoids": flask.url_for("autoids"),
         "page_transactions": flask.url_for("transactions"),
         "page_positions": flask.url_for("positions"),
         "page_stats": flask.url_for("stats"),
@@ -312,6 +314,20 @@ def expiring():
         .aggregate("chain_id", {"min_dte": ("dte", min)})
     )
     return render_chains(STATE.chains.join(min_dte, "chain_id").movefield("min_dte", 1))
+
+
+@app.route("/closed")
+def closed():
+    return render_chains(STATE.chains.selecteq("status", "CLOSED"))
+
+
+@app.route("/autoids")
+def autoids():
+    # Select just the chains that have some auto_ids.
+    chain_ids = {
+        chain.chain_id for chain in STATE.chains_map.values() if len(chain.auto_ids) > 0
+    }
+    return render_chains(STATE.chains.selectin("chain_id", chain_ids))
 
 
 @app.route("/chains")
