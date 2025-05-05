@@ -35,8 +35,10 @@ import logging
 
 from more_itertools import first
 import networkx as nx
+import numpy as np
 import pyarrow as pa
 import pyarrow.parquet as pq
+import pyxirr
 
 from johnny.base import config as configlib
 from johnny.base import strategy as strategylib
@@ -57,6 +59,7 @@ Q0 = Decimal("1")
 Q1 = Decimal("0.1")
 Q2 = Decimal("0.01")
 Q3 = Decimal("0.001")
+Q4 = Decimal("0.001")
 
 
 def ChainTransactions(
@@ -549,8 +552,24 @@ def _CalculatePnlFrac(r: Record) -> Decimal:
 Returns = collections.namedtuple("Returns", "volatility returns move stdev")
 
 
-# TODO(blais): Compute IRR annualized returns using cash flows.
-def GetReturns(fieldname: str, rec: Record) -> float:
+def ComputeXirrReturns(rec: Record) -> Decimal:
+    # TODO: Try datetimes, not just dates, once it works.
+    dates = [txn.datetime.date() for txn in rec.txns]
+    cash_flows = [txn.cost + txn.cash + txn.commissions + txn.fees for txn in rec.txns]
+    try:
+        xirr_float = pyxirr.xirr(dates, cash_flows)
+        if xirr_float is None:
+            xirr = ZERO # Decimal("NaN")
+        elif xirr_float > 1e6:
+            xirr = ZERO # Decimal("Infinity")
+        else:
+            xirr = Decimal(xirr_float).quantize(Q4)
+    except pyxirr.InvalidPaymentsError:
+        xirr = ZERO # Decimal("NaN")
+    return xirr
+
+
+def GetReturns(fieldname: str, rec: Record) -> Returns:
     volatility = getattr(rec.chain, fieldname, 0.0) or 0.0
     days = (rec.maxdate - rec.mindate).days
     time = days / 365
@@ -639,6 +658,8 @@ def TransactionsTableToChainsTable(
         .addfield("net_win", lambda r: r.net_liq + (r.pnl_win - r.pnl_chain))
         .addfield("net_loss", lambda r: r.net_liq + (r.pnl_loss - r.pnl_chain))
         .cutout("prob")
+        # Annualized returns over cash flows.
+        .addfield("xirr", ComputeXirrReturns)
         # Numbers Vs. Volatility
         .addfield("_realized", partial(GetReturns, "vol_realized"))
         .addfields(
@@ -700,6 +721,8 @@ def TransactionsTableToChainsTable(
         "net_liq",
         "net_loss",
         "fifo_cost",
+        #
+        "xirr",
         #
         "vol_real",
         "return_real",

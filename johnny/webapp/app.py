@@ -160,6 +160,7 @@ def ToHtmlString(ftable: Table, cls: str, ids: List[str] = None) -> bytes:
     fieldnames = set(ftable.fieldnames())
     table = ftable
     for name, fmtfunc in [
+        ("xirr", "{:.2%}".format),
         ("vol_real", "{:.1%}".format),
         ("return_real", "{:.1%}".format),
         ("stdev_real", lambda v: v or ZERO),
